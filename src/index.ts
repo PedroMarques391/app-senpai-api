@@ -1,5 +1,5 @@
+import { MongoInitializer } from "@/init/database";
 import fastify from "fastify";
-import { MongoInitializer } from "./init/database.ts";
 
 const server = fastify();
 

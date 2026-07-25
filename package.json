@@ -20,15 +20,15 @@
     "zod": "^4.4.3"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "start": "node --env-file=.env  dist/src/index.js",
-    "dev": "tsx watch --env-file=.env src/index.ts",
+    "build": "tsc --noEmit && tsup",
+    "start": "node --env-file=.env dist/index.js",
+    "dev": "tsup --watch --onSuccess \"node --env-file=.env dist/index.js\"",
     "up:db": "docker compose up -d",
     "down:db": "docker compose down"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
-    "tsx": "^4.23.1",
+    "tsup": "^8.5.1",
     "typescript": "^5.9.3"
   }
 }

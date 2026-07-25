@@ -1,18 +1,18 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@core/*": [
-        "core/*"
-      ]
-    },
     "module": "ESNext",
     "moduleResolution": "bundler",
     "target": "ES2020",
     "isolatedModules": true,
-    "rewriteRelativeImportExtensions": true,
-    "verbatimModuleSyntax": false,
+    "verbatimModuleSyntax": true,
     "outDir": "./dist",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "core/*",
+        "src/*"
+      ]
+    },
     "esModuleInterop": true,
     "skipLibCheck": true
   }

@@ -1,6 +1,6 @@
-import { CreateUserDto } from "core/dtos/user/create-user.dto";
-import { UpdateUserDto } from "core/dtos/user/update-user.dto";
-import { User } from "core/models/user.model";
+import type { CreateUserDto } from "core/dtos/user/create-user.dto";
+import type { UpdateUserDto } from "core/dtos/user/update-user.dto";
+import type { User } from "core/models/user.model";
 
 export interface UserRepository {
   findByWAId(waId: string): Promise<User | null>;
