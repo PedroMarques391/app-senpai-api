@@ -2,7 +2,9 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@core/*": ["src/core/*"]
+      "@core/*": [
+        "core/*"
+      ]
     },
     "module": "ESNext",
     "moduleResolution": "bundler",
