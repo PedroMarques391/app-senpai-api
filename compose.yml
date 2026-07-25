@@ -1,0 +1,15 @@
+services:
+  mongo:
+    image: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: 10101010
+    ports:
+      - "27017:27017"
+    volumes:
+      - senpai-db:/data/db
+
+volumes:
+  senpai-db:
+    driver: local
