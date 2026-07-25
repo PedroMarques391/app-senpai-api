@@ -1,4 +1,5 @@
 import fastify from "fastify";
+import { MongoInitializer } from "./init/database.ts";
 
 const server = fastify();
 
@@ -6,10 +7,20 @@ server.get("/ping", async (request, reply) => {
   return "pong\n";
 });
 
-server.listen({ port: 8080 }, (err, address) => {
-  if (err) {
+const bootstrap = async () => {
+  try {
+    await MongoInitializer.init();
+    server.listen({ port: 3000 }, (err, address) => {
+      if (err) {
+        console.error(err);
+        process.exit(1);
+      }
+      console.log(`Server listening at ${address}`);
+    });
+  } catch (err) {
     console.error(err);
     process.exit(1);
   }
-  console.log(`Server listening at ${address}`);
-});
+};
+
+bootstrap();
