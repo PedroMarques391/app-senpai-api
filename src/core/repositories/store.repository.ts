@@ -1,6 +1,6 @@
-import { StoreItem } from "../models/store.model";
-import { CreateStoreItemDto } from "../dtos/store/create-store-item.dto";
-import { UpdateStoreItemDto } from "../dtos/store/update-store-item.dto";
+import { StoreItem } from "@core/models/store.model";
+import { CreateStoreItemDto } from "@core/dtos/store/create-store-item.dto";
+import { UpdateStoreItemDto } from "@core/dtos/store/update-store-item.dto";
 
 export interface StoreRepository {
   findAll(): Promise<StoreItem[]>;

@@ -1,4 +1,4 @@
 import { z } from "zod";
-import { stickerPackSchema } from "../schemas";
+import { stickerPackSchema } from "@core/schemas";
 
 export type StickerPack = z.infer<typeof stickerPackSchema>;

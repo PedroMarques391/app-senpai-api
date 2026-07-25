@@ -1,6 +1,6 @@
 import { ObjectId } from "mongodb";
 import z from "zod";
-import { stickerSchema } from "./sticker.schema";
+import { stickerSchema } from "@core/schemas/sticker.schema";
 
 export const stickerPackSchema = z.object({
   _id: z.instanceof(ObjectId),

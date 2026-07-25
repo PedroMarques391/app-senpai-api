@@ -1,6 +1,6 @@
 import { ObjectId } from "mongodb";
 import { z } from "zod";
-import { dailyMissionSchema } from "./daily-mission.schema";
+import { dailyMissionSchema } from "@core/schemas/daily-mission.schema";
 
 export const userSchema = z.object({
   _id: z.instanceof(ObjectId),

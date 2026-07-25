@@ -1,5 +1,9 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@core/*": ["src/core/*"]
+    },
     "module": "ESNext",
     "moduleResolution": "bundler",
     "target": "ES2020",
