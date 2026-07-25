@@ -10,6 +10,7 @@
     "moduleResolution": "bundler",
     "target": "ES2020",
     "isolatedModules": true,
+    "rewriteRelativeImportExtensions": true,
     "verbatimModuleSyntax": false,
     "outDir": "./dist",
     "esModuleInterop": true,
