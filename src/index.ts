@@ -1,10 +1,13 @@
 import { MongoInitializer } from "@/init/database";
+import { authRoutes } from "@/routes/auth";
 import fastify from "fastify";
 
 const server = fastify();
 
-server.get("/ping", async (request, reply) => {
-  return "pong\n";
+server.register(authRoutes, { prefix: "/auth" });
+
+server.get("/", async () => {
+  return "This is senpai backend...";
 });
 
 const bootstrap = async () => {
