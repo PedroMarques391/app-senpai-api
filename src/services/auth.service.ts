@@ -1,6 +1,12 @@
 import type { CreateUserDto } from "@/dtos/user/create-user.dto";
 import type { User } from "@/models/user.model";
 import type { UserRepository } from "@/models/user.repository.model";
+import type {
+  AuthResult,
+  OtpSecret,
+  SendOtpResult,
+  ServiceResponse,
+} from "@/types/auth.types";
 import type { JWT } from "@/utils/JWT";
 import { OTP } from "@/utils/OTP";
 import { Password } from "@/utils/Password";
@@ -14,10 +20,7 @@ export class AuthService {
     private readonly jwtUtils: JWT,
   ) {}
 
-  async generateOTP(): Promise<{
-    code: string;
-    expires_at: Date;
-  }> {
+  async generateOTP(): Promise<OtpSecret> {
     const code = OTP.generateOTP();
     const expires_at = OTP.generateExpiresAt();
 
@@ -27,10 +30,16 @@ export class AuthService {
     };
   }
 
-  async sendOTP(waId: string): Promise<{ user: User } | null> {
+  async sendOTP(waId: string): Promise<ServiceResponse<SendOtpResult>> {
     const user = await this.userRepository.findByWAId(waId);
+
     if (!user || !user.premium) {
-      return null;
+      return {
+        success: false,
+        userExists: !!user,
+        message:
+          "Ok, we have your whatsapp number. Now you must finish your account creation.",
+      };
     }
 
     const otp = await this.generateOTP();
@@ -38,14 +47,15 @@ export class AuthService {
     await this.userRepository.update(waId, user);
 
     return {
-      user,
+      success: true,
+      data: {
+        otp: otp.code,
+        wa_id: user.wa_id,
+      },
     };
   }
 
-  async verifyOtpAndLogin(
-    waId: string,
-    otpCode: string,
-  ): Promise<{ user: User; token: string }> {
+  async verifyOtpAndLogin(waId: string, otpCode: string): Promise<AuthResult> {
     const user = await this.userRepository.findByWAId(waId);
     if (!user) {
       throw new Error("User not found");
@@ -77,7 +87,7 @@ export class AuthService {
   async loginWithPassword(
     waId: string,
     passwordString: string,
-  ): Promise<{ user: User; token: string }> {
+  ): Promise<AuthResult> {
     const user = await this.userRepository.findByWAId(waId);
     if (!user) {
       throw new Error("User not found");

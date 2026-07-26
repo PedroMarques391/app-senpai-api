@@ -13,18 +13,25 @@ export async function authRoutes(app: FastifyInstance) {
     async (request, reply) => {
       try {
         const { wa_id } = request.body;
-        console.log(wa_id);
-        const user = await authService.sendOTP(wa_id);
+        const result = await authService.sendOTP(wa_id);
 
-        if (!user) {
-          throw new Error("Operation not permitted");
+        if (result.success === false) {
+          return reply.send({
+            message: result.message,
+            userExists: result.userExists,
+          });
         }
 
         reply.send({
           message: "OTP sent successfully",
-          user: user.user,
+          otp: result.data,
         });
       } catch (err) {
+        if (err instanceof Error) {
+          return reply.status(400).send({
+            message: err.message,
+          });
+        }
         reply.status(400).send({
           message: "Operation not permitted",
         });
