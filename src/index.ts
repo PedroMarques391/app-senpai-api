@@ -11,6 +11,13 @@ server.register(authRoutes, { prefix: "/auth" });
 server.register(async (app) => {
   app.addHook("onRequest", app.authenticate);
 
+  app.get("/me", async (request, reply) => {
+    reply.send({
+      message: "User fetched successfully",
+      user: request.user,
+    });
+  });
+
   app.get("/", async () => {
     return "This is senpai backend...";
   });
@@ -24,7 +31,7 @@ const bootstrap = async () => {
         console.error(err);
         process.exit(1);
       }
-      console.log(`Server listening at ${address}`);
+      console.log(`✅ Server is running at ${address}`);
     });
   } catch (err) {
     console.error(err);
