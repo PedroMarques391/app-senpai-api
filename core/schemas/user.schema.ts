@@ -10,14 +10,18 @@ export const userSchema = z.object({
   userName: z.string(),
   password: z.string().optional(),
   premium: z.boolean().default(false),
-  updatedAt: z.coerce.date(),
-  last_login: z.coerce.date().default(new Date()),
+  role: z.enum(["user", "admin", "moderator"]).default("user"),
+  createdAt: z.coerce.date().default(() => new Date()),
+  updatedAt: z.coerce.date().default(() => new Date()),
+  last_login: z.coerce.date().default(() => new Date()),
   status: z.enum(["active", "inactive"]).default("active"),
   preferred_payment: z.string().optional(),
-  subscriptions: z.object({
-    start: z.coerce.date(),
-  }),
-  email: z.email().optional(),
+  subscriptions: z
+    .object({
+      start: z.coerce.date(),
+    })
+    .optional(),
+  email: z.email(),
   isEmailVerified: z.boolean().default(false),
   petals_balance: z.number().default(0),
   daily_missions: z

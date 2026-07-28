@@ -60,4 +60,33 @@ export async function authRoutes(app: FastifyInstance) {
       }
     },
   );
+  app.post<{
+    Body: {
+      wa_id: string;
+      name: string;
+      userName: string;
+      email: string;
+      password: string;
+    };
+  }>("/register", async (request, reply) => {
+    try {
+      const userData = request.body;
+      // console.log("userData", userData);
+      const user = await authService.signup(userData.wa_id, userData);
+
+      reply.send({
+        message: "User created successfully",
+        user,
+      });
+    } catch (err) {
+      if (err instanceof Error) {
+        return reply.status(400).send({
+          message: err.message,
+        });
+      }
+      reply.status(400).send({
+        message: "Operation not permitted",
+      });
+    }
+  });
 }

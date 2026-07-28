@@ -198,16 +198,20 @@ export class AuthService {
 
   async signup(waId: string, userData: CreateUserDto): Promise<User | null> {
     const user = await this.userRepository.findByWAId(waId);
-    if (user) {
-      throw new Error("User already exists");
+
+    if (user && (!user.premium || user.email)) {
+      throw new Error(
+        "Você já possui uma conta. Tente fazer login com seu e-mail e senha.",
+      );
     }
 
     if (userData.password) {
       userData.password = await Password.hash(userData.password);
     }
 
-    return this.userRepository.create({
-      ...userData,
-    });
+    const res = await this.userRepository.create(userData);
+
+    console.log("res", res);
+    return res;
   }
 }

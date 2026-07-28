@@ -3,6 +3,7 @@ import type { UpdateUserDto } from "@/dtos/user/update-user.dto";
 import { MongoInitializer } from "@/init/database";
 import type { User } from "@/models/user.model";
 import type { UserRepository } from "@/models/user.repository.model";
+import { userSchema } from "@/schemas";
 
 export class UserRepo implements UserRepository {
   private get collection() {
@@ -15,7 +16,10 @@ export class UserRepo implements UserRepository {
   }
 
   async create(userData: CreateUserDto): Promise<User | null> {
-    const result = await this.collection.insertOne(userData as any);
+    const insertSchema = userSchema.omit({ _id: true });
+    const parsedData = insertSchema.parse(userData);
+
+    const result = await this.collection.insertOne(parsedData as User);
     if (!result.insertedId) return null;
     return this.collection.findOne({ _id: result.insertedId });
   }

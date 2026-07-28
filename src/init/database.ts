@@ -17,6 +17,16 @@ export class MongoInitializer {
 
       this.db = this.client.db();
 
+      await this.db
+        .collection("customers")
+        .createIndex({ wa_id: 1 }, { unique: true });
+      await this.db
+        .collection("customers")
+        .createIndex({ email: 1 }, { unique: true, sparse: true });
+      await this.db
+        .collection("customers")
+        .createIndex({ userName: 1 }, { unique: true, sparse: true });
+
       console.log("✅ Successfully connected to MongoDB");
     } catch (error) {
       console.error("❌ Failed to connect to MongoDB");
