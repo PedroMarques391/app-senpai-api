@@ -27,6 +27,10 @@ export class MongoInitializer {
         .collection("customers")
         .createIndex({ userName: 1 }, { unique: true, sparse: true });
 
+      await this.db.collection("packages").createIndex({ user_id: 1 });
+
+      await this.db.collection("stickers").createIndex({ user_id: 1, type: 1 });
+
       console.log("✅ Successfully connected to MongoDB");
     } catch (error) {
       console.error("❌ Failed to connect to MongoDB");
