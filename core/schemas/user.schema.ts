@@ -18,7 +18,7 @@ export const userSchema = z.object({
     start: z.coerce.date(),
   }),
   email: z.email().optional(),
-  isVerified: z.boolean().default(false),
+  isEmailVerified: z.boolean().default(false),
   petals_balance: z.number().default(0),
   daily_missions: z
     .object({
