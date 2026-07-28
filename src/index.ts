@@ -12,8 +12,9 @@ server.register(async (app) => {
   app.addHook("onRequest", app.authenticate);
 
   app.get("/me", async (request, reply) => {
-    reply.send({
+    return reply.status(200).send({
       message: "User fetched successfully",
+      success: true,
       user: request.user,
     });
   });

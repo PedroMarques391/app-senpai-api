@@ -15,6 +15,7 @@ async function authPlugin(fastify: FastifyInstance) {
       } catch (err) {
         reply.status(401).send({
           message: "Operation not permitted",
+          success: false,
         });
       }
     },
