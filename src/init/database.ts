@@ -31,6 +31,10 @@ export class MongoInitializer {
 
       await this.db.collection("stickers").createIndex({ user_id: 1, type: 1 });
 
+      await this.db
+        .collection("daily_missions")
+        .createIndex({ mission_key: 1 }, { unique: true });
+
       console.log("✅ Successfully connected to MongoDB");
     } catch (error) {
       console.error("❌ Failed to connect to MongoDB");

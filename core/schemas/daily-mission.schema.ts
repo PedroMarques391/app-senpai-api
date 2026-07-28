@@ -1,6 +1,8 @@
+import { ObjectId } from "mongodb";
 import { z } from "zod";
 
 export const dailyMissionSchema = z.object({
+  _id: z.instanceof(ObjectId),
   mission_key: z.string(),
   title: z.string(),
   current_progress: z.number().default(0),
