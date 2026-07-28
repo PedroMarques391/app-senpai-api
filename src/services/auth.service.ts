@@ -40,8 +40,8 @@ export class AuthService {
         success: false,
         userExists: !!user,
         message: !!user
-          ? "Ok, we have your whatsapp number. Now you must finish your account creation."
-          : "Your are not a user, please create your account.",
+          ? "Certo, nós temos seu número de whatsapp. Agora você precisa finalizar a criação da sua conta."
+          : "Você ainda não é um usuário da Senpai, por favor crie sua conta.",
       };
     }
 
