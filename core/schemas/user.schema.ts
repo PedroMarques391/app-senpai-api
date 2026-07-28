@@ -5,7 +5,7 @@ import { z } from "zod";
 export const userSchema = z.object({
   _id: z.instanceof(ObjectId),
   wa_id: z.string(),
-  isverifiedCreator: z.boolean().default(false),
+  isVerifiedCreator: z.boolean().default(false),
   name: z.string(),
   userName: z.string(),
   password: z.string().optional(),
@@ -37,4 +37,10 @@ export const userSchema = z.object({
       lastSend: z.coerce.date(),
     })
     .optional(),
+  stickers_count: z
+    .object({
+      static: z.number().default(0),
+      dynamic: z.number().default(0),
+    })
+    .default({ static: 0, dynamic: 0 }),
 });

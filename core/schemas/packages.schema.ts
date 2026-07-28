@@ -13,7 +13,7 @@ export const stickerPackSchema = z.object({
 
   is_public: z.boolean().default(true),
   downloads_count: z.number().default(0),
-  stickers: z.array(stickerSchema).max(30).default([]),
+  stickers: z.array(stickerSchema).min(1).max(30).default([]),
 
   created_at: z.coerce.date().default(() => new Date()),
   updated_at: z.coerce.date().default(() => new Date()),
