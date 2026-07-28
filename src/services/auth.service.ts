@@ -153,6 +153,7 @@ export class AuthService {
     user.otp_secret = undefined;
 
     user.last_login = new Date();
+    user.isNumberVerified = true;
     await this.userRepository.update(waId, user);
 
     const token = this.jwtUtils.generateJWT({

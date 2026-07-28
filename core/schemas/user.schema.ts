@@ -23,6 +23,7 @@ export const userSchema = z.object({
     .optional(),
   email: z.email(),
   isEmailVerified: z.boolean().default(false),
+  isNumberVerified: z.boolean().default(false),
   petals_balance: z.number().default(0),
   daily_missions: z
     .object({
