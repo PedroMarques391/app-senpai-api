@@ -15,14 +15,9 @@ export async function authRoutes(app: FastifyInstance) {
         const { wa_id } = request.body;
         const result = await authService.sendOTP(wa_id);
 
-        if (result.success === false) {
-          return reply.send({
-            message: result.message,
-            userExists: result.userExists,
-          });
-        }
+        if (!result.success) return reply.status(403).send(result);
 
-        reply.send({
+        return reply.status(200).send({
           message: "OTP sent successfully",
           otp: result.data,
         });

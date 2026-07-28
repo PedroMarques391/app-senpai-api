@@ -27,11 +27,14 @@ export class AuthService {
     return {
       code,
       expires_at,
+      lastSend: new Date(),
     };
   }
 
   async sendOTP(waId: string): Promise<ServiceResponse<SendOtpResult>> {
     const url = `https://graph.facebook.com/v25.0/${process.env.WHATSAPP_PHONE_ID}/messages`;
+    const currentDate = new Date();
+    let otp: OtpSecret | undefined;
 
     const user = await this.userRepository.findByWAId(waId);
 
@@ -45,7 +48,31 @@ export class AuthService {
       };
     }
 
-    const otp = await this.generateOTP();
+    if (user.otp_secret && user.otp_secret.lastSend) {
+      const timeSinceLastSend =
+        currentDate.getTime() - user.otp_secret.lastSend.getTime();
+
+      if (timeSinceLastSend < 60000) {
+        const remainingSeconds = Math.ceil((60000 - timeSinceLastSend) / 1000);
+        return {
+          success: false,
+          userExists: true,
+          message: `Por favor, aguarde ${remainingSeconds} segundos antes de solicitar um novo código.`,
+        };
+      }
+
+      if (user.otp_secret.expires_at > currentDate) {
+        otp = {
+          code: user.otp_secret.code,
+          expires_at: user.otp_secret.expires_at,
+          lastSend: currentDate,
+        };
+      }
+    }
+
+    if (!otp) {
+      otp = await this.generateOTP();
+    }
     const data = {
       messaging_product: "whatsapp",
       to: user.wa_id,

@@ -3,6 +3,7 @@ import type { User } from "@/models/user.model";
 export interface OtpSecret {
   code: string;
   expires_at: Date;
+  lastSend: Date;
 }
 
 export interface SendOtpResult {

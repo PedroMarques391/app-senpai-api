@@ -30,6 +30,7 @@ export const userSchema = z.object({
     .object({
       code: z.string(),
       expires_at: z.coerce.date(),
+      lastSend: z.coerce.date(),
     })
     .optional(),
 });
