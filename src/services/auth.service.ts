@@ -161,6 +161,9 @@ export class AuthService {
       name: user.name,
       userName: user.userName,
       premium: user.premium,
+      email: user.email,
+      isNumberVerified: user.isNumberVerified,
+      role: user.role,
     });
 
     return { user, token };
@@ -192,6 +195,9 @@ export class AuthService {
       name: user.name,
       userName: user.userName,
       premium: user.premium,
+      email: user.email,
+      isNumberVerified: user.isNumberVerified,
+      role: user.role,
     });
 
     return { user, token };
