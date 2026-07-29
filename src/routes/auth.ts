@@ -72,8 +72,7 @@ export async function authRoutes(app: FastifyInstance) {
   }>("/register", async (request, reply) => {
     try {
       const userData = request.body;
-      // console.log("userData", userData);
-      const user = await authService.signup(userData.wa_id, userData);
+      const user = await authService.signUp(userData.wa_id, userData);
 
       reply.send({
         message: "User created successfully",
@@ -90,4 +89,33 @@ export async function authRoutes(app: FastifyInstance) {
       });
     }
   });
+
+  app.post<{ Body: { identifier: string; password: string } }>(
+    "/loginWithIdentifier",
+    async (request, reply) => {
+      try {
+        const { identifier, password } = request.body;
+        const user = await authService.loginWithCredentials(
+          identifier,
+          password,
+        );
+
+        reply.header("Authorization", `Bearer ${user.token}`);
+        return reply.status(200).send({
+          success: true,
+          message: "Password verified successfully",
+          user: user.user,
+        });
+      } catch (err) {
+        if (err instanceof Error) {
+          return reply.status(400).send({
+            message: err.message,
+          });
+        }
+        reply.status(400).send({
+          message: "Operation not permitted",
+        });
+      }
+    },
+  );
 }
