@@ -1,10 +1,12 @@
 import type { CreateUserDto } from "core/dtos/user/create-user.dto";
 import type { UpdateUserDto } from "core/dtos/user/update-user.dto";
 import type { User } from "core/models/user.model";
+import { ObjectId } from "mongodb";
 
 export interface UserRepository {
   findByWAId(waId: string): Promise<User | null>;
-  update(waId: string, updateData: UpdateUserDto): Promise<User | null>;
+  findByIdentifier(identifier: string): Promise<User | null>;
+  update(id: string | ObjectId, updateData: UpdateUserDto): Promise<User | null>;
   create(userData: CreateUserDto): Promise<User | null>;
-  delete(waId: string): Promise<void>;
+  delete(id: string | ObjectId): Promise<void>;
 }

@@ -2,6 +2,7 @@ import type { CreateUserDto } from "@/dtos/user/create-user.dto";
 import type { UpdateUserDto } from "@/dtos/user/update-user.dto";
 import { MongoInitializer } from "@/init/database";
 import type { User } from "@/models/user.model";
+import { ObjectId } from "mongodb";
 import type { UserRepository } from "@/models/user.repository.model";
 import { userSchema } from "@/schemas";
 
@@ -15,6 +16,13 @@ export class UserRepo implements UserRepository {
     return user;
   }
 
+  async findByIdentifier(identifier: string): Promise<User | null> {
+    const user = await this.collection.findOne({
+      $or: [{ email: identifier }, { userName: identifier }],
+    });
+    return user;
+  }
+
   async create(userData: CreateUserDto): Promise<User | null> {
     const insertSchema = userSchema.omit({ _id: true });
     const parsedData = insertSchema.parse(userData);
@@ -24,16 +32,18 @@ export class UserRepo implements UserRepository {
     return this.collection.findOne({ _id: result.insertedId });
   }
 
-  async update(waId: string, updateData: UpdateUserDto): Promise<User | null> {
+  async update(id: string | ObjectId, updateData: UpdateUserDto): Promise<User | null> {
+    const query = id instanceof ObjectId ? { _id: id } : { wa_id: id };
     const result = await this.collection.findOneAndUpdate(
-      { wa_id: waId },
+      query,
       { $set: updateData },
       { returnDocument: "after" },
     );
     return result;
   }
 
-  async delete(waId: string): Promise<void> {
-    await this.collection.deleteOne({ wa_id: waId });
+  async delete(id: string | ObjectId): Promise<void> {
+    const query = id instanceof ObjectId ? { _id: id } : { wa_id: id };
+    await this.collection.deleteOne(query);
   }
 }
