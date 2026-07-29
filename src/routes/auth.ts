@@ -43,10 +43,11 @@ export async function authRoutes(app: FastifyInstance) {
         }
         const user = await authService.verifyOtpAndLogin(wa_id, otp);
 
-        reply.send({
+        reply.header("Authorization", `Bearer ${user.token}`);
+        return reply.status(200).send({
+          success: true,
           message: "OTP verified successfully",
           user: user.user,
-          token: user.token,
         });
       } catch (err) {
         if (err instanceof Error) {
