@@ -15,7 +15,7 @@ export class AuthService {
   constructor(
     private readonly userRepository: Pick<
       UserRepository,
-      "findByWAId" | "create" | "update"
+      "findByWAId" | "findByIdentifier" | "create" | "update"
     >,
     private readonly jwtUtils: JWT,
   ) {}
@@ -169,17 +169,19 @@ export class AuthService {
     return { user, token };
   }
 
-  async loginWithPassword(
-    waId: string,
+  async loginWithCredentials(
+    identifier: string,
     passwordString: string,
   ): Promise<AuthResult> {
-    const user = await this.userRepository.findByWAId(waId);
+    const user = await this.userRepository.findByIdentifier(identifier);
     if (!user) {
       throw new Error("User not found");
     }
 
     if (!user.email || !user.password) {
-      throw new Error("This user does not have a email or password configured");
+      throw new Error(
+        "This user does not have a email or password configured, please finish your account or go to signup",
+      );
     }
 
     const isMatch = await Password.compare(passwordString, user.password);
@@ -188,7 +190,7 @@ export class AuthService {
     }
 
     user.last_login = new Date();
-    await this.userRepository.update(waId, user);
+    await this.userRepository.update(user._id, user);
 
     const token = this.jwtUtils.generateJWT({
       wa_id: user.wa_id,
@@ -203,7 +205,7 @@ export class AuthService {
     return { user, token };
   }
 
-  async signup(waId: string, userData: CreateUserDto): Promise<User | null> {
+  async signUp(waId: string, userData: CreateUserDto): Promise<User | null> {
     const user = await this.userRepository.findByWAId(waId);
 
     if (user && (!user.premium || user.email)) {
