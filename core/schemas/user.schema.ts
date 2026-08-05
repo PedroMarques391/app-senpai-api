@@ -8,7 +8,7 @@ export const userSchema = z.object({
   isVerifiedCreator: z.boolean().default(false),
   name: z.string(),
   userName: z.string(),
-  password: z.string().optional(),
+  password: z.string(),
   premium: z.boolean().default(false),
   role: z.enum(["user", "admin", "moderator"]).default("user"),
   createdAt: z.coerce.date().default(() => new Date()),
