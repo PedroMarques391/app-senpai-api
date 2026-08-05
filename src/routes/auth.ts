@@ -91,7 +91,7 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   app.post<{ Body: { identifier: string; password: string } }>(
-    "/loginWithIdentifier",
+    "/login/loginWithIdentifier",
     async (request, reply) => {
       try {
         const { identifier, password } = request.body;
