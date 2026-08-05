@@ -10,6 +10,7 @@ import type {
 import type { JWT } from "@/utils/JWT";
 import { OTP } from "@/utils/OTP";
 import { Password } from "@/utils/Password";
+import { UserUtils } from "@/utils/UserUtils";
 
 export class AuthService {
   constructor(
@@ -206,41 +207,34 @@ export class AuthService {
   }
 
   async register(waId: string, userData: CreateUserDto): Promise<User | null> {
-    const validatedData = createUserDtoSchema.parse({
+    const data = createUserDtoSchema.parse({
       ...userData,
       wa_id: waId,
     });
 
-    const genericError =
-      "Não foi possível concluir o cadastro. Verifique os dados informados ou tente fazer login.";
+    const [waUser, emailUser, usernameUser] = await Promise.all([
+      this.userRepository.findByWAId(data.wa_id),
+      this.userRepository.findByIdentifier(data.email),
+      this.userRepository.findByIdentifier(data.userName),
+    ]);
 
-    const existingWAUser = await this.userRepository.findByWAId(validatedData.wa_id);
-
-    if (existingWAUser && existingWAUser.email && existingWAUser.password) {
-      throw new Error(genericError);
-    }
-
-    const existingEmailUser = await this.userRepository.findByIdentifier(validatedData.email);
     if (
-      existingEmailUser &&
-      (!existingWAUser || existingEmailUser._id.toString() !== existingWAUser._id.toString())
+      UserUtils.isFullyRegistered(waUser) ||
+      UserUtils.isDifferentUser(emailUser, waUser) ||
+      UserUtils.isDifferentUser(usernameUser, waUser)
     ) {
-      throw new Error(genericError);
+      throw new Error(
+        "Não foi possível concluir o cadastro. Verifique os dados informados ou tente fazer login.",
+      );
     }
 
-    const existingUsernameUser = await this.userRepository.findByIdentifier(validatedData.userName);
-    if (
-      existingUsernameUser &&
-      (!existingWAUser || existingUsernameUser._id.toString() !== existingWAUser._id.toString())
-    ) {
-      throw new Error(genericError);
+    const hashedPassword = await Password.hash(data.password);
+    const payload = { ...data, password: hashedPassword };
+
+    if (waUser) {
+      return this.userRepository.update(waUser._id, payload);
     }
 
-    validatedData.password = await Password.hash(validatedData.password);
-    if (existingWAUser) {
-      return await this.userRepository.update(existingWAUser._id, validatedData);
-    }
-
-    return await this.userRepository.create(validatedData);
+    return this.userRepository.create(payload);
   }
 }
