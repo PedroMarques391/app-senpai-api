@@ -72,7 +72,7 @@ export async function authRoutes(app: FastifyInstance) {
   }>("/register", async (request, reply) => {
     try {
       const userData = request.body;
-      const user = await authService.signUp(userData.wa_id, userData);
+      const user = await authService.register(userData.wa_id, userData);
 
       reply.send({
         message: "User created successfully",

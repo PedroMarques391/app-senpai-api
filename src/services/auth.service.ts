@@ -1,4 +1,4 @@
-import type { CreateUserDto } from "@/dtos/user/create-user.dto";
+import { createUserDtoSchema, type CreateUserDto } from "@/dtos/user/create-user.dto";
 import type { User } from "@/models/user.model";
 import type { UserRepository } from "@/models/user.repository.model";
 import type {
@@ -18,7 +18,7 @@ export class AuthService {
       "findByWAId" | "findByIdentifier" | "create" | "update"
     >,
     private readonly jwtUtils: JWT,
-  ) {}
+  ) { }
 
   async generateOTP(): Promise<OtpSecret> {
     const code = OTP.generateOTP();
@@ -205,22 +205,42 @@ export class AuthService {
     return { user, token };
   }
 
-  async signUp(waId: string, userData: CreateUserDto): Promise<User | null> {
-    const user = await this.userRepository.findByWAId(waId);
+  async register(waId: string, userData: CreateUserDto): Promise<User | null> {
+    const validatedData = createUserDtoSchema.parse({
+      ...userData,
+      wa_id: waId,
+    });
 
-    if (user && (!user.premium || user.email)) {
-      throw new Error(
-        "Você já possui uma conta. Tente fazer login com seu e-mail e senha.",
-      );
+    const genericError =
+      "Não foi possível concluir o cadastro. Verifique os dados informados ou tente fazer login.";
+
+    const existingWAUser = await this.userRepository.findByWAId(validatedData.wa_id);
+
+    if (existingWAUser && existingWAUser.email && existingWAUser.password) {
+      throw new Error(genericError);
     }
 
-    if (userData.password) {
-      userData.password = await Password.hash(userData.password);
+    const existingEmailUser = await this.userRepository.findByIdentifier(validatedData.email);
+    if (
+      existingEmailUser &&
+      (!existingWAUser || existingEmailUser._id.toString() !== existingWAUser._id.toString())
+    ) {
+      throw new Error(genericError);
     }
 
-    const res = await this.userRepository.create(userData);
+    const existingUsernameUser = await this.userRepository.findByIdentifier(validatedData.userName);
+    if (
+      existingUsernameUser &&
+      (!existingWAUser || existingUsernameUser._id.toString() !== existingWAUser._id.toString())
+    ) {
+      throw new Error(genericError);
+    }
 
-    console.log("res", res);
-    return res;
+    validatedData.password = await Password.hash(validatedData.password);
+    if (existingWAUser) {
+      return await this.userRepository.update(existingWAUser._id, validatedData);
+    }
+
+    return await this.userRepository.create(validatedData);
   }
 }
