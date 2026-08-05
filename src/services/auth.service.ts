@@ -151,23 +151,26 @@ export class AuthService {
       throw new Error("Invalid or expired OTP");
     }
 
-    user.otp_secret = undefined;
-
-    user.last_login = new Date();
-    user.isNumberVerified = true;
-    await this.userRepository.update(waId, user);
-
-    const token = this.jwtUtils.generateJWT({
-      wa_id: user.wa_id,
-      name: user.name,
-      userName: user.userName,
-      premium: user.premium,
-      email: user.email,
-      isNumberVerified: user.isNumberVerified,
-      role: user.role,
+    const updatedUser = UserUtils.applyDefaults({
+      ...user,
+      otp_secret: undefined,
+      isNumberVerified: true,
+      last_login: new Date(),
     });
 
-    return { user, token };
+    await this.userRepository.update(waId, updatedUser);
+
+    const token = this.jwtUtils.generateJWT({
+      wa_id: updatedUser.wa_id,
+      name: updatedUser.name,
+      userName: updatedUser.userName,
+      premium: updatedUser.premium,
+      email: updatedUser.email,
+      isNumberVerified: updatedUser.isNumberVerified,
+      role: updatedUser.role,
+    });
+
+    return { user: updatedUser, token };
   }
 
   async loginWithCredentials(
