@@ -1,12 +1,13 @@
 import { MongoInitializer } from "@/init";
 import authPlugin from "@/plugin/auth.plugin";
-import { authRoutes } from "@/routes";
+import { authRoutes, packRoutes } from "@/routes";
 import fastify from "fastify";
 
 const server = fastify();
 
 server.register(authPlugin);
 server.register(authRoutes, { prefix: "/auth" });
+server.register(packRoutes, { prefix: "/pack" });
 
 server.register(async (app) => {
   app.addHook("onRequest", app.authenticate);
