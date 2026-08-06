@@ -2,6 +2,7 @@ import { stickerPackSchema } from "core/schemas/packages.schema";
 import type { z } from "zod";
 
 export const createPackDtoSchema = stickerPackSchema.pick({
+  user_id: true,
   pack_name: true,
   publisher: true,
   icon_url: true,
