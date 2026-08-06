@@ -1,6 +1,5 @@
-import type { CreateUserDto } from "core/dtos/user/create-user.dto";
-import type { UpdateUserDto } from "core/dtos/user/update-user.dto";
-import type { User } from "core/models/user.model";
+import type { CreateUserDto, UpdateUserDto } from "core/dtos";
+import type { User } from "./user.model";
 import { ObjectId } from "mongodb";
 
 export interface UserRepository {

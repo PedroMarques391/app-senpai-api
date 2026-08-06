@@ -1,6 +1,6 @@
-import { UserRepo as UserRepository } from "@/repositories/user.repository";
-import { AuthService } from "@/services/auth.service";
-import { JWT } from "@/utils/JWT";
+import { UserRepo as UserRepository } from "@/repositories";
+import { AuthService } from "@/services";
+import { JWT } from "@/utils";
 import type { FastifyInstance } from "fastify";
 
 export async function authRoutes(app: FastifyInstance) {

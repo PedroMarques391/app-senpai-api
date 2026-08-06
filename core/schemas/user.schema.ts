@@ -1,4 +1,4 @@
-import { dailyMissionSchema } from "core/schemas/daily-mission.schema";
+import { dailyMissionSchema } from "./daily-mission.schema";
 import { ObjectId } from "mongodb";
 import { z } from "zod";
 

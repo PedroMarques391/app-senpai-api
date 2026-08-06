@@ -1,4 +1,4 @@
-import { storeItemSchema } from "core/schemas/store.schema";
+import { storeItemSchema } from "core/schemas";
 import type { z } from "zod";
 
 export const createStoreItemDtoSchema = storeItemSchema.omit({

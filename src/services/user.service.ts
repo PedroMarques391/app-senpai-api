@@ -1,7 +1,5 @@
-import type { CreateUserDto } from "@/dtos/user/create-user.dto";
-import type { UpdateUserDto } from "@/dtos/user/update-user.dto";
-import type { User } from "@/models/user.model";
-import type { UserRepository } from "@/models/user.repository.model";
+import type { CreateUserDto, UpdateUserDto } from "@/dtos";
+import type { User, UserRepository } from "@/models";
 
 export class UserService {
   constructor(private readonly userRepository: UserRepository) {}

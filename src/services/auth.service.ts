@@ -1,16 +1,12 @@
-import { createUserDtoSchema, type CreateUserDto } from "@/dtos/user/create-user.dto";
-import type { User } from "@/models/user.model";
-import type { UserRepository } from "@/models/user.repository.model";
+import { createUserDtoSchema, type CreateUserDto } from "@/dtos";
+import type { User, UserRepository } from "@/models";
 import type {
   AuthResult,
   OtpSecret,
   SendOtpResult,
   ServiceResponse,
-} from "@/types/auth.types";
-import type { JWT } from "@/utils/JWT";
-import { OTP } from "@/utils/OTP";
-import { Password } from "@/utils/Password";
-import { UserUtils } from "@/utils/UserUtils";
+} from "@/types";
+import { JWT, OTP, Password, UserUtils } from "@/utils";
 
 export class AuthService {
   constructor(

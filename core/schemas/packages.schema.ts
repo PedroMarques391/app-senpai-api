@@ -1,4 +1,4 @@
-import { stickerSchema } from "core/schemas/sticker.schema";
+import { stickerSchema } from "./sticker.schema";
 import { ObjectId } from "mongodb";
 import z from "zod";
 

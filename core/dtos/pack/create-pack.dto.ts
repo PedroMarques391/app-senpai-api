@@ -1,4 +1,4 @@
-import { stickerPackSchema } from "core/schemas/packages.schema";
+import { stickerPackSchema } from "core/schemas";
 import type { z } from "zod";
 
 export const createPackDtoSchema = stickerPackSchema.pick({

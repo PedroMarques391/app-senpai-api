@@ -1,10 +1,8 @@
-import type { CreateUserDto } from "@/dtos/user/create-user.dto";
-import type { UpdateUserDto } from "@/dtos/user/update-user.dto";
-import { MongoInitializer } from "@/init/database";
-import type { User } from "@/models/user.model";
-import { ObjectId } from "mongodb";
-import type { UserRepository } from "@/models/user.repository.model";
+import type { CreateUserDto, UpdateUserDto } from "@/dtos";
+import { MongoInitializer } from "@/init";
+import type { User, UserRepository } from "@/models";
 import { userSchema } from "@/schemas";
+import { ObjectId } from "mongodb";
 
 export class UserRepo implements UserRepository {
   private get collection() {

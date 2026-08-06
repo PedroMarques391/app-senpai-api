@@ -1,7 +1,7 @@
-import { MongoInitializer } from "@/init/database";
-import { authRoutes } from "@/routes/auth";
+import { MongoInitializer } from "@/init";
+import authPlugin from "@/plugin/auth.plugin";
+import { authRoutes } from "@/routes";
 import fastify from "fastify";
-import authPlugin from "./plugin/auth.plugin";
 
 const server = fastify();
 
