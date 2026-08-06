@@ -9,7 +9,7 @@ export const stickerPackSchema = z.object({
   pack_name: z.string().min(3).max(30),
   publisher: z.string().min(2).max(30),
 
-  icon_url: z.url(),
+  icon_url: z.url().optional(),
 
   is_public: z.boolean().default(true),
   downloads_count: z.number().default(0),
