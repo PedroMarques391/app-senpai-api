@@ -1,3 +1,9 @@
-import type { StoreItem } from "core/models/store.model";
+import { storeItemSchema } from "core/schemas/store.schema";
+import type { z } from "zod";
 
-export type CreateStoreItemDto = Omit<StoreItem, "_id" | "created_at">;
+export const createStoreItemDtoSchema = storeItemSchema.omit({
+  _id: true,
+  created_at: true,
+});
+
+export type CreateStoreItemDto = z.infer<typeof createStoreItemDtoSchema>;

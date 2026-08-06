@@ -1,3 +1,6 @@
-import type { CreateStoreItemDto } from "core/dtos/store/create-store-item.dto";
+import { createStoreItemDtoSchema } from "core/dtos/store/create-store-item.dto";
+import type { z } from "zod";
 
-export type UpdateStoreItemDto = Partial<CreateStoreItemDto>;
+export const updateStoreItemDtoSchema = createStoreItemDtoSchema.partial();
+
+export type UpdateStoreItemDto = z.infer<typeof updateStoreItemDtoSchema>;

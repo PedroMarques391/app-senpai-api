@@ -1,3 +1,14 @@
-import type { CreateUserDto } from "core/dtos/user/create-user.dto";
+import { userSchema } from "core/schemas/user.schema";
+import type { z } from "zod";
 
-export type UpdateUserDto = Partial<Omit<CreateUserDto, "wa_id">>;
+export const updateUserDtoSchema = userSchema
+  .omit({
+    _id: true,
+    wa_id: true,
+    createdAt: true,
+    updatedAt: true,
+    otp_secret: true,
+  })
+  .partial();
+
+export type UpdateUserDto = z.infer<typeof updateUserDtoSchema>;
