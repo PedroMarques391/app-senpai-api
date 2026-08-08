@@ -5,6 +5,7 @@ import z from "zod";
 export const stickerPackSchema = z.object({
   _id: z.instanceof(ObjectId),
   user_id: z.instanceof(ObjectId),
+  description: z.string().min(5).max(100),
 
   pack_name: z.string().min(3).max(30),
   publisher: z.string().min(2).max(30),

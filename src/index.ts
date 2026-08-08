@@ -7,7 +7,6 @@ const server = fastify();
 
 server.register(authPlugin);
 server.register(authRoutes, { prefix: "/auth" });
-server.register(packRoutes, { prefix: "/pack" });
 
 server.register(async (app) => {
   app.addHook("onRequest", app.authenticate);
@@ -23,6 +22,8 @@ server.register(async (app) => {
   app.get("/", async () => {
     return "This is senpai backend...";
   });
+
+  app.register(packRoutes, { prefix: "/pack" });
 });
 
 const bootstrap = async () => {
