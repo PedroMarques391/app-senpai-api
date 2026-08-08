@@ -1,2 +1,2 @@
-export * from "./auth";
-export * from "./pack";
+export * from "./auth.router";
+export * from "./pack.router";
