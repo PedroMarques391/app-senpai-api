@@ -157,6 +157,7 @@ export class AuthService {
     await this.userRepository.update(waId, updatedUser);
 
     const token = this.jwtUtils.generateJWT({
+      _id: updatedUser._id.toString(),
       wa_id: updatedUser.wa_id,
       name: updatedUser.name,
       userName: updatedUser.userName,
@@ -193,6 +194,7 @@ export class AuthService {
     await this.userRepository.update(user._id, user);
 
     const token = this.jwtUtils.generateJWT({
+      _id: user._id.toString(),
       wa_id: user.wa_id,
       name: user.name,
       userName: user.userName,
