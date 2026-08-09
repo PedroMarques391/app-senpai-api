@@ -4,13 +4,16 @@ import type { PackRepository } from "@/repositories";
 import type { ObjectId } from "mongodb";
 
 export class PackService {
-  constructor(private readonly packRepository: PackRepository) {}
+  constructor(private readonly packRepository: PackRepository) { }
 
   async create(
     userId: ObjectId,
     publisher: string,
     packData: CreatePackDto,
   ): Promise<StickerPack | null> {
+    if (!userId || !publisher) {
+      throw new Error("Error to create pack, try again later");
+    }
     const pack = await this.packRepository.create(userId, publisher, packData);
     return pack;
   }
