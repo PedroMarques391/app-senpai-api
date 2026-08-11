@@ -1,16 +1,24 @@
-import type { CreateUserDto } from "@/dtos";
+import { createUserDtoSchema } from "@/dtos";
 import { UserRepo as UserRepository } from "@/repositories";
 import { AuthService } from "@/services";
 import { JWT } from "@/utils";
-import type { FastifyInstance } from "fastify";
+import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
+import z from "zod";
 
-export async function authRoutes(app: FastifyInstance) {
+export const authRoutes: FastifyPluginAsyncZod = async (app) => {
   const userRepository = new UserRepository();
   const jwtUtils = new JWT(app.jwt);
   const authService = new AuthService(userRepository, jwtUtils);
 
-  app.post<{ Body: { wa_id: string } }>(
+  app.post(
     "/login/otp",
+    {
+      schema: {
+        body: z.object({
+          wa_id: z.string(),
+        }),
+      },
+    },
     async (request, reply) => {
       try {
         const { wa_id } = request.body;
@@ -34,8 +42,17 @@ export async function authRoutes(app: FastifyInstance) {
       }
     },
   );
-  app.post<{ Body: { wa_id: string; otp: string } }>(
+
+  app.post(
     "/login/verify",
+    {
+      schema: {
+        body: z.object({
+          wa_id: z.string(),
+          otp: z.string(),
+        }),
+      },
+    },
     async (request, reply) => {
       try {
         const { wa_id, otp } = request.body;
@@ -62,31 +79,46 @@ export async function authRoutes(app: FastifyInstance) {
       }
     },
   );
-  app.post<{
-    Body: CreateUserDto
-  }>("/register", async (request, reply) => {
-    try {
-      const userData = request.body;
-      const user = await authService.register(userData.wa_id, userData);
 
-      reply.send({
-        message: "User created successfully",
-        user,
-      });
-    } catch (err) {
-      if (err instanceof Error) {
-        return reply.status(400).send({
-          message: err.message,
+  app.post(
+    "/register",
+    {
+      schema: {
+        body: createUserDtoSchema,
+      },
+    },
+    async (request, reply) => {
+      try {
+        const userData = request.body;
+        const user = await authService.register(userData.wa_id, userData);
+
+        reply.send({
+          message: "User created successfully",
+          user,
+        });
+      } catch (err) {
+        if (err instanceof Error) {
+          return reply.status(400).send({
+            message: err.message,
+          });
+        }
+        reply.status(400).send({
+          message: "Operation not permitted",
         });
       }
-      reply.status(400).send({
-        message: "Operation not permitted",
-      });
-    }
-  });
+    },
+  );
 
-  app.post<{ Body: { identifier: string; password: string } }>(
+  app.post(
     "/login/loginWithIdentifier",
+    {
+      schema: {
+        body: z.object({
+          identifier: z.string(),
+          password: z.string(),
+        }),
+      },
+    },
     async (request, reply) => {
       try {
         const { identifier, password } = request.body;
@@ -113,4 +145,4 @@ export async function authRoutes(app: FastifyInstance) {
       }
     },
   );
-}
+};

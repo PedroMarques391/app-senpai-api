@@ -2,8 +2,16 @@ import { MongoInitializer } from "@/init";
 import authPlugin from "@/plugin/auth.plugin";
 import { authRoutes, packRoutes } from "@/routes";
 import fastify from "fastify";
+import {
+  serializerCompiler,
+  validatorCompiler,
+  type ZodTypeProvider,
+} from "fastify-type-provider-zod";
 
-const server = fastify();
+const server = fastify().withTypeProvider<ZodTypeProvider>();
+
+server.setValidatorCompiler(validatorCompiler);
+server.setSerializerCompiler(serializerCompiler);
 
 server.register(authPlugin);
 server.register(authRoutes, { prefix: "/auth" });
