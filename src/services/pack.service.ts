@@ -48,12 +48,46 @@ export class PackService {
     userId: ObjectId,
     updateData: UpdatePackDto,
   ): Promise<StickerPack | null> {
+    if (!id || !userId) {
+      throw new Error("Invalid parameters to update pack");
+    }
+
+    const existingPack = await this.packRepository.findById(id);
+    if (!existingPack) {
+      throw new Error("Pack not found");
+    }
+
+    if (existingPack.user_id.toString() !== userId.toString()) {
+      throw new Error("Operation not permitted: You do not own this pack");
+    }
+
     const pack = await this.packRepository.update(id, userId, updateData);
+    if (!pack) {
+      throw new Error("Failed to update pack, try again later");
+    }
+
     return pack;
   }
 
   async delete(id: ObjectId, userId: ObjectId): Promise<boolean> {
+    if (!id || !userId) {
+      throw new Error("Invalid parameters to delete pack");
+    }
+
+    const existingPack = await this.packRepository.findById(id);
+    if (!existingPack) {
+      throw new Error("Pack not found");
+    }
+
+    if (existingPack.user_id.toString() !== userId.toString()) {
+      throw new Error("Operation not permitted: You do not own this pack");
+    }
+
     const result = await this.packRepository.delete(id, userId);
+    if (!result) {
+      throw new Error("Failed to delete pack, try again later");
+    }
+
     return result;
   }
 }

@@ -1,4 +1,4 @@
-import type { CreatePackDto, UpdatePackDto } from "@/dtos";
+import { updatePackDtoSchema, type CreatePackDto, type UpdatePackDto } from "@/dtos";
 import { MongoInitializer } from "@/init";
 import type { PackRepository as IPackRepository, StickerPack } from "@/models";
 import { stickerPackSchema } from "@/schemas";
@@ -46,10 +46,27 @@ export class PackRepository implements IPackRepository {
     userId: ObjectId,
     updateData: UpdatePackDto,
   ): Promise<StickerPack | null> {
-    throw new Error("Method not implemented.");
+    const parsedData = updatePackDtoSchema.parse(updateData);
+
+    const result = await this.collection.findOneAndUpdate(
+      { _id: id, user_id: userId },
+      {
+        $set: {
+          ...parsedData,
+          updated_at: new Date(),
+        },
+      },
+      { returnDocument: "after" },
+    );
+
+    return result;
   }
 
   async delete(id: ObjectId, userId: ObjectId): Promise<boolean> {
-    throw new Error("Method not implemented.");
+    const result = await this.collection.deleteOne({
+      _id: id,
+      user_id: userId,
+    });
+    return result.deletedCount > 0;
   }
 }
