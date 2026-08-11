@@ -24,12 +24,22 @@ export class PackService {
   }
 
   async findById(id: ObjectId): Promise<StickerPack | null> {
+    if (!id) {
+      throw new Error("Error to find pack, try again later");
+    }
     const pack = await this.packRepository.findById(id);
+
     return pack;
   }
 
   async findByUserId(userId: ObjectId): Promise<StickerPack[]> {
+    if (!userId) {
+      throw new Error("Error to find pack, try again later");
+    }
     const packs = await this.packRepository.findByUserId(userId);
+    if (!packs) {
+      return [];
+    }
     return packs;
   }
 
