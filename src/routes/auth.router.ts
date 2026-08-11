@@ -1,3 +1,4 @@
+import type { CreateUserDto } from "@/dtos";
 import { UserRepo as UserRepository } from "@/repositories";
 import { AuthService } from "@/services";
 import { JWT } from "@/utils";
@@ -62,13 +63,7 @@ export async function authRoutes(app: FastifyInstance) {
     },
   );
   app.post<{
-    Body: {
-      wa_id: string;
-      name: string;
-      userName: string;
-      email: string;
-      password: string;
-    };
+    Body: CreateUserDto
   }>("/register", async (request, reply) => {
     try {
       const userData = request.body;
