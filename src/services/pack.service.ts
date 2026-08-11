@@ -1,20 +1,42 @@
 import type { CreatePackDto, UpdatePackDto } from "@/dtos";
 import type { StickerPack } from "@/models";
 import type { PackRepository } from "@/repositories";
-import type { ObjectId } from "mongodb";
+import { ObjectId } from "mongodb";
 
 export class PackService {
-  constructor(private readonly packRepository: PackRepository) { }
+  constructor(private readonly packRepository: PackRepository) {}
+
+  private toObjectId(
+    id: string | ObjectId,
+    errorMessage = "ID inválido",
+  ): ObjectId {
+    if (!id) throw new Error(errorMessage);
+    if (typeof id === "string") {
+      if (!ObjectId.isValid(id)) throw new Error(errorMessage);
+      return new ObjectId(id);
+    }
+    return id;
+  }
 
   async create(
-    userId: ObjectId,
+    userId: string | ObjectId,
     publisher: string,
     packData: CreatePackDto,
   ): Promise<StickerPack | null> {
-    if (!userId || !publisher) {
+    const userObjectId = this.toObjectId(userId, "ID de usuário inválido");
+
+    if (!publisher) {
+      throw new Error("Publisher not provided");
+    }
+
+    const pack = await this.packRepository.create(
+      userObjectId,
+      publisher,
+      packData,
+    );
+    if (!pack) {
       throw new Error("Error to create pack, try again later");
     }
-    const pack = await this.packRepository.create(userId, publisher, packData);
     return pack;
   }
 
@@ -23,20 +45,15 @@ export class PackService {
     return packs;
   }
 
-  async findById(id: ObjectId): Promise<StickerPack | null> {
-    if (!id) {
-      throw new Error("Error to find pack, try again later");
-    }
-    const pack = await this.packRepository.findById(id);
-
+  async findById(id: string | ObjectId): Promise<StickerPack | null> {
+    const packObjectId = this.toObjectId(id, "ID do pacote inválido");
+    const pack = await this.packRepository.findById(packObjectId);
     return pack;
   }
 
-  async findByUserId(userId: ObjectId): Promise<StickerPack[]> {
-    if (!userId) {
-      throw new Error("Error to find pack, try again later");
-    }
-    const packs = await this.packRepository.findByUserId(userId);
+  async findByUserId(userId: string | ObjectId): Promise<StickerPack[]> {
+    const userObjectId = this.toObjectId(userId, "ID de usuário inválido");
+    const packs = await this.packRepository.findByUserId(userObjectId);
     if (!packs) {
       return [];
     }
@@ -44,24 +61,27 @@ export class PackService {
   }
 
   async update(
-    id: ObjectId,
-    userId: ObjectId,
+    id: string | ObjectId,
+    userId: string | ObjectId,
     updateData: UpdatePackDto,
   ): Promise<StickerPack | null> {
-    if (!id || !userId) {
-      throw new Error("Invalid parameters to update pack");
-    }
+    const packObjectId = this.toObjectId(id, "ID do pacote inválido");
+    const userObjectId = this.toObjectId(userId, "ID de usuário inválido");
 
-    const existingPack = await this.packRepository.findById(id);
+    const existingPack = await this.packRepository.findById(packObjectId);
     if (!existingPack) {
       throw new Error("Pack not found");
     }
 
-    if (existingPack.user_id.toString() !== userId.toString()) {
+    if (existingPack.user_id.toString() !== userObjectId.toString()) {
       throw new Error("Operation not permitted: You do not own this pack");
     }
 
-    const pack = await this.packRepository.update(id, userId, updateData);
+    const pack = await this.packRepository.update(
+      packObjectId,
+      userObjectId,
+      updateData,
+    );
     if (!pack) {
       throw new Error("Failed to update pack, try again later");
     }
@@ -69,21 +89,26 @@ export class PackService {
     return pack;
   }
 
-  async delete(id: ObjectId, userId: ObjectId): Promise<boolean> {
-    if (!id || !userId) {
-      throw new Error("Invalid parameters to delete pack");
-    }
+  async delete(
+    id: string | ObjectId,
+    userId: string | ObjectId,
+  ): Promise<boolean> {
+    const packObjectId = this.toObjectId(id, "ID do pacote inválido");
+    const userObjectId = this.toObjectId(userId, "ID de usuário inválido");
 
-    const existingPack = await this.packRepository.findById(id);
+    const existingPack = await this.packRepository.findById(packObjectId);
     if (!existingPack) {
       throw new Error("Pack not found");
     }
 
-    if (existingPack.user_id.toString() !== userId.toString()) {
+    if (existingPack.user_id.toString() !== userObjectId.toString()) {
       throw new Error("Operation not permitted: You do not own this pack");
     }
 
-    const result = await this.packRepository.delete(id, userId);
+    const result = await this.packRepository.delete(
+      packObjectId,
+      userObjectId,
+    );
     if (!result) {
       throw new Error("Failed to delete pack, try again later");
     }
