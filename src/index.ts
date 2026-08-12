@@ -1,6 +1,6 @@
 import { MongoInitializer } from "@/init";
 import authPlugin from "@/plugin/auth.plugin";
-import { authRoutes, packRoutes } from "@/routes";
+import { authRoutes, packRoutes, stickerRoutes } from "@/routes";
 import fastify from "fastify";
 import {
   serializerCompiler,
@@ -32,6 +32,7 @@ server.register(async (app) => {
   });
 
   app.register(packRoutes, { prefix: "/pack" });
+  app.register(stickerRoutes, { prefix: "/sticker" });
 });
 
 const bootstrap = async () => {
