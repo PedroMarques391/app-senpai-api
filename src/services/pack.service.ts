@@ -1,29 +1,21 @@
 import type { CreatePackDto, UpdatePackDto } from "@/dtos";
 import type { StickerPack } from "@/models";
 import type { PackRepository } from "@/repositories";
-import { ObjectId } from "mongodb";
+import { MongoUtils } from "@/utils";
+import type { ObjectId } from "mongodb";
 
 export class PackService {
   constructor(private readonly packRepository: PackRepository) {}
-
-  private toObjectId(
-    id: string | ObjectId,
-    errorMessage = "ID inválido",
-  ): ObjectId {
-    if (!id) throw new Error(errorMessage);
-    if (typeof id === "string") {
-      if (!ObjectId.isValid(id)) throw new Error(errorMessage);
-      return new ObjectId(id);
-    }
-    return id;
-  }
 
   async create(
     userId: string | ObjectId,
     publisher: string,
     packData: CreatePackDto,
   ): Promise<StickerPack | null> {
-    const userObjectId = this.toObjectId(userId, "ID de usuário inválido");
+    const userObjectId = MongoUtils.toObjectId(
+      userId,
+      "ID de usuário inválido",
+    );
 
     if (!publisher) {
       throw new Error("Publisher not provided");
@@ -46,13 +38,16 @@ export class PackService {
   }
 
   async findById(id: string | ObjectId): Promise<StickerPack | null> {
-    const packObjectId = this.toObjectId(id, "ID do pacote inválido");
+    const packObjectId = MongoUtils.toObjectId(id, "ID do pacote inválido");
     const pack = await this.packRepository.findById(packObjectId);
     return pack;
   }
 
   async findByUserId(userId: string | ObjectId): Promise<StickerPack[]> {
-    const userObjectId = this.toObjectId(userId, "ID de usuário inválido");
+    const userObjectId = MongoUtils.toObjectId(
+      userId,
+      "ID de usuário inválido",
+    );
     const packs = await this.packRepository.findByUserId(userObjectId);
     if (!packs) {
       return [];
@@ -65,8 +60,11 @@ export class PackService {
     userId: string | ObjectId,
     updateData: UpdatePackDto,
   ): Promise<StickerPack | null> {
-    const packObjectId = this.toObjectId(id, "ID do pacote inválido");
-    const userObjectId = this.toObjectId(userId, "ID de usuário inválido");
+    const packObjectId = MongoUtils.toObjectId(id, "ID do pacote inválido");
+    const userObjectId = MongoUtils.toObjectId(
+      userId,
+      "ID de usuário inválido",
+    );
 
     const existingPack = await this.packRepository.findById(packObjectId);
     if (!existingPack) {
@@ -93,8 +91,11 @@ export class PackService {
     id: string | ObjectId,
     userId: string | ObjectId,
   ): Promise<boolean> {
-    const packObjectId = this.toObjectId(id, "ID do pacote inválido");
-    const userObjectId = this.toObjectId(userId, "ID de usuário inválido");
+    const packObjectId = MongoUtils.toObjectId(id, "ID do pacote inválido");
+    const userObjectId = MongoUtils.toObjectId(
+      userId,
+      "ID de usuário inválido",
+    );
 
     const existingPack = await this.packRepository.findById(packObjectId);
     if (!existingPack) {
