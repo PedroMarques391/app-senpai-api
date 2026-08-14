@@ -5,8 +5,6 @@ export const createStickerDtoSchema = stickerSchema.pick({
   name: true,
   author: true,
   pack_name: true,
-  cloudinary_id: true,
-  sticker_url: true,
   emojis: true,
   type: true,
 });

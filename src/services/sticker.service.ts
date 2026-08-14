@@ -10,6 +10,8 @@ export class StickerService {
   async create(
     userId: string | ObjectId,
     stickerData: CreateStickerDto,
+    cloudinaryId: string,
+    stickerUrl: string,
   ): Promise<Sticker | null> {
     const userObjectId = MongoUtils.toObjectId(
       userId,
@@ -19,6 +21,8 @@ export class StickerService {
     const sticker = await this.stickerRepository.create(
       userObjectId,
       stickerData,
+      cloudinaryId,
+      stickerUrl,
     );
     if (!sticker) {
       throw new Error("Failed to create sticker, try again later");
