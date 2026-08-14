@@ -1,6 +1,7 @@
-import { MongoInitializer } from "@/init";
+import { CloudinaryInitializer, MongoInitializer } from "@/init";
 import authPlugin from "@/plugin/auth.plugin";
 import { authRoutes, packRoutes, stickerRoutes } from "@/routes";
+import fastifyMultipart from "@fastify/multipart";
 import fastify from "fastify";
 import {
   serializerCompiler,
@@ -10,6 +11,7 @@ import {
 
 const server = fastify().withTypeProvider<ZodTypeProvider>();
 
+server.register(fastifyMultipart);
 server.setValidatorCompiler(validatorCompiler);
 server.setSerializerCompiler(serializerCompiler);
 
@@ -37,6 +39,7 @@ server.register(async (app) => {
 
 const bootstrap = async () => {
   try {
+    CloudinaryInitializer.init();
     await MongoInitializer.init();
     server.listen({ port: 3000 }, (err, address) => {
       if (err) {
