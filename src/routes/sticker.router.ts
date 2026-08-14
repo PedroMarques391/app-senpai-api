@@ -3,7 +3,6 @@ import { StickerRepository } from "@/repositories";
 import { StickerService } from "@/services";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z, { ZodError } from "zod";
-import { v2 as cloudinary, type UploadApiResponse } from "cloudinary";
 
 const stickerRepository = new StickerRepository();
 const stickerService = new StickerService(stickerRepository);
@@ -39,34 +38,9 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (request, reply) => {
       try {
-        console.log("[", new Date().toISOString(), "] -> Requisição recebida para criar figurinha", request.body);
-        const data = await request.file();
-        if (!data) {
-          return reply.status(400).send({
-            success: false,
-            message: "Nenhum arquivo enviado",
-          });
-        }
-
-        const uploadResult = await new Promise<UploadApiResponse>((resolve, reject) => {
-          const uploadedFile = cloudinary.uploader.upload_stream(
-            (error, result) => {
-              if (error) {
-                return reject(error);
-              }
-              return resolve(result);
-            }
-          );
-
-          data.file.pipe(uploadedFile);
-        });
-        console.log("Upload resultado:", uploadResult);
-
         const sticker = await stickerService.create(
           request.user._id,
           request.body,
-          uploadResult.public_id,
-          uploadResult.secure_url,
         );
 
         return reply.status(201).send({

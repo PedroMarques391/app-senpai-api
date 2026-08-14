@@ -27,15 +27,11 @@ export class StickerRepository implements IStickerRepository {
   async create(
     userId: ObjectId,
     stickerData: CreateStickerDto,
-    cloudinaryId: string,
-    stickerUrl: string,
   ): Promise<Sticker | null> {
     const insertSchema = stickerSchema.omit({ _id: true });
     const parsedData = insertSchema.parse({
       ...stickerData,
       user_id: userId,
-      cloudinary_id: cloudinaryId,
-      sticker_url: stickerUrl,
     });
 
     const result = await this.collection.insertOne(parsedData as Sticker);

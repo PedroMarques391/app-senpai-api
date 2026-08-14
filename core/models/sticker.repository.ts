@@ -9,8 +9,6 @@ export interface StickerRepository {
   create(
     userId: ObjectId,
     stickerData: CreateStickerDto,
-    cloudinaryId: string,
-    stickerUrl: string,
   ): Promise<Sticker | null>;
   update(
     id: ObjectId,
