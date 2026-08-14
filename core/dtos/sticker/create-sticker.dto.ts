@@ -2,10 +2,14 @@ import { stickerSchema } from "@/schemas";
 import type { z } from "zod";
 
 export const createStickerDtoSchema = stickerSchema.pick({
+  name: true,
+  author: true,
+  pack_name: true,
   cloudinary_id: true,
-  url: true,
+  sticker_url: true,
   emojis: true,
   type: true,
 });
+
 
 export type CreateStickerDto = z.infer<typeof createStickerDtoSchema>;

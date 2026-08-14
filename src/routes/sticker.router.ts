@@ -33,7 +33,7 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
     "/",
     {
       schema: {
-        body: createStickerDtoSchema,
+        body: createStickerDtoSchema.omit({ sticker_url: true }),
       },
     },
     async (request, reply) => {
