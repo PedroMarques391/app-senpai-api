@@ -18,4 +18,5 @@ export interface StickerRepository {
     updateData: UpdateStickerDto,
   ): Promise<Sticker | null>;
   delete(id: ObjectId, userId: ObjectId): Promise<boolean>;
+  deleteByPackId(packId: ObjectId): Promise<number>;
 }

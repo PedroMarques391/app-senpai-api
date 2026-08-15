@@ -1,10 +1,10 @@
 import type { CreateUserDto, UpdateUserDto } from "@/dtos";
 import { MongoInitializer } from "@/init";
-import type { User, UserRepository } from "@/models";
+import type { User, UserRepository as IUserRepository } from "@/models";
 import { userSchema } from "@/schemas";
 import { ObjectId } from "mongodb";
 
-export class UserRepo implements UserRepository {
+export class UserRepository implements IUserRepository {
   private get collection() {
     return MongoInitializer.getDb().collection<User>("customers");
   }

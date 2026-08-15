@@ -1,7 +1,7 @@
 import type { CreateStickerDto, UpdateStickerDto } from "@/dtos";
 import type { Sticker } from "@/models";
 import type { StickerRepository } from "@/repositories";
-import { MongoUtils } from "@/utils";
+import { MongoUtils, PermissionUtils } from "@/utils";
 import type { ObjectId } from "mongodb";
 
 export class StickerService {
@@ -87,12 +87,10 @@ export class StickerService {
     const existingSticker =
       await this.stickerRepository.findById(stickerObjectId);
     if (!existingSticker) {
-      throw new Error("Sticker not found");
+      throw new Error("Figurinha não encontrada");
     }
 
-    if (existingSticker.user_id.toString() !== userObjectId.toString()) {
-      throw new Error("Operation not permitted: You do not own this sticker");
-    }
+    PermissionUtils.verifyOwnership(existingSticker.user_id, userObjectId, "figurinha");
 
     const sticker = await this.stickerRepository.update(
       stickerObjectId,
@@ -122,12 +120,10 @@ export class StickerService {
     const existingSticker =
       await this.stickerRepository.findById(stickerObjectId);
     if (!existingSticker) {
-      throw new Error("Sticker not found");
+      throw new Error("Figurinha não encontrada");
     }
 
-    if (existingSticker.user_id.toString() !== userObjectId.toString()) {
-      throw new Error("Operation not permitted: You do not own this sticker");
-    }
+    PermissionUtils.verifyOwnership(existingSticker.user_id, userObjectId, "figurinha");
 
     const result = await this.stickerRepository.delete(
       stickerObjectId,

@@ -1,11 +1,15 @@
 import type { CreatePackDto, UpdatePackDto } from "@/dtos";
 import type { StickerPack } from "@/models";
 import type { PackRepository } from "@/repositories";
-import { MongoUtils } from "@/utils";
+import type { StickerRepository } from "@/repositories";
+import { MongoUtils, PermissionUtils } from "@/utils";
 import type { ObjectId } from "mongodb";
 
 export class PackService {
-  constructor(private readonly packRepository: PackRepository) {}
+  constructor(
+    private readonly packRepository: PackRepository,
+    private readonly stickerRepository: StickerRepository,
+  ) {}
 
   async create(
     userId: string | ObjectId,
@@ -68,12 +72,10 @@ export class PackService {
 
     const existingPack = await this.packRepository.findById(packObjectId);
     if (!existingPack) {
-      throw new Error("Pack not found");
+      throw new Error("Pacote não encontrado");
     }
 
-    if (existingPack.user_id.toString() !== userObjectId.toString()) {
-      throw new Error("Operation not permitted: You do not own this pack");
-    }
+    PermissionUtils.verifyOwnership(existingPack.user_id, userObjectId, "pacote");
 
     const pack = await this.packRepository.update(
       packObjectId,
@@ -99,12 +101,12 @@ export class PackService {
 
     const existingPack = await this.packRepository.findById(packObjectId);
     if (!existingPack) {
-      throw new Error("Pack not found");
+      throw new Error("Pacote não encontrado");
     }
 
-    if (existingPack.user_id.toString() !== userObjectId.toString()) {
-      throw new Error("Operation not permitted: You do not own this pack");
-    }
+    PermissionUtils.verifyOwnership(existingPack.user_id, userObjectId, "pacote");
+
+    await this.stickerRepository.deleteByPackId(packObjectId);
 
     const result = await this.packRepository.delete(
       packObjectId,
