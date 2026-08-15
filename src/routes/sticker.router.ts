@@ -29,6 +29,39 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
     }
   });
 
+  app.get(
+    "/pack/:packId",
+    {
+      schema: {
+        params: z.object({
+          packId: z.string(),
+        }),
+      },
+    },
+    async (request, reply) => {
+      try {
+        const stickers = await stickerService.findByPackId(
+          request.params.packId,
+        );
+        return reply.status(200).send({
+          success: true,
+          stickers,
+        });
+      } catch (err) {
+        if (err instanceof Error) {
+          return reply.status(400).send({
+            success: false,
+            message: err.message,
+          });
+        }
+        return reply.status(500).send({
+          success: false,
+          message: "Erro ao buscar figurinhas do pacote",
+        });
+      }
+    },
+  );
+
   app.post(
     "/:packId",
     {

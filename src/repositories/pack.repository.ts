@@ -1,6 +1,6 @@
 import { updatePackDtoSchema, type CreatePackDto, type UpdatePackDto } from "@/dtos";
 import { MongoInitializer } from "@/init";
-import type { PackRepository as IPackRepository, StickerPack } from "@/models";
+import type { PackRepository as IPackRepository, Sticker, StickerPack } from "@/models";
 import { stickerPackSchema } from "@/schemas";
 import type { ObjectId } from "mongodb";
 
@@ -9,19 +9,34 @@ export class PackRepository implements IPackRepository {
     return MongoInitializer.getDb().collection<StickerPack>("stickerPacks");
   }
 
+  private get stickerCollection() {
+    return MongoInitializer.getDb().collection<Sticker>("stickers");
+  }
+
+  private async populateStickers(pack: StickerPack): Promise<StickerPack> {
+    const stickers = await this.stickerCollection
+      .find({ pack_id: pack._id })
+      .toArray();
+    return {
+      ...pack,
+      stickers,
+    };
+  }
+
   async findAll(): Promise<StickerPack[]> {
     const packs = await this.collection.find().toArray();
-    return packs;
+    return Promise.all(packs.map((pack) => this.populateStickers(pack)));
   }
 
   async findById(id: ObjectId): Promise<StickerPack | null> {
     const pack = await this.collection.findOne({ _id: id });
-    return pack;
+    if (!pack) return null;
+    return this.populateStickers(pack);
   }
 
   async findByUserId(userId: ObjectId): Promise<StickerPack[]> {
     const packs = await this.collection.find({ user_id: userId }).toArray();
-    return packs;
+    return Promise.all(packs.map((pack) => this.populateStickers(pack)));
   }
 
   async create(

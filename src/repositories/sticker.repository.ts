@@ -24,6 +24,11 @@ export class StickerRepository implements IStickerRepository {
     return stickers;
   }
 
+  async findByPackId(packId: ObjectId): Promise<Sticker[]> {
+    const stickers = await this.collection.find({ pack_id: packId }).toArray();
+    return stickers;
+  }
+
   async create(
     packId: ObjectId,
     userId: ObjectId,

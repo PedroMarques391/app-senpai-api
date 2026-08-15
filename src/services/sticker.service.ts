@@ -58,6 +58,18 @@ export class StickerService {
     return stickers;
   }
 
+  async findByPackId(packId: string | ObjectId): Promise<Sticker[]> {
+    const packObjectId = MongoUtils.toObjectId(
+      packId,
+      "ID do pacote inválido",
+    );
+    const stickers = await this.stickerRepository.findByPackId(packObjectId);
+    if (!stickers) {
+      return [];
+    }
+    return stickers;
+  }
+
   async update(
     id: string | ObjectId,
     userId: string | ObjectId,
