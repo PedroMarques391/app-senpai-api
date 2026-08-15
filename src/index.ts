@@ -1,5 +1,6 @@
 import { CloudinaryInitializer, MongoInitializer } from "@/init";
 import authPlugin from "@/plugin/auth.plugin";
+import { errorPlugin } from "@/plugin/error.plugin";
 import { authRoutes, packRoutes, stickerRoutes, uploadRoutes } from "@/routes";
 import fastifyMultipart from "@fastify/multipart";
 import fastify from "fastify";
@@ -15,6 +16,7 @@ server.register(fastifyMultipart);
 server.setValidatorCompiler(validatorCompiler);
 server.setSerializerCompiler(serializerCompiler);
 
+server.register(errorPlugin);
 server.register(authPlugin);
 server.register(authRoutes, { prefix: "/auth" });
 
