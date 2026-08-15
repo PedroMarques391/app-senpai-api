@@ -45,7 +45,7 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
           cloudinary_id: result.public_id,
           sticker_url: result.secure_url,
           public_id: result.public_id,
-          secure_url: result.secure_url,
+          url: result.url
         });
       } catch (err) {
         if (err instanceof Error) {

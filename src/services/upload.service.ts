@@ -1,11 +1,12 @@
-import { v2 as cloudinary, type UploadApiOptions, type UploadApiResponse } from "cloudinary";
+import type { UploadResult } from "@/types";
+import { v2 as cloudinary, type UploadApiOptions } from "cloudinary";
 import type { Readable } from "node:stream";
 
 export class UploadService {
   async upload(
     fileStream: Readable,
     options?: UploadApiOptions,
-  ): Promise<UploadApiResponse> {
+  ): Promise<UploadResult> {
     return new Promise((resolve, reject) => {
       const uploadedFile = cloudinary.uploader.upload_stream(
         {
@@ -18,7 +19,15 @@ export class UploadService {
               error || new Error("Falha ao realizar upload para o Cloudinary"),
             );
           }
-          return resolve(uploadResult);
+          return resolve({
+            public_id: uploadResult.public_id,
+            secure_url: uploadResult.secure_url,
+            url: uploadResult.url,
+            format: uploadResult.format,
+            bytes: uploadResult.bytes,
+            width: uploadResult.width,
+            height: uploadResult.height,
+          });
         },
       );
 
