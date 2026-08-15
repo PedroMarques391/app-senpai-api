@@ -25,6 +25,7 @@ export class StickerRepository implements IStickerRepository {
   }
 
   async create(
+    packId: ObjectId,
     userId: ObjectId,
     stickerData: CreateStickerDto,
   ): Promise<Sticker | null> {
@@ -32,6 +33,7 @@ export class StickerRepository implements IStickerRepository {
     const parsedData = insertSchema.parse({
       ...stickerData,
       user_id: userId,
+      pack_id: packId,
     });
 
     const result = await this.collection.insertOne(parsedData as Sticker);

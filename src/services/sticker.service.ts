@@ -5,18 +5,24 @@ import { MongoUtils } from "@/utils";
 import type { ObjectId } from "mongodb";
 
 export class StickerService {
-  constructor(private readonly stickerRepository: StickerRepository) {}
+  constructor(private readonly stickerRepository: StickerRepository) { }
 
   async create(
+    packId: string | ObjectId,
     userId: string | ObjectId,
     stickerData: CreateStickerDto,
   ): Promise<Sticker | null> {
+    const packObjectId = MongoUtils.toObjectId(
+      packId,
+      "ID do pacote inválido",
+    );
     const userObjectId = MongoUtils.toObjectId(
       userId,
       "ID de usuário inválido",
     );
 
     const sticker = await this.stickerRepository.create(
+      packObjectId,
       userObjectId,
       stickerData,
     );

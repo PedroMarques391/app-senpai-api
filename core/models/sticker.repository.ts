@@ -7,6 +7,7 @@ export interface StickerRepository {
   findById(id: ObjectId): Promise<Sticker | null>;
   findByUserId(userId: ObjectId): Promise<Sticker[]>;
   create(
+    packId: ObjectId,
     userId: ObjectId,
     stickerData: CreateStickerDto,
   ): Promise<Sticker | null>;

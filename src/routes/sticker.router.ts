@@ -30,15 +30,20 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
   });
 
   app.post(
-    "/",
+    "/:packId",
     {
       schema: {
         body: createStickerDtoSchema,
+        params: z.object({
+          packId: z.string(),
+        }),
+
       },
     },
     async (request, reply) => {
       try {
         const sticker = await stickerService.create(
+          request.params.packId,
           request.user._id,
           request.body,
         );
