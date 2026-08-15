@@ -30,6 +30,7 @@ export class MongoInitializer {
       await this.db.collection("packages").createIndex({ user_id: 1 });
 
       await this.db.collection("stickers").createIndex({ user_id: 1, type: 1 });
+      await this.db.collection("stickers").createIndex({ pack_id: 1 });
 
       await this.db
         .collection("daily_missions")
