@@ -6,10 +6,25 @@ import z from "zod";
 export const packRoutes: FastifyPluginAsyncZod = async (app) => {
   const packService = ServiceFactory.getPackService();
 
-  app.get("/", async (_request, reply) => {
-    const packs = await packService.findAll();
-    return reply.status(200).send({ success: true, packs });
-  });
+  app.get(
+    "/",
+    {
+      schema: {
+        querystring: z.object({
+          user: z.string().optional(),
+        }),
+      },
+    },
+    async (request, reply) => {
+      if (request.query.user) {
+        const packs = await packService.findByUserId(request.query.user);
+        return reply.status(200).send({ success: true, packs });
+      }
+
+      const packs = await packService.findAll();
+      return reply.status(200).send({ success: true, packs });
+    },
+  );
 
   app.post(
     "/",
