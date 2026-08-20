@@ -50,10 +50,10 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
   );
 
   app.delete(
-    "/:public_id",
-    { schema: { params: z.object({ public_id: z.string() }) } },
+    "/",
+    { schema: { querystring: z.object({ public_id: z.string() }) } },
     async (request, reply) => {
-      const result = await uploadService.delete(request.params.public_id);
+      const result = await uploadService.delete(request.query.public_id);
       return reply.status(200).send({
         success: true,
         message: "Arquivo excluído com sucesso",

@@ -37,6 +37,9 @@ export class UploadService {
 
   async delete(publicId: string): Promise<unknown> {
     const result = await cloudinary.uploader.destroy(publicId);
+    if (result.result !== "ok") {
+      throw new Error("Falha ao deletar imagem do Cloudinary");
+    }
     return result;
   }
 }
