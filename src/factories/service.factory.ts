@@ -17,17 +17,17 @@ export class ServiceFactory {
 
   static getPackService(): PackService {
     if (!this.packService) {
-      this.packService = new PackService(
-        new PackRepository(),
-        new StickerRepository(),
-      );
+      this.packService = new PackService(new PackRepository());
     }
     return this.packService;
   }
 
   static getStickerService(): StickerService {
     if (!this.stickerService) {
-      this.stickerService = new StickerService(new StickerRepository());
+      this.stickerService = new StickerService(
+        new StickerRepository(),
+        new PackRepository(),
+      );
     }
     return this.stickerService;
   }

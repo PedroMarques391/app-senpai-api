@@ -73,9 +73,4 @@ export class StickerRepository implements IStickerRepository {
     });
     return result.deletedCount > 0;
   }
-
-  async deleteByPackId(packId: ObjectId): Promise<number> {
-    const result = await this.collection.deleteMany({ pack_id: packId });
-    return result.deletedCount;
-  }
 }

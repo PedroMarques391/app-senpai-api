@@ -1,15 +1,11 @@
 import type { CreatePackDto, UpdatePackDto } from "@/dtos";
 import type { StickerPack } from "@/models";
 import type { PackRepository } from "@/repositories";
-import type { StickerRepository } from "@/repositories";
 import { MongoUtils, PermissionUtils } from "@/utils";
 import type { ObjectId } from "mongodb";
 
 export class PackService {
-  constructor(
-    private readonly packRepository: PackRepository,
-    private readonly stickerRepository: StickerRepository,
-  ) {}
+  constructor(private readonly packRepository: PackRepository) {}
 
   async create(
     userId: string | ObjectId,
@@ -105,8 +101,6 @@ export class PackService {
     }
 
     PermissionUtils.verifyOwnership(existingPack.user_id, userObjectId, "pacote");
-
-    await this.stickerRepository.deleteByPackId(packObjectId);
 
     const result = await this.packRepository.delete(
       packObjectId,
