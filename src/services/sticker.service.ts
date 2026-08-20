@@ -1,11 +1,14 @@
 import type { CreateStickerDto, UpdateStickerDto } from "@/dtos";
 import type { Sticker } from "@/models";
-import type { StickerRepository } from "@/repositories";
+import type { PackRepository, StickerRepository } from "@/repositories";
 import { MongoUtils, PermissionUtils } from "@/utils";
 import type { ObjectId } from "mongodb";
 
 export class StickerService {
-  constructor(private readonly stickerRepository: StickerRepository) { }
+  constructor(
+    private readonly stickerRepository: StickerRepository,
+    private readonly packRepository: PackRepository,
+  ) {}
 
   async create(
     packId: string | ObjectId,
@@ -20,6 +23,11 @@ export class StickerService {
       userId,
       "ID de usuário inválido",
     );
+
+    const pack = await this.packRepository.findById(packObjectId);
+    if (!pack) {
+      throw new Error("Pacote não encontrado");
+    }
 
     const sticker = await this.stickerRepository.create(
       packObjectId,

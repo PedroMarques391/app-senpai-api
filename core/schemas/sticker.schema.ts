@@ -8,7 +8,7 @@ export const stickerSchema = z.object({
   name: z.string(),
   author: z.string(),
   cloudinary_id: z.string(),
-  sticker_url: z.url().optional(),
+  sticker_url: z.url(),
   emojis: z.array(z.string()).max(3).default([]),
   created_at: z.coerce.date().default(() => new Date()),
   type: z.enum(["dynamic", "static"]),
