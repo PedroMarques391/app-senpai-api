@@ -42,4 +42,4 @@ export class UploadService {
     }
     return result;
   }
-}
+} 

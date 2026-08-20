@@ -10,7 +10,7 @@ export const userSchema = z.object({
   userName: z.string(),
   password: z.string(),
   premium: z.boolean().default(false),
-  role: z.enum(["user", "admin", "moderator"]).default("user"),
+  role: z.enum(["user", "admin", "moderator", "company"]).default("user"),
   createdAt: z.coerce.date().default(() => new Date()),
   updatedAt: z.coerce.date().default(() => new Date()),
   last_login: z.coerce.date().default(() => new Date()),
