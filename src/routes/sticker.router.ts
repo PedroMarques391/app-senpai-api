@@ -6,16 +6,28 @@ import z from "zod";
 export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
   const stickerService = ServiceFactory.getStickerService();
 
-  app.get("/", async (_request, reply) => {
-    const stickers = await stickerService.findAll();
-    return reply.status(200).send({ success: true, stickers });
-  });
-
   app.get(
-    "/pack/:packId",
-    { schema: { params: z.object({ packId: z.string() }) } },
+    "/",
+    {
+      schema: {
+        querystring: z.object({
+          user: z.string().optional(),
+          pack: z.string().optional(),
+        }),
+      },
+    },
     async (request, reply) => {
-      const stickers = await stickerService.findByPackId(request.params.packId);
+      if (request.query.user) {
+        const stickers = await stickerService.findByUserId(request.query.user);
+        return reply.status(200).send({ success: true, stickers });
+      }
+
+      if (request.query.pack) {
+        const stickers = await stickerService.findByPackId(request.query.pack);
+        return reply.status(200).send({ success: true, stickers });
+      }
+
+      const stickers = await stickerService.findAll();
       return reply.status(200).send({ success: true, stickers });
     },
   );
