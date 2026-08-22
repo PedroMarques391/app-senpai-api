@@ -1,6 +1,10 @@
-import { createStickerDtoSchema } from "./create-sticker.dto";
+import { stickerSchema } from "@/schemas";
 import type { z } from "zod";
 
-export const updateStickerDtoSchema = createStickerDtoSchema.partial();
+export const updateStickerDtoSchema = stickerSchema.pick({
+  name: true,
+  author: true,
+  emojis: true,
+});
 
 export type UpdateStickerDto = z.infer<typeof updateStickerDtoSchema>;
