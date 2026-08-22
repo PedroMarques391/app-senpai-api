@@ -5,7 +5,7 @@ export class UserService {
   constructor(private readonly userRepository: UserRepository) {}
 
   async findByWAId(waId: string): Promise<User | null> {
-    const user = await this.userRepository.findByWAId(waId);
+    const user = await this.userRepository.find({ wa_id: waId });
     if (!user) {
       throw new Error("User not found");
     }
@@ -13,7 +13,7 @@ export class UserService {
   }
 
   async create(userData: CreateUserDto): Promise<User | null> {
-    const user = await this.userRepository.findByWAId(userData.wa_id);
+    const user = await this.userRepository.find({ wa_id: userData.wa_id });
     if (user) {
       throw new Error("User already exists");
     }

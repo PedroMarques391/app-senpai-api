@@ -12,7 +12,7 @@ export class AuthService {
   constructor(
     private readonly userRepository: Pick<
       UserRepository,
-      "findByWAId" | "findByIdentifier" | "create" | "update"
+      "find" | "create" | "update"
     >,
     private readonly jwtUtils: JWT,
   ) { }
@@ -33,7 +33,7 @@ export class AuthService {
     const currentDate = new Date();
     let otp: OtpSecret | undefined;
 
-    const user = await this.userRepository.findByWAId(waId);
+    const user = await this.userRepository.find({ wa_id: waId });
 
     if (!user || !user.premium) {
       return {
@@ -134,7 +134,7 @@ export class AuthService {
   }
 
   async verifyOtpAndLogin(waId: string, otpCode: string): Promise<AuthResult> {
-    const user = await this.userRepository.findByWAId(waId);
+    const user = await this.userRepository.find({ wa_id: waId });
     if (!user) {
       throw new Error("User not found");
     }
@@ -174,7 +174,10 @@ export class AuthService {
     identifier: string,
     passwordString: string,
   ): Promise<AuthResult> {
-    const user = await this.userRepository.findByIdentifier(identifier);
+    let user = await this.userRepository.find({ email: identifier });
+    if (!user) {
+      user = await this.userRepository.find({ userName: identifier });
+    }
     if (!user) {
       throw new Error("User not found");
     }
@@ -214,9 +217,9 @@ export class AuthService {
     });
 
     const [waUser, emailUser, usernameUser] = await Promise.all([
-      this.userRepository.findByWAId(data.wa_id),
-      this.userRepository.findByIdentifier(data.email),
-      this.userRepository.findByIdentifier(data.userName),
+      this.userRepository.find({ wa_id: data.wa_id }),
+      this.userRepository.find({ email: data.email }),
+      this.userRepository.find({ userName: data.userName }),
     ]);
 
     if (

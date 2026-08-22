@@ -1,6 +1,6 @@
 import type { CreateUserDto, UpdateUserDto } from "@/dtos";
 import { MongoInitializer } from "@/init";
-import type { User, UserRepository as IUserRepository } from "@/models";
+import type { User, UserIdentifier, UserRepository as IUserRepository } from "@/models";
 import { userSchema } from "@/schemas";
 import { ObjectId } from "mongodb";
 
@@ -9,15 +9,8 @@ export class UserRepository implements IUserRepository {
     return MongoInitializer.getDb().collection<User>("customers");
   }
 
-  async findByWAId(waId: string): Promise<User | null> {
-    const user = await this.collection.findOne({ wa_id: waId });
-    return user;
-  }
-
-  async findByIdentifier(identifier: string): Promise<User | null> {
-    const user = await this.collection.findOne({
-      $or: [{ email: identifier }, { userName: identifier }],
-    });
+  async find(identifier: UserIdentifier): Promise<User | null> {
+    const user = await this.collection.findOne(identifier);
     return user;
   }
 
