@@ -45,6 +45,7 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
         sticker_url: result.secure_url,
         public_id: result.public_id,
         url: result.url,
+        type: result.format
       });
     },
   );
