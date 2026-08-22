@@ -16,6 +16,8 @@ export const userSchema = z.object({
   last_login: z.coerce.date().default(() => new Date()),
   status: z.enum(["active", "inactive"]).default("active"),
   preferred_payment: z.string().optional(),
+  avatar_url: z.url().optional(),
+  banner_url: z.url().optional(),
   subscriptions: z
     .object({
       start: z.coerce.date(),
