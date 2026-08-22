@@ -16,7 +16,7 @@ declare module "@fastify/jwt" {
       userName: string;
       email: string;
       isNumberVerified: boolean;
-      role: "user" | "admin" | "moderator";
+      role: "user" | "admin" | "moderator" | "company";
       premium: boolean;
     };
   }

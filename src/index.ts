@@ -1,7 +1,13 @@
 import { CloudinaryInitializer, MongoInitializer } from "@/init";
 import authPlugin from "@/plugin/auth.plugin";
 import { errorPlugin } from "@/plugin/error.plugin";
-import { authRoutes, packRoutes, stickerRoutes, uploadRoutes } from "@/routes";
+import {
+  authRoutes,
+  packRoutes,
+  profileRoutes,
+  stickerRoutes,
+  uploadRoutes,
+} from "@/routes";
 import fastifyMultipart from "@fastify/multipart";
 import fastify from "fastify";
 import {
@@ -36,6 +42,7 @@ server.register(async (app) => {
   });
 
   app.register(packRoutes, { prefix: "/pack" });
+  app.register(profileRoutes, { prefix: "/profile" });
   app.register(stickerRoutes, { prefix: "/sticker" });
   app.register(uploadRoutes, { prefix: "/upload" });
 });

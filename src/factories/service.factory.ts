@@ -2,6 +2,7 @@ import { PackRepository, StickerRepository, UserRepository } from "@/repositorie
 import {
   AuthService,
   PackService,
+  ProfileService,
   StickerService,
   UploadService,
   UserService,
@@ -11,6 +12,7 @@ import type { JWT as FastifyJWT } from "@fastify/jwt";
 
 export class ServiceFactory {
   private static packService: PackService;
+  private static profileService: ProfileService;
   private static stickerService: StickerService;
   private static uploadService: UploadService;
   private static userService: UserService;
@@ -37,6 +39,13 @@ export class ServiceFactory {
       this.uploadService = new UploadService();
     }
     return this.uploadService;
+  }
+
+  static getProfileService(): ProfileService {
+    if (!this.profileService) {
+      this.profileService = new ProfileService(new UserRepository());
+    }
+    return this.profileService;
   }
 
   static getUserService(): UserService {
