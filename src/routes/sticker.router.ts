@@ -18,7 +18,10 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (request, reply) => {
       if (request.query.user) {
-        const stickers = await stickerService.findByUserId(request.query.user);
+        const stickers = await stickerService.findByUserId(
+          request.query.user,
+          request.user._id,
+        );
         return reply.status(200).send({ success: true, stickers });
       }
 

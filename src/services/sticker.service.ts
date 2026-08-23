@@ -1,6 +1,6 @@
 import type { CreateStickerDto, UpdateStickerDto } from "@/dtos";
 import type { Sticker } from "@/models";
-import type { PackRepository, StickerRepository } from "@/repositories";
+import type { PackRepository, StickerRepository, UserRepository } from "@/repositories";
 import { MongoUtils, PermissionUtils } from "@/utils";
 import type { ObjectId } from "mongodb";
 
@@ -8,7 +8,8 @@ export class StickerService {
   constructor(
     private readonly stickerRepository: StickerRepository,
     private readonly packRepository: PackRepository,
-  ) {}
+    private readonly userRepository: UserRepository,
+  ) { }
 
   async create(
     packId: string | ObjectId,
@@ -29,6 +30,8 @@ export class StickerService {
       throw new Error("Pacote não encontrado");
     }
 
+    PermissionUtils.verifyOwnership(pack.user_id, userObjectId, "pacote");
+
     const sticker = await this.stickerRepository.create(
       packObjectId,
       userObjectId,
@@ -37,6 +40,13 @@ export class StickerService {
     if (!sticker) {
       throw new Error("Failed to create sticker, try again later");
     }
+
+    await this.userRepository.incrementStickersCount(
+      userObjectId,
+      sticker.type,
+      1,
+    );
+
     return sticker;
   }
 
@@ -54,15 +64,30 @@ export class StickerService {
     return sticker;
   }
 
-  async findByUserId(userId: string | ObjectId): Promise<Sticker[]> {
+  async findByUserId(
+    userId: string | ObjectId,
+    currentUserId: string | ObjectId,
+  ): Promise<Sticker[]> {
     const userObjectId = MongoUtils.toObjectId(
       userId,
       "ID de usuário inválido",
     );
+    const currentUserIdObject = MongoUtils.toObjectId(
+      currentUserId,
+      "ID de usuário inválido",
+    );
+
     const stickers = await this.stickerRepository.findByUserId(userObjectId);
-    if (!stickers) {
+    if (!stickers || stickers.length === 0) {
       return [];
     }
+
+    PermissionUtils.verifyOwnership(
+      currentUserIdObject,
+      userObjectId,
+      "figurinhas do usuário",
+    );
+
     return stickers;
   }
 
@@ -140,6 +165,12 @@ export class StickerService {
     if (!result) {
       throw new Error("Failed to delete sticker, try again later");
     }
+
+    await this.userRepository.incrementStickersCount(
+      userObjectId,
+      existingSticker.type,
+      -1,
+    );
 
     return result;
   }

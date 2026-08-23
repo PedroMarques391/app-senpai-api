@@ -29,6 +29,7 @@ export class ServiceFactory {
       this.stickerService = new StickerService(
         new StickerRepository(),
         new PackRepository(),
+        new UserRepository(),
       );
     }
     return this.stickerService;
