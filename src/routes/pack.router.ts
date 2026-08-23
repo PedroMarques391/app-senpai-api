@@ -17,7 +17,7 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (request, reply) => {
       if (request.query.user) {
-        const packs = await packService.findByUserId(request.query.user);
+        const packs = await packService.findByUserId(request.query.user, request.user._id);
         return reply.status(200).send({ success: true, packs });
       }
 

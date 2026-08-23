@@ -5,7 +5,7 @@ import { MongoUtils, PermissionUtils } from "@/utils";
 import type { ObjectId } from "mongodb";
 
 export class PackService {
-  constructor(private readonly packRepository: PackRepository) {}
+  constructor(private readonly packRepository: PackRepository) { }
 
   async create(
     userId: string | ObjectId,
@@ -43,15 +43,24 @@ export class PackService {
     return pack;
   }
 
-  async findByUserId(userId: string | ObjectId): Promise<StickerPack[]> {
+  async findByUserId(userId: string | ObjectId, currentUserId: string | ObjectId): Promise<StickerPack[]> {
     const userObjectId = MongoUtils.toObjectId(
       userId,
       "ID de usuário inválido",
     );
+    const currentUserIdObject = MongoUtils.toObjectId(
+      currentUserId,
+      "ID de usuário inválido",
+    );
+
     const packs = await this.packRepository.findByUserId(userObjectId);
-    if (!packs) {
+    if (packs.length === 0) {
       return [];
     }
+
+    PermissionUtils.verifyOwnership(currentUserIdObject, userObjectId, "pacotes do usuário");
+
+
     return packs;
   }
 
