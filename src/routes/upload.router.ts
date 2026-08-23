@@ -54,6 +54,16 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
     "/",
     { schema: { querystring: z.object({ public_id: z.string() }) } },
     async (request, reply) => {
+      const rawUsername = request.user?.userName || request.user?.name || "user";
+      const username = rawUsername.toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+
+      if (!request.query.public_id.includes(`/${username}/`)) {
+        return reply.status(403).send({
+          success: false,
+          message: "Operação não permitida: você não pode excluir arquivos de outro usuário",
+        });
+      }
+
       const result = await uploadService.delete(request.query.public_id);
       return reply.status(200).send({
         success: true,
