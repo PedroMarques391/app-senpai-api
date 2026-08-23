@@ -1,7 +1,8 @@
 import type { CreateUserDto, UpdateUserDto } from "@/dtos";
 import { MongoInitializer } from "@/init";
-import type { User, UserIdentifier, UserRepository as IUserRepository } from "@/models";
+import type { User, UserRepository as IUserRepository } from "@/models";
 import { userSchema } from "@/schemas";
+import type { UserId, UserIdentifier } from "@/types";
 import { ObjectId } from "mongodb";
 
 export class UserRepository implements IUserRepository {
@@ -23,19 +24,17 @@ export class UserRepository implements IUserRepository {
     return this.collection.findOne({ _id: result.insertedId });
   }
 
-  async update(id: string | ObjectId, updateData: UpdateUserDto): Promise<User | null> {
-    const query = id instanceof ObjectId ? { _id: id } : { wa_id: id };
+  async update(identifier: UserId, updateData: UpdateUserDto): Promise<User | null> {
     const result = await this.collection.findOneAndUpdate(
-      query,
+      identifier,
       { $set: updateData },
       { returnDocument: "after" },
     );
     return result;
   }
 
-  async delete(id: string | ObjectId): Promise<void> {
-    const query = id instanceof ObjectId ? { _id: id } : { wa_id: id };
-    await this.collection.deleteOne(query);
+  async delete(identifier: UserId): Promise<void> {
+    await this.collection.deleteOne(identifier);
   }
 
   async incrementStickersCount(
