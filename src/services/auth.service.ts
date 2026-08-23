@@ -122,7 +122,7 @@ export class AuthService {
     }
 
     user.otp_secret = { ...otp };
-    await this.userRepository.update(waId, user);
+    await this.userRepository.update({ wa_id: waId }, user);
 
     return {
       success: true,
@@ -154,7 +154,7 @@ export class AuthService {
       last_login: new Date(),
     });
 
-    await this.userRepository.update(waId, updatedUser);
+    await this.userRepository.update({ wa_id: waId }, updatedUser);
 
     const token = this.jwtUtils.generateJWT({
       _id: updatedUser._id.toString(),
@@ -194,7 +194,7 @@ export class AuthService {
     }
 
     user.last_login = new Date();
-    await this.userRepository.update(user._id, user);
+    await this.userRepository.update({ _id: user._id }, user);
 
     const token = this.jwtUtils.generateJWT({
       _id: user._id.toString(),
@@ -236,7 +236,7 @@ export class AuthService {
     const payload = { ...data, password: hashedPassword };
 
     if (waUser) {
-      return this.userRepository.update(waUser._id, payload);
+      return this.userRepository.update({ _id: waUser._id }, payload);
     }
 
     return this.userRepository.create(payload);

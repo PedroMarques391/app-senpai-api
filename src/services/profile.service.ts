@@ -5,7 +5,7 @@ import { MongoUtils } from "@/utils";
 import type { ObjectId } from "mongodb";
 
 export class ProfileService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(private readonly userRepository: UserRepository) { }
 
   async getProfile(id: string | ObjectId): Promise<User | null> {
     const userObjectId = MongoUtils.toObjectId(id, "ID de usuário inválido");
@@ -27,7 +27,7 @@ export class ProfileService {
     }
 
     const updatedUser = await this.userRepository.update(
-      userObjectId,
+      { _id: userObjectId },
       updateData,
     );
     if (!updatedUser) {

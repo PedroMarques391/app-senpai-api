@@ -22,10 +22,10 @@ export class UserService {
   }
 
   async update(waId: string, updateData: UpdateUserDto): Promise<User | null> {
-    return this.userRepository.update(waId, updateData);
+    return this.userRepository.update({ wa_id: waId }, updateData);
   }
 
   async delete(waId: string): Promise<void> {
-    return this.userRepository.delete(waId);
+    return this.userRepository.delete({ wa_id: waId });
   }
 }
