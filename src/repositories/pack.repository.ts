@@ -78,11 +78,16 @@ export class PackRepository implements IPackRepository {
   }
 
   async delete(id: ObjectId, userId: ObjectId): Promise<boolean> {
-    await this.stickerCollection.deleteMany({ pack_id: id });
     const result = await this.collection.deleteOne({
       _id: id,
       user_id: userId,
     });
-    return result.deletedCount > 0;
+
+    if (result.deletedCount > 0) {
+      await this.stickerCollection.deleteMany({ pack_id: id });
+      return true;
+    }
+
+    return false;
   }
 }
