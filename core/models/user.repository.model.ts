@@ -13,4 +13,9 @@ export interface UserRepository {
   update(id: string | ObjectId, updateData: UpdateUserDto): Promise<User | null>;
   create(userData: CreateUserDto): Promise<User | null>;
   delete(id: string | ObjectId): Promise<void>;
+  incrementStickersCount(
+    userId: ObjectId,
+    type: "static" | "dynamic",
+    amount?: number,
+  ): Promise<void>;
 }

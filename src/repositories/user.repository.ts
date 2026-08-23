@@ -37,4 +37,15 @@ export class UserRepository implements IUserRepository {
     const query = id instanceof ObjectId ? { _id: id } : { wa_id: id };
     await this.collection.deleteOne(query);
   }
+
+  async incrementStickersCount(
+    userId: ObjectId,
+    type: "static" | "dynamic",
+    amount: number = 1,
+  ): Promise<void> {
+    await this.collection.updateOne(
+      { _id: userId },
+      { $inc: { [`stickers_count.${type}`]: amount } },
+    );
+  }
 }
