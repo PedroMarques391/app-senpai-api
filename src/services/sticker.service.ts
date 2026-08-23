@@ -2,18 +2,17 @@ import type { CreateStickerDto, UpdateStickerDto } from "@/dtos";
 import type { Sticker } from "@/models";
 import type { PackRepository, StickerRepository, UserRepository } from "@/repositories";
 import { MongoUtils, PermissionUtils } from "@/utils";
-import type { ObjectId } from "mongodb";
 
 export class StickerService {
   constructor(
     private readonly stickerRepository: StickerRepository,
     private readonly packRepository: PackRepository,
     private readonly userRepository: UserRepository,
-  ) { }
+  ) {}
 
   async create(
-    packId: string | ObjectId,
-    userId: string | ObjectId,
+    packId: string,
+    userId: string,
     stickerData: CreateStickerDto,
   ): Promise<Sticker | null> {
     const packObjectId = MongoUtils.toObjectId(
@@ -55,7 +54,7 @@ export class StickerService {
     return stickers;
   }
 
-  async findById(id: string | ObjectId): Promise<Sticker | null> {
+  async findById(id: string): Promise<Sticker | null> {
     const stickerObjectId = MongoUtils.toObjectId(
       id,
       "ID da figurinha inválido",
@@ -65,8 +64,8 @@ export class StickerService {
   }
 
   async findByUserId(
-    userId: string | ObjectId,
-    currentUserId: string | ObjectId,
+    userId: string,
+    currentUserId: string,
   ): Promise<Sticker[]> {
     const userObjectId = MongoUtils.toObjectId(
       userId,
@@ -91,7 +90,7 @@ export class StickerService {
     return stickers;
   }
 
-  async findByPackId(packId: string | ObjectId): Promise<Sticker[]> {
+  async findByPackId(packId: string): Promise<Sticker[]> {
     const packObjectId = MongoUtils.toObjectId(
       packId,
       "ID do pacote inválido",
@@ -104,8 +103,8 @@ export class StickerService {
   }
 
   async update(
-    id: string | ObjectId,
-    userId: string | ObjectId,
+    id: string,
+    userId: string,
     updateData: UpdateStickerDto,
   ): Promise<Sticker | null> {
     const stickerObjectId = MongoUtils.toObjectId(
@@ -138,8 +137,8 @@ export class StickerService {
   }
 
   async delete(
-    id: string | ObjectId,
-    userId: string | ObjectId,
+    id: string,
+    userId: string,
   ): Promise<boolean> {
     const stickerObjectId = MongoUtils.toObjectId(
       id,

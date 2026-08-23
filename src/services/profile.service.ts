@@ -2,12 +2,11 @@ import type { UpdateUserDto } from "@/dtos";
 import type { User } from "@/models";
 import type { UserRepository } from "@/repositories";
 import { MongoUtils } from "@/utils";
-import type { ObjectId } from "mongodb";
 
 export class ProfileService {
-  constructor(private readonly userRepository: UserRepository) { }
+  constructor(private readonly userRepository: UserRepository) {}
 
-  async getProfile(id: string | ObjectId): Promise<User | null> {
+  async getProfile(id: string): Promise<User | null> {
     const userObjectId = MongoUtils.toObjectId(id, "ID de usuário inválido");
     const user = await this.userRepository.find({ _id: userObjectId });
     if (!user) {
@@ -17,7 +16,7 @@ export class ProfileService {
   }
 
   async updateProfile(
-    id: string | ObjectId,
+    id: string,
     updateData: UpdateUserDto,
   ): Promise<User | null> {
     const userObjectId = MongoUtils.toObjectId(id, "ID de usuário inválido");

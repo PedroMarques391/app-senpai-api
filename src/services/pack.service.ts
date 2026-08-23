@@ -2,13 +2,12 @@ import type { CreatePackDto, UpdatePackDto } from "@/dtos";
 import type { StickerPack } from "@/models";
 import type { PackRepository } from "@/repositories";
 import { MongoUtils, PermissionUtils } from "@/utils";
-import type { ObjectId } from "mongodb";
 
 export class PackService {
-  constructor(private readonly packRepository: PackRepository) { }
+  constructor(private readonly packRepository: PackRepository) {}
 
   async create(
-    userId: string | ObjectId,
+    userId: string,
     publisher: string,
     packData: CreatePackDto,
   ): Promise<StickerPack | null> {
@@ -37,13 +36,13 @@ export class PackService {
     return packs;
   }
 
-  async findById(id: string | ObjectId): Promise<StickerPack | null> {
+  async findById(id: string): Promise<StickerPack | null> {
     const packObjectId = MongoUtils.toObjectId(id, "ID do pacote inválido");
     const pack = await this.packRepository.findById(packObjectId);
     return pack;
   }
 
-  async findByUserId(userId: string | ObjectId, currentUserId: string | ObjectId): Promise<StickerPack[]> {
+  async findByUserId(userId: string, currentUserId: string): Promise<StickerPack[]> {
     const userObjectId = MongoUtils.toObjectId(
       userId,
       "ID de usuário inválido",
@@ -60,13 +59,12 @@ export class PackService {
 
     PermissionUtils.verifyOwnership(currentUserIdObject, userObjectId, "pacotes do usuário");
 
-
     return packs;
   }
 
   async update(
-    id: string | ObjectId,
-    userId: string | ObjectId,
+    id: string,
+    userId: string,
     updateData: UpdatePackDto,
   ): Promise<StickerPack | null> {
     const packObjectId = MongoUtils.toObjectId(id, "ID do pacote inválido");
@@ -95,8 +93,8 @@ export class PackService {
   }
 
   async delete(
-    id: string | ObjectId,
-    userId: string | ObjectId,
+    id: string,
+    userId: string,
   ): Promise<boolean> {
     const packObjectId = MongoUtils.toObjectId(id, "ID do pacote inválido");
     const userObjectId = MongoUtils.toObjectId(
