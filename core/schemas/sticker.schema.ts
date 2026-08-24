@@ -13,5 +13,3 @@ export const stickerSchema = z.object({
   created_at: z.coerce.date().default(() => new Date()),
   type: z.enum(["dynamic", "static"]),
 });
-
-

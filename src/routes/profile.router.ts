@@ -13,6 +13,15 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
     });
   });
 
+  app.delete("/", async (request, reply) => {
+    const result = await profileService.deleteProfile(request.user._id);
+    return reply.status(200).send({
+      success: true,
+      message: "Perfil deletado com sucesso",
+      result,
+    });
+  });
+
   app.put(
     "/",
     {

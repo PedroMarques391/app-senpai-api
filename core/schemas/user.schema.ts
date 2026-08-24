@@ -1,6 +1,6 @@
-import { dailyMissionSchema } from "./daily-mission.schema";
 import { ObjectId } from "mongodb";
 import { z } from "zod";
+import { dailyMissionSchema } from "./daily-mission.schema";
 
 export const userSchema = z.object({
   _id: z.instanceof(ObjectId),
@@ -13,6 +13,7 @@ export const userSchema = z.object({
   role: z.enum(["user", "admin", "moderator", "company"]).default("user"),
   createdAt: z.coerce.date().default(() => new Date()),
   updatedAt: z.coerce.date().default(() => new Date()),
+  deletedAt: z.coerce.date().optional(),
   last_login: z.coerce.date().default(() => new Date()),
   status: z.enum(["active", "inactive"]).default("active"),
   preferred_payment: z.string().optional(),
