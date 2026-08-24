@@ -6,7 +6,7 @@ import type {
   SendOtpResult,
   ServiceResponse,
 } from "@/types";
-import { AuthUtils, UserUtils } from "@/utils";
+import { AuthUtils, MongoUtils, UserUtils } from "@/utils";
 import type { JWT as FastifyJWT } from "@fastify/jwt";
 
 export class AuthService {
@@ -16,7 +16,7 @@ export class AuthService {
       "find" | "create" | "update"
     >,
     private readonly jwtInstance: FastifyJWT,
-  ) { }
+  ) {}
 
   async generateOTP(): Promise<OtpSecret> {
     const code = AuthUtils.generateOTP();
@@ -150,7 +150,9 @@ export class AuthService {
     }
 
     if (user.status === "inactive") {
-      throw new Error("Conta desativada. Entre em contato com o suporte para recuperar o acesso.");
+      throw new Error(
+        "Conta desativada. Entre em contato com o suporte para recuperar o acesso.",
+      );
     }
 
     if (
@@ -161,27 +163,32 @@ export class AuthService {
       throw new Error("Invalid or expired OTP");
     }
 
-    const updatedUser = UserUtils.applyDefaults({
+    const fullUser = UserUtils.applyDefaults({
       ...user,
       otp_secret: undefined,
       isNumberVerified: true,
       last_login: new Date(),
     });
 
-    await this.userRepository.update({ wa_id: waId }, updatedUser);
+    await this.userRepository.update({ wa_id: waId }, fullUser);
 
-    const token = AuthUtils.generateJWT(this.jwtInstance, {
-      _id: updatedUser._id.toString(),
-      wa_id: updatedUser.wa_id,
-      name: updatedUser.name,
-      userName: updatedUser.userName,
-      premium: updatedUser.premium,
-      email: updatedUser.email,
-      isNumberVerified: updatedUser.isNumberVerified,
-      role: updatedUser.role,
-    });
+    const payload = {
+      _id: fullUser._id.toString(),
+      wa_id: fullUser.wa_id,
+      name: fullUser.name,
+      userName: fullUser.userName,
+      premium: fullUser.premium,
+      email: fullUser.email,
+      isNumberVerified: fullUser.isNumberVerified,
+      role: fullUser.role,
+    };
 
-    return { user: updatedUser, token };
+    const token = AuthUtils.generateJWT(
+      this.jwtInstance,
+      payload,
+    );
+
+    return { user: fullUser, token };
   }
 
   async loginWithCredentials(
@@ -197,7 +204,9 @@ export class AuthService {
     }
 
     if (user.status === "inactive") {
-      throw new Error("Conta desativada. Entre em contato com o suporte para recuperar o acesso.");
+      throw new Error(
+        "Conta desativada. Entre em contato com o suporte para recuperar o acesso.",
+      );
     }
 
     if (!user.email || !user.password) {
@@ -206,15 +215,16 @@ export class AuthService {
       );
     }
 
-    const isMatch = await AuthUtils.comparePassword(passwordString, user.password);
+    const isMatch = await AuthUtils.comparePassword(
+      passwordString,
+      user.password,
+    );
     if (!isMatch) {
       throw new Error("Invalid credentials");
     }
 
     user.last_login = new Date();
-    await this.userRepository.update({ _id: user._id }, user);
-
-    const token = AuthUtils.generateJWT(this.jwtInstance, {
+    const payload = {
       _id: user._id.toString(),
       wa_id: user.wa_id,
       name: user.name,
@@ -223,7 +233,13 @@ export class AuthService {
       email: user.email,
       isNumberVerified: user.isNumberVerified,
       role: user.role,
-    });
+    };
+    const token = AuthUtils.generateJWT(
+      this.jwtInstance,
+      payload,
+    );
+
+    await this.userRepository.update({ _id: user._id }, user);
 
     return { user, token };
   }

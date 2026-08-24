@@ -16,6 +16,17 @@ export interface AuthResult {
   token: string;
 }
 
+export interface JwtPayload {
+  _id: string;
+  wa_id?: string;
+  name?: string;
+  userName?: string;
+  email?: string;
+  role?: string;
+  premium?: boolean;
+  isNumberVerified?: boolean;
+}
+
 export type ServiceResponse<T> =
   | { success: true; data: T }
   | { success: false; userExists: boolean; message: string };

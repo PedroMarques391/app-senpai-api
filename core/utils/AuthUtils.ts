@@ -1,4 +1,5 @@
 import type { JWT as FastifyJWT } from "@fastify/jwt";
+import type { JwtPayload } from "@/types";
 import bcrypt from "bcrypt";
 
 export class AuthUtils {
@@ -23,11 +24,14 @@ export class AuthUtils {
     return bcrypt.compare(password, hash);
   }
 
-  static generateJWT(jwtInstance: FastifyJWT, payload: object): string {
+  static generateJWT(
+    jwtInstance: FastifyJWT,
+    payload: JwtPayload,
+  ): string {
     return jwtInstance.sign(payload);
   }
 
-  static verifyJWT(jwtInstance: FastifyJWT, token: string) {
-    return jwtInstance.verify(token);
+  static verifyJWT<T>(jwtInstance: FastifyJWT, token: string) {
+    return jwtInstance.verify(token) as T;
   }
 }

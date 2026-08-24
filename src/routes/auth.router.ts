@@ -71,6 +71,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
       const user = await authService.loginWithCredentials(identifier, password);
 
       reply.header("Authorization", `Bearer ${user.token}`);
+
       return reply.status(200).send({
         success: true,
         message: "Password verified successfully",
@@ -78,4 +79,5 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
       });
     },
   );
+
 };
