@@ -1,4 +1,5 @@
 import { ServiceFactory } from "@/factories";
+import { UploadUtils } from "@/utils";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
 
@@ -23,14 +24,19 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
         });
       }
 
-      const rawUsername = request.user?.userName || request.user?.name || "user";
-      const username = rawUsername.toLowerCase().replace(/[^a-z0-9_-]/g, "_");
-      const baseFolder = request.query.folder || "sticker";
-      const folderPath = `${baseFolder}/${username}`;
+      const { userName } = request.user;
+      if (!userName) {
+        return reply.status(401).send({
+          success: false,
+          message:
+            "Para criar um sticker é necessário ter um nome de usuário, por favor atualize seu perfil.",
+        });
+      }
 
-      const timestamp = Date.now();
-      const uniqueId = crypto.randomUUID().slice(0, 8);
-      const filename = `${username}_${timestamp}_${uniqueId}`;
+      const { folderPath, filename } = UploadUtils.generateMetadata(
+        userName,
+        request.query.folder,
+      );
 
       const result = await uploadService.upload(data.file, {
         folder: folderPath,
@@ -45,7 +51,7 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
         sticker_url: result.secure_url,
         public_id: result.public_id,
         url: result.url,
-        type: result.format
+        type: result.format,
       });
     },
   );
@@ -54,13 +60,16 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
     "/",
     { schema: { querystring: z.object({ public_id: z.string() }) } },
     async (request, reply) => {
-      const rawUsername = request.user?.userName || request.user?.name || "user";
-      const username = rawUsername.toLowerCase().replace(/[^a-z0-9_-]/g, "_");
-
-      if (!request.query.public_id.includes(`/${username}/`)) {
+      if (
+        !UploadUtils.verifyOwnership(
+          request.query.public_id,
+          request.user.userName,
+        )
+      ) {
         return reply.status(403).send({
           success: false,
-          message: "Operação não permitida: você não pode excluir arquivos de outro usuário",
+          message:
+            "Operação não permitida: você não pode excluir arquivos de outro usuário",
         });
       }
 
