@@ -6,7 +6,8 @@ import type {
   SendOtpResult,
   ServiceResponse,
 } from "@/types";
-import { JWT, OTP, Password, UserUtils } from "@/utils";
+import { AuthUtils, UserUtils } from "@/utils";
+import type { JWT as FastifyJWT } from "@fastify/jwt";
 
 export class AuthService {
   constructor(
@@ -14,12 +15,12 @@ export class AuthService {
       UserRepository,
       "find" | "create" | "update"
     >,
-    private readonly jwtUtils: JWT,
+    private readonly jwtInstance: FastifyJWT,
   ) { }
 
   async generateOTP(): Promise<OtpSecret> {
-    const code = OTP.generateOTP();
-    const expires_at = OTP.generateExpiresAt();
+    const code = AuthUtils.generateOTP();
+    const expires_at = AuthUtils.generateExpiresAt();
 
     return {
       code,
@@ -156,7 +157,7 @@ export class AuthService {
 
     await this.userRepository.update({ wa_id: waId }, updatedUser);
 
-    const token = this.jwtUtils.generateJWT({
+    const token = AuthUtils.generateJWT(this.jwtInstance, {
       _id: updatedUser._id.toString(),
       wa_id: updatedUser.wa_id,
       name: updatedUser.name,
@@ -188,7 +189,7 @@ export class AuthService {
       );
     }
 
-    const isMatch = await Password.compare(passwordString, user.password);
+    const isMatch = await AuthUtils.comparePassword(passwordString, user.password);
     if (!isMatch) {
       throw new Error("Invalid credentials");
     }
@@ -196,7 +197,7 @@ export class AuthService {
     user.last_login = new Date();
     await this.userRepository.update({ _id: user._id }, user);
 
-    const token = this.jwtUtils.generateJWT({
+    const token = AuthUtils.generateJWT(this.jwtInstance, {
       _id: user._id.toString(),
       wa_id: user.wa_id,
       name: user.name,
@@ -232,7 +233,7 @@ export class AuthService {
       );
     }
 
-    const hashedPassword = await Password.hash(data.password);
+    const hashedPassword = await AuthUtils.hashPassword(data.password);
     const payload = { ...data, password: hashedPassword };
 
     if (waUser) {

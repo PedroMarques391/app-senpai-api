@@ -7,7 +7,7 @@ import {
   UploadService,
   UserService,
 } from "@/services";
-import { JWT } from "@/utils";
+
 import type { JWT as FastifyJWT } from "@fastify/jwt";
 
 export class ServiceFactory {
@@ -57,6 +57,6 @@ export class ServiceFactory {
   }
 
   static getAuthService(jwtInstance: FastifyJWT): AuthService {
-    return new AuthService(new UserRepository(), new JWT(jwtInstance));
+    return new AuthService(new UserRepository(), jwtInstance);
   }
 }
