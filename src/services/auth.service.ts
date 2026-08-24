@@ -36,6 +36,15 @@ export class AuthService {
 
     const user = await this.userRepository.find({ wa_id: waId });
 
+    if (user?.status === "inactive") {
+      return {
+        success: false,
+        userExists: true,
+        message:
+          "Conta desativada. Entre em contato com o suporte para recuperar o acesso.",
+      };
+    }
+
     if (!user || !user.premium) {
       return {
         success: false,
@@ -140,6 +149,10 @@ export class AuthService {
       throw new Error("User not found");
     }
 
+    if (user.status === "inactive") {
+      throw new Error("Conta desativada. Entre em contato com o suporte para recuperar o acesso.");
+    }
+
     if (
       !user.otp_secret ||
       user.otp_secret.code !== otpCode ||
@@ -183,6 +196,10 @@ export class AuthService {
       throw new Error("User not found");
     }
 
+    if (user.status === "inactive") {
+      throw new Error("Conta desativada. Entre em contato com o suporte para recuperar o acesso.");
+    }
+
     if (!user.email || !user.password) {
       throw new Error(
         "This user does not have a email or password configured, please finish your account or go to signup",
@@ -222,6 +239,16 @@ export class AuthService {
       this.userRepository.find({ email: data.email }),
       this.userRepository.find({ userName: data.userName }),
     ]);
+
+    if (
+      waUser?.status === "inactive" ||
+      emailUser?.status === "inactive" ||
+      usernameUser?.status === "inactive"
+    ) {
+      throw new Error(
+        "Este número ou e-mail está associado a uma conta desativada. Entre em contato com o suporte.",
+      );
+    }
 
     if (
       UserUtils.isFullyRegistered(waUser) ||
