@@ -18,7 +18,7 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (request, reply) => {
       if (request.query.user) {
-        const stickers = await stickerService.findByUserId(
+        const stickers = await stickerService.listStickersByUserId(
           request.query.user,
           request.user._id,
         );
@@ -26,11 +26,13 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
       }
 
       if (request.query.pack) {
-        const stickers = await stickerService.findByPackId(request.query.pack);
+        const stickers = await stickerService.listStickersByPackId(
+          request.query.pack,
+        );
         return reply.status(200).send({ success: true, stickers });
       }
 
-      const stickers = await stickerService.findAll();
+      const stickers = await stickerService.listStickers();
       return reply.status(200).send({ success: true, stickers });
     },
   );
@@ -44,7 +46,7 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
-      const sticker = await stickerService.create(
+      const sticker = await stickerService.createSticker(
         request.params.packId,
         request.user._id,
         request.body,
@@ -61,7 +63,7 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
     "/:id",
     { schema: { params: z.object({ id: z.string() }) } },
     async (request, reply) => {
-      const sticker = await stickerService.findById(request.params.id);
+      const sticker = await stickerService.findSticker(request.params.id);
       if (!sticker) {
         return reply.status(404).send({
           success: false,
@@ -81,7 +83,7 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
-      const sticker = await stickerService.update(
+      const sticker = await stickerService.updateSticker(
         request.params.id,
         request.user._id,
         request.body,
@@ -98,7 +100,7 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
     "/:id",
     { schema: { params: z.object({ id: z.string() }) } },
     async (request, reply) => {
-      await stickerService.delete(request.params.id, request.user._id);
+      await stickerService.deleteSticker(request.params.id, request.user._id);
       return reply.status(200).send({
         success: true,
         message: "Figurinha deletada com sucesso",

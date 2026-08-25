@@ -1,6 +1,10 @@
 import type { CreateStickerDto, UpdateStickerDto } from "@/dtos";
 import type { Sticker } from "@/models";
-import type { PackRepository, StickerRepository, UserRepository } from "@/repositories";
+import type {
+  PackRepository,
+  StickerRepository,
+  UserRepository,
+} from "@/repositories";
 import { MongoUtils, PermissionUtils } from "@/utils";
 
 export class StickerService {
@@ -10,15 +14,12 @@ export class StickerService {
     private readonly userRepository: UserRepository,
   ) {}
 
-  async create(
+  async createSticker(
     packId: string,
     userId: string,
     stickerData: CreateStickerDto,
   ): Promise<Sticker | null> {
-    const packObjectId = MongoUtils.toObjectId(
-      packId,
-      "ID do pacote inválido",
-    );
+    const packObjectId = MongoUtils.toObjectId(packId, "ID do pacote inválido");
     const userObjectId = MongoUtils.toObjectId(
       userId,
       "ID de usuário inválido",
@@ -49,12 +50,12 @@ export class StickerService {
     return sticker;
   }
 
-  async findAll(): Promise<Sticker[]> {
+  async listStickers(): Promise<Sticker[]> {
     const stickers = await this.stickerRepository.findAll();
     return stickers;
   }
 
-  async findById(id: string): Promise<Sticker | null> {
+  async findSticker(id: string): Promise<Sticker | null> {
     const stickerObjectId = MongoUtils.toObjectId(
       id,
       "ID da figurinha inválido",
@@ -63,7 +64,7 @@ export class StickerService {
     return sticker;
   }
 
-  async findByUserId(
+  async listStickersByUserId(
     userId: string,
     currentUserId: string,
   ): Promise<Sticker[]> {
@@ -90,11 +91,8 @@ export class StickerService {
     return stickers;
   }
 
-  async findByPackId(packId: string): Promise<Sticker[]> {
-    const packObjectId = MongoUtils.toObjectId(
-      packId,
-      "ID do pacote inválido",
-    );
+  async listStickersByPackId(packId: string): Promise<Sticker[]> {
+    const packObjectId = MongoUtils.toObjectId(packId, "ID do pacote inválido");
     const stickers = await this.stickerRepository.findByPackId(packObjectId);
     if (!stickers) {
       return [];
@@ -102,7 +100,7 @@ export class StickerService {
     return stickers;
   }
 
-  async update(
+  async updateSticker(
     id: string,
     userId: string,
     updateData: UpdateStickerDto,
@@ -122,7 +120,11 @@ export class StickerService {
       throw new Error("Figurinha não encontrada");
     }
 
-    PermissionUtils.verifyOwnership(existingSticker.user_id, userObjectId, "figurinha");
+    PermissionUtils.verifyOwnership(
+      existingSticker.user_id,
+      userObjectId,
+      "figurinha",
+    );
 
     const sticker = await this.stickerRepository.update(
       stickerObjectId,
@@ -136,10 +138,7 @@ export class StickerService {
     return sticker;
   }
 
-  async delete(
-    id: string,
-    userId: string,
-  ): Promise<boolean> {
+  async deleteSticker(id: string, userId: string): Promise<boolean> {
     const stickerObjectId = MongoUtils.toObjectId(
       id,
       "ID da figurinha inválido",
@@ -155,7 +154,11 @@ export class StickerService {
       throw new Error("Figurinha não encontrada");
     }
 
-    PermissionUtils.verifyOwnership(existingSticker.user_id, userObjectId, "figurinha");
+    PermissionUtils.verifyOwnership(
+      existingSticker.user_id,
+      userObjectId,
+      "figurinha",
+    );
 
     const result = await this.stickerRepository.delete(
       stickerObjectId,
