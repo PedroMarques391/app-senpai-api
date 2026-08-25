@@ -7,8 +7,22 @@ export const updateUserDtoSchema = userSchema
     wa_id: true,
     createdAt: true,
     updatedAt: true,
+    deletedAt: true,
     otp_secret: true,
+    role: true,
+    status: true,
+    password: true,
+    isVerifiedCreator: true,
+    isEmailVerified: true,
+    isNumberVerified: true,
+    petals_balance: true,
+    inventory_id: true,
+    stickers_count: true,
+    daily_missions: true,
+    subscriptions: true,
+    last_login: true,
   })
-  .partial();
+  .partial()
+  .strict();
 
 export type UpdateUserDto = z.infer<typeof updateUserDtoSchema>;

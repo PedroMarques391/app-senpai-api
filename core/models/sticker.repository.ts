@@ -1,5 +1,4 @@
-import type { CreateStickerDto, UpdateStickerDto } from "@/dtos";
-import type { Sticker } from "@/models";
+import type { CreateStickerPayload, Sticker } from "@/models";
 import type { ObjectId } from "mongodb";
 
 export interface StickerRepository {
@@ -7,15 +6,11 @@ export interface StickerRepository {
   findById(id: ObjectId): Promise<Sticker | null>;
   findByUserId(userId: ObjectId): Promise<Sticker[]>;
   findByPackId(packId: ObjectId): Promise<Sticker[]>;
-  create(
-    packId: ObjectId,
-    userId: ObjectId,
-    stickerData: CreateStickerDto,
-  ): Promise<Sticker | null>;
+  create(stickerData: CreateStickerPayload): Promise<Sticker | null>;
   update(
     id: ObjectId,
     userId: ObjectId,
-    updateData: UpdateStickerDto,
+    updateData: Partial<Sticker>,
   ): Promise<Sticker | null>;
   delete(id: ObjectId, userId: ObjectId): Promise<boolean>;
 }

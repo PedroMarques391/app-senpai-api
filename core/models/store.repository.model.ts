@@ -1,10 +1,10 @@
-import type { CreateStoreItemDto, UpdateStoreItemDto } from "core/dtos";
-import type { StoreItem } from "./store.model";
+import type { ObjectId } from "mongodb";
+import type { CreateStoreItemPayload, StoreItem } from "./store.model";
 
 export interface StoreRepository {
   findAll(): Promise<StoreItem[]>;
-  findById(id: string): Promise<StoreItem | null>;
-  create(data: CreateStoreItemDto): Promise<StoreItem>;
-  update(id: string, data: UpdateStoreItemDto): Promise<StoreItem | null>;
-  delete(id: string): Promise<void>;
+  findById(id: ObjectId): Promise<StoreItem | null>;
+  create(data: CreateStoreItemPayload): Promise<StoreItem>;
+  update(id: ObjectId, data: Partial<StoreItem>): Promise<StoreItem | null>;
+  delete(id: ObjectId): Promise<boolean>;
 }
