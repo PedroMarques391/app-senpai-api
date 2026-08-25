@@ -1,10 +1,10 @@
 import { MongoInitializer } from "@/init";
-import type {
-  CreateUserPayload,
-  User,
-  UserRepository as IUserRepository,
+import {
+  insertUserSchema,
+  type CreateUserPayload,
+  type User,
+  type UserRepository as IUserRepository,
 } from "@/models";
-import { userSchema } from "@/schemas";
 import type { UserId, UserIdentifier } from "@/types";
 import { ObjectId } from "mongodb";
 
@@ -19,8 +19,7 @@ export class UserRepository implements IUserRepository {
   }
 
   async create(userData: CreateUserPayload): Promise<User | null> {
-    const insertSchema = userSchema.omit({ _id: true });
-    const parsedData = insertSchema.parse(userData);
+    const parsedData = insertUserSchema.parse(userData);
 
     const result = await this.collection.insertOne(parsedData as User);
     if (!result.insertedId) return null;

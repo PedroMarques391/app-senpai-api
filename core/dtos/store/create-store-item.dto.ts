@@ -7,6 +7,7 @@ export const createStoreItemDtoSchema = storeItemSchema
     created_at: true,
     updated_at: true,
     purchases_count: true,
+    is_active: true,
   })
   .strict();
 

@@ -3,10 +3,10 @@ import type { StoreItem, StoreRepository } from "@/models";
 import { MongoUtils } from "@/utils";
 
 export class StoreService {
-  constructor(private readonly repository: StoreRepository) {}
+  constructor(private readonly storeRepository: StoreRepository) {}
 
   async listItems(): Promise<StoreItem[]> {
-    return this.repository.findAll();
+    return this.storeRepository.findAll();
   }
 
   async getItem(id: string): Promise<StoreItem> {
@@ -14,13 +14,16 @@ export class StoreService {
       id,
       "ID do item da loja inválido",
     );
-    const item = await this.repository.findById(storeObjectId);
+    const item = await this.storeRepository.findById(storeObjectId);
     if (!item) throw new Error("Item da loja não encontrado");
     return item;
   }
 
   async createItem(data: CreateStoreItemDto): Promise<StoreItem> {
-    return this.repository.create(data);
+    if (!data) throw new Error("Dados inválidos");
+    const item = await this.storeRepository.create(data);
+    if (!item) throw new Error("Falha ao criar item da loja");
+    return item;
   }
 
   async updateItem(id: string, data: UpdateStoreItemDto): Promise<StoreItem> {
@@ -28,7 +31,7 @@ export class StoreService {
       id,
       "ID do item da loja inválido",
     );
-    const updated = await this.repository.update(storeObjectId, data);
+    const updated = await this.storeRepository.update(storeObjectId, data);
     if (!updated) throw new Error("Item da loja não encontrado");
     return updated;
   }
@@ -38,6 +41,11 @@ export class StoreService {
       id,
       "ID do item da loja inválido",
     );
-    await this.repository.delete(storeObjectId);
+
+    const item = await this.storeRepository.findById(storeObjectId);
+    if (!item) throw new Error("Item da loja não encontrado");
+
+    const result = await this.storeRepository.delete(storeObjectId);
+    if (!result) throw new Error("Falha ao deletar item da loja");
   }
 }

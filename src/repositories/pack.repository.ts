@@ -1,11 +1,11 @@
 import { MongoInitializer } from "@/init";
-import type {
-  CreateStickerPackPayload,
-  PackRepository as IPackRepository,
-  Sticker,
-  StickerPack,
+import {
+  insertStickerPackSchema,
+  type CreateStickerPackPayload,
+  type PackRepository as IPackRepository,
+  type Sticker,
+  type StickerPack,
 } from "@/models";
-import { stickerPackSchema } from "@/schemas";
 import type { ObjectId } from "mongodb";
 
 export class PackRepository implements IPackRepository {
@@ -44,8 +44,7 @@ export class PackRepository implements IPackRepository {
   }
 
   async create(packData: CreateStickerPackPayload): Promise<StickerPack | null> {
-    const insertSchema = stickerPackSchema.omit({ _id: true });
-    const parsedData = insertSchema.parse(packData);
+    const parsedData = insertStickerPackSchema.parse(packData);
 
     const result = await this.collection.insertOne(parsedData as StickerPack);
     if (!result.insertedId) return null;

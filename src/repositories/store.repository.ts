@@ -1,10 +1,10 @@
 import { MongoInitializer } from "@/init";
-import type {
-  CreateStoreItemPayload,
-  StoreRepository as IStoreRepository,
-  StoreItem,
+import {
+  insertStoreItemSchema,
+  type CreateStoreItemPayload,
+  type StoreRepository as IStoreRepository,
+  type StoreItem,
 } from "@/models";
-import { storeItemSchema } from "@/schemas";
 import type { ObjectId } from "mongodb";
 
 export class StoreRepository implements IStoreRepository {
@@ -23,7 +23,7 @@ export class StoreRepository implements IStoreRepository {
   }
 
   async create(data: CreateStoreItemPayload): Promise<StoreItem> {
-    const parsed = storeItemSchema.omit({ _id: true }).parse(data);
+    const parsed = insertStoreItemSchema.parse(data);
     const result = await this.collection.insertOne(parsed as StoreItem);
     const created = await this.collection.findOne({ _id: result.insertedId });
     if (!created) throw new Error("Failed to create store item");
