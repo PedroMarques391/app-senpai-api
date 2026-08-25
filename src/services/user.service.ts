@@ -1,9 +1,4 @@
-import {
-  createUserDtoSchema,
-  updateUserDtoSchema,
-  type CreateUserDto,
-  type UpdateUserDto,
-} from "@/dtos";
+import type { CreateUserDto, UpdateUserDto } from "@/dtos";
 import type { User, UserRepository } from "@/models";
 
 export class UserService {
@@ -18,21 +13,19 @@ export class UserService {
   }
 
   async createUser(userData: CreateUserDto): Promise<User | null> {
-    const parsed = createUserDtoSchema.parse(userData);
-    const user = await this.userRepository.find({ wa_id: parsed.wa_id });
+    const user = await this.userRepository.find({ wa_id: userData.wa_id });
     if (user) {
       throw new Error("User already exists");
     }
 
-    return this.userRepository.create(parsed);
+    return this.userRepository.create(userData);
   }
 
   async updateUser(
     waId: string,
     updateData: UpdateUserDto,
   ): Promise<User | null> {
-    const parsed = updateUserDtoSchema.parse(updateData);
-    return this.userRepository.update({ wa_id: waId }, parsed);
+    return this.userRepository.update({ wa_id: waId }, updateData);
   }
 
   async deleteUser(waId: string): Promise<void> {

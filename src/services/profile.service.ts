@@ -1,4 +1,4 @@
-import { updateUserDtoSchema, type UpdateUserDto } from "@/dtos";
+import type { UpdateUserDto } from "@/dtos";
 import type { User } from "@/models";
 import type { UserRepository } from "@/repositories";
 import { MongoUtils } from "@/utils";
@@ -42,11 +42,9 @@ export class ProfileService {
       throw new Error("Perfil de usuário não encontrado");
     }
 
-    const parsedUpdateData = updateUserDtoSchema.parse(updateData);
-
     const updatedUser = await this.userRepository.update(
       { _id: userObjectId },
-      parsedUpdateData,
+      updateData,
     );
     if (!updatedUser) {
       throw new Error("Falha ao atualizar o perfil do usuário");

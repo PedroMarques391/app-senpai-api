@@ -1,9 +1,4 @@
-import {
-  createStoreItemDtoSchema,
-  updateStoreItemDtoSchema,
-  type CreateStoreItemDto,
-  type UpdateStoreItemDto,
-} from "@/dtos";
+import type { CreateStoreItemDto, UpdateStoreItemDto } from "@/dtos";
 import type { StoreItem, StoreRepository } from "@/models";
 import { MongoUtils } from "@/utils";
 
@@ -25,8 +20,7 @@ export class StoreService {
   }
 
   async createItem(data: CreateStoreItemDto): Promise<StoreItem> {
-    const parsed = createStoreItemDtoSchema.parse(data);
-    return this.repository.create(parsed);
+    return this.repository.create(data);
   }
 
   async updateItem(id: string, data: UpdateStoreItemDto): Promise<StoreItem> {
@@ -34,8 +28,7 @@ export class StoreService {
       id,
       "ID do item da loja inválido",
     );
-    const parsed = updateStoreItemDtoSchema.parse(data);
-    const updated = await this.repository.update(storeObjectId, parsed);
+    const updated = await this.repository.update(storeObjectId, data);
     if (!updated) throw new Error("Item da loja não encontrado");
     return updated;
   }

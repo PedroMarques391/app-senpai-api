@@ -1,9 +1,4 @@
-import {
-  createStickerDtoSchema,
-  updateStickerDtoSchema,
-  type CreateStickerDto,
-  type UpdateStickerDto,
-} from "@/dtos";
+import type { CreateStickerDto, UpdateStickerDto } from "@/dtos";
 import type { Sticker } from "@/models";
 import type {
   PackRepository,
@@ -37,10 +32,8 @@ export class StickerService {
 
     PermissionUtils.verifyOwnership(pack.user_id, userObjectId, "pacote");
 
-    const parsedData = createStickerDtoSchema.parse(stickerData);
-
     const sticker = await this.stickerRepository.create({
-      ...parsedData,
+      ...stickerData,
       pack_id: packObjectId,
       user_id: userObjectId,
     });
@@ -133,12 +126,10 @@ export class StickerService {
       "figurinha",
     );
 
-    const parsedData = updateStickerDtoSchema.parse(updateData);
-
     const sticker = await this.stickerRepository.update(
       stickerObjectId,
       userObjectId,
-      parsedData,
+      updateData,
     );
     if (!sticker) {
       throw new Error("Failed to update sticker, try again later");
