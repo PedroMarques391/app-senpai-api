@@ -9,15 +9,17 @@ import type { ObjectId } from "mongodb";
 
 export class StoreRepository implements IStoreRepository {
   private get collection() {
-    return MongoInitializer.getDb().collection<StoreItem>("STORE_ITEMS");
+    return MongoInitializer.getDb().collection<StoreItem>("store_items");
   }
 
   async findAll(): Promise<StoreItem[]> {
-    return this.collection.find({ is_active: true }).toArray();
+    const items = await this.collection.find({ is_active: true }).toArray();
+    return items;
   }
 
   async findById(id: ObjectId): Promise<StoreItem | null> {
-    return this.collection.findOne({ _id: id });
+    const item = await this.collection.findOne({ _id: id });
+    return item;
   }
 
   async create(data: CreateStoreItemPayload): Promise<StoreItem> {
