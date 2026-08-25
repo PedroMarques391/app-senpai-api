@@ -1,4 +1,9 @@
-import type { CreatePackDto, UpdatePackDto } from "@/dtos";
+import {
+  createPackDtoSchema,
+  updatePackDtoSchema,
+  type CreatePackDto,
+  type UpdatePackDto,
+} from "@/dtos";
 import type { StickerPack } from "@/models";
 import type { PackRepository } from "@/repositories";
 import { MongoUtils, PermissionUtils } from "@/utils";
@@ -20,11 +25,13 @@ export class PackService {
       throw new Error("Publisher not provided");
     }
 
-    const pack = await this.packRepository.create(
-      userObjectId,
+    const parsedData = createPackDtoSchema.parse(packData);
+
+    const pack = await this.packRepository.create({
+      ...parsedData,
+      user_id: userObjectId,
       publisher,
-      packData,
-    );
+    });
     if (!pack) {
       throw new Error("Error to create pack, try again later");
     }
@@ -80,10 +87,12 @@ export class PackService {
 
     PermissionUtils.verifyOwnership(existingPack.user_id, userObjectId, "pacote");
 
+    const parsedData = updatePackDtoSchema.parse(updateData);
+
     const pack = await this.packRepository.update(
       packObjectId,
       userObjectId,
-      updateData,
+      parsedData,
     );
     if (!pack) {
       throw new Error("Failed to update pack, try again later");

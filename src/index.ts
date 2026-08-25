@@ -6,6 +6,7 @@ import {
   packRoutes,
   profileRoutes,
   stickerRoutes,
+  storeRoutes,
   uploadRoutes,
 } from "@/routes";
 import fastifyMultipart from "@fastify/multipart";
@@ -44,6 +45,7 @@ server.register(async (app) => {
   app.register(packRoutes, { prefix: "/pack" });
   app.register(profileRoutes, { prefix: "/profile" });
   app.register(stickerRoutes, { prefix: "/sticker" });
+  app.register(storeRoutes, { prefix: "/store" });
   app.register(uploadRoutes, { prefix: "/upload" });
 });
 

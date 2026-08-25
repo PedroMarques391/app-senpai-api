@@ -1,9 +1,10 @@
-import { PackRepository, StickerRepository, UserRepository } from "@/repositories";
+import { PackRepository, StickerRepository, StoreRepository, UserRepository } from "@/repositories";
 import {
   AuthService,
   PackService,
   ProfileService,
   StickerService,
+  StoreService,
   UploadService,
   UserService,
 } from "@/services";
@@ -14,6 +15,7 @@ export class ServiceFactory {
   private static packService: PackService;
   private static profileService: ProfileService;
   private static stickerService: StickerService;
+  private static storeService: StoreService;
   private static uploadService: UploadService;
   private static userService: UserService;
 
@@ -54,6 +56,13 @@ export class ServiceFactory {
       this.userService = new UserService(new UserRepository());
     }
     return this.userService;
+  }
+
+  static getStoreService(): StoreService {
+    if (!this.storeService) {
+      this.storeService = new StoreService(new StoreRepository());
+    }
+    return this.storeService;
   }
 
   static getAuthService(jwtInstance: FastifyJWT): AuthService {
