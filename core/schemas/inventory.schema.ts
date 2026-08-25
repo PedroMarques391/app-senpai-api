@@ -5,8 +5,8 @@ export const inventoryItemSchema = z.object({
   item_id: z.instanceof(ObjectId),
   type: z.enum(["wallpaper", "gift"]),
   name: z.string(),
-  thumbnail_url: z.url(),
-  file_url: z.url(),
+  thumbnail_url: z.url().optional(),
+  file_url: z.url().optional(),
   acquired_at: z.coerce.date().default(() => new Date()),
 });
 
