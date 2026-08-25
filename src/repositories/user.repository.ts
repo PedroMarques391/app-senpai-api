@@ -1,6 +1,9 @@
-import type { CreateUserDto, UpdateUserDto } from "@/dtos";
 import { MongoInitializer } from "@/init";
-import type { User, UserRepository as IUserRepository } from "@/models";
+import type {
+  CreateUserPayload,
+  User,
+  UserRepository as IUserRepository,
+} from "@/models";
 import { userSchema } from "@/schemas";
 import type { UserId, UserIdentifier } from "@/types";
 import { ObjectId } from "mongodb";
@@ -15,7 +18,7 @@ export class UserRepository implements IUserRepository {
     return user;
   }
 
-  async create(userData: CreateUserDto): Promise<User | null> {
+  async create(userData: CreateUserPayload): Promise<User | null> {
     const insertSchema = userSchema.omit({ _id: true });
     const parsedData = insertSchema.parse(userData);
 
@@ -24,7 +27,7 @@ export class UserRepository implements IUserRepository {
     return this.collection.findOne({ _id: result.insertedId });
   }
 
-  async update(identifier: UserId, updateData: UpdateUserDto): Promise<User | null> {
+  async update(identifier: UserId, updateData: Partial<User>): Promise<User | null> {
     const result = await this.collection.findOneAndUpdate(
       identifier,
       { $set: updateData },

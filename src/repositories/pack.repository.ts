@@ -1,6 +1,10 @@
-import { updatePackDtoSchema, type CreatePackDto, type UpdatePackDto } from "@/dtos";
 import { MongoInitializer } from "@/init";
-import type { PackRepository as IPackRepository, Sticker, StickerPack } from "@/models";
+import type {
+  CreateStickerPackPayload,
+  PackRepository as IPackRepository,
+  Sticker,
+  StickerPack,
+} from "@/models";
 import { stickerPackSchema } from "@/schemas";
 import type { ObjectId } from "mongodb";
 
@@ -39,17 +43,9 @@ export class PackRepository implements IPackRepository {
     return Promise.all(packs.map((pack) => this.populateStickers(pack)));
   }
 
-  async create(
-    userId: ObjectId,
-    publisher: string,
-    packData: CreatePackDto,
-  ): Promise<StickerPack | null> {
+  async create(packData: CreateStickerPackPayload): Promise<StickerPack | null> {
     const insertSchema = stickerPackSchema.omit({ _id: true });
-    const parsedData = insertSchema.parse({
-      ...packData,
-      user_id: userId,
-      publisher,
-    });
+    const parsedData = insertSchema.parse(packData);
 
     const result = await this.collection.insertOne(parsedData as StickerPack);
     if (!result.insertedId) return null;
@@ -59,15 +55,13 @@ export class PackRepository implements IPackRepository {
   async update(
     id: ObjectId,
     userId: ObjectId,
-    updateData: UpdatePackDto,
+    updateData: Partial<StickerPack>,
   ): Promise<StickerPack | null> {
-    const parsedData = updatePackDtoSchema.parse(updateData);
-
     const result = await this.collection.findOneAndUpdate(
       { _id: id, user_id: userId },
       {
         $set: {
-          ...parsedData,
+          ...updateData,
           updated_at: new Date(),
         },
       },

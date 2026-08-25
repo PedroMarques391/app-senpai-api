@@ -1,6 +1,9 @@
-import { updateStickerDtoSchema, type CreateStickerDto, type UpdateStickerDto } from "@/dtos";
 import { MongoInitializer } from "@/init";
-import type { Sticker, StickerRepository as IStickerRepository } from "@/models";
+import type {
+  CreateStickerPayload,
+  Sticker,
+  StickerRepository as IStickerRepository,
+} from "@/models";
 import { stickerSchema } from "@/schemas";
 import type { ObjectId } from "mongodb";
 
@@ -29,17 +32,9 @@ export class StickerRepository implements IStickerRepository {
     return stickers;
   }
 
-  async create(
-    packId: ObjectId,
-    userId: ObjectId,
-    stickerData: CreateStickerDto,
-  ): Promise<Sticker | null> {
+  async create(stickerData: CreateStickerPayload): Promise<Sticker | null> {
     const insertSchema = stickerSchema.omit({ _id: true });
-    const parsedData = insertSchema.parse({
-      ...stickerData,
-      user_id: userId,
-      pack_id: packId,
-    });
+    const parsedData = insertSchema.parse(stickerData);
 
     const result = await this.collection.insertOne(parsedData as Sticker);
     if (!result.insertedId) return null;
@@ -49,15 +44,14 @@ export class StickerRepository implements IStickerRepository {
   async update(
     id: ObjectId,
     userId: ObjectId,
-    updateData: UpdateStickerDto,
+    updateData: Partial<Sticker>,
   ): Promise<Sticker | null> {
-    const parsedData = updateStickerDtoSchema.parse(updateData);
-
     const result = await this.collection.findOneAndUpdate(
       { _id: id, user_id: userId },
       {
         $set: {
-          ...parsedData,
+          ...updateData,
+          updated_at: new Date(),
         },
       },
       { returnDocument: "after" },
