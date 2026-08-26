@@ -7,6 +7,8 @@ export const createPackDtoSchema = stickerPackSchema
     icon_url: true,
     is_public: true,
     description: true,
+    category: true,
+    tags: true,
   })
   .strict();
 

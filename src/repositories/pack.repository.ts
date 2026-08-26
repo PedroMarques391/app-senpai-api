@@ -3,10 +3,13 @@ import {
   insertStickerPackSchema,
   type CreateStickerPackPayload,
   type PackRepository as IPackRepository,
+  type PackRepositoryFindAllResult,
+  type PackRepositoryOptions,
+  type PaginationOptions,
   type Sticker,
   type StickerPack,
 } from "@/models";
-import type { ObjectId } from "mongodb";
+import type { Filter, ObjectId } from "mongodb";
 
 export class PackRepository implements IPackRepository {
   private get collection() {
@@ -27,9 +30,49 @@ export class PackRepository implements IPackRepository {
     };
   }
 
-  async findAll(): Promise<StickerPack[]> {
-    const packs = await this.collection.find().toArray();
-    return Promise.all(packs.map((pack) => this.populateStickers(pack)));
+  private buildQuery(options?: PackRepositoryOptions): Filter<StickerPack> {
+    const filter: Filter<StickerPack> = {};
+
+    if (options?.category) {
+      filter.category = options.category;
+    }
+
+    if (options?.tags && options.tags.length > 0) {
+      filter.tags = { $in: options.tags };
+    }
+
+    if (options?.search) {
+      filter.pack_name = { $regex: options.search, $options: "i" };
+    }
+
+    return filter;
+  }
+
+  async findAll(
+    options: PackRepositoryOptions,
+    pagination: PaginationOptions,
+  ): Promise<PackRepositoryFindAllResult> {
+    const filter = this.buildQuery(options);
+    console.log(filter);
+
+    const [packs, total] = await Promise.all([
+      this.collection
+        .find(filter)
+        .sort({ created_at: -1 })
+        .skip((pagination.page - 1) * pagination.limit)
+        .limit(pagination.limit)
+        .toArray(),
+      this.collection.countDocuments(filter),
+    ]);
+
+    const populatedPacks = await Promise.all(
+      packs.map((pack) => this.populateStickers(pack)),
+    );
+
+    return {
+      packs: populatedPacks,
+      total,
+    };
   }
 
   async findById(id: ObjectId): Promise<StickerPack | null> {
@@ -43,7 +86,9 @@ export class PackRepository implements IPackRepository {
     return Promise.all(packs.map((pack) => this.populateStickers(pack)));
   }
 
-  async create(packData: CreateStickerPackPayload): Promise<StickerPack | null> {
+  async create(
+    packData: CreateStickerPackPayload,
+  ): Promise<StickerPack | null> {
     const parsedData = insertStickerPackSchema.parse(packData);
 
     const result = await this.collection.insertOne(parsedData as StickerPack);

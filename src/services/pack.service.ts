@@ -1,5 +1,10 @@
 import type { CreatePackDto, UpdatePackDto } from "@/dtos";
-import type { StickerPack } from "@/models";
+import type {
+  PackRepositoryOptions,
+  PaginatedPacksResult,
+  PaginationOptions,
+  StickerPack,
+} from "@/models";
 import type { PackRepository } from "@/repositories";
 import { MongoUtils, PermissionUtils } from "@/utils";
 
@@ -20,8 +25,11 @@ export class PackService {
       throw new Error("Publisher not provided");
     }
 
+    const sanitizedTags = packData.tags?.map((tag) => tag.toLowerCase().trim());
+
     const pack = await this.packRepository.create({
       ...packData,
+      tags: sanitizedTags,
       user_id: userObjectId,
       publisher,
     });
@@ -31,9 +39,36 @@ export class PackService {
     return pack;
   }
 
-  async findAll(): Promise<StickerPack[]> {
-    const packs = await this.packRepository.findAll();
-    return packs;
+  async findAll(
+    options: PackRepositoryOptions,
+    pagination: PaginationOptions,
+  ): Promise<PaginatedPacksResult> {
+    const page = pagination.page > 0 ? pagination.page : 1;
+    const limit = pagination.limit > 0 ? Math.min(pagination.limit, 50) : 20;
+
+    const paginationOptions: PaginationOptions = {
+      page,
+      limit,
+    };
+
+    const repositoryOptions: PackRepositoryOptions = {
+      category: options.category,
+      search: options.search,
+      tags: options.tags?.map((tag) => tag.toLowerCase().trim()),
+    };
+
+    const { packs, total } = await this.packRepository.findAll(
+      repositoryOptions,
+      paginationOptions,
+    );
+
+    return {
+      packs,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit) || 1,
+    };
   }
 
   async findById(id: string): Promise<StickerPack | null> {
@@ -42,7 +77,10 @@ export class PackService {
     return pack;
   }
 
-  async findByUserId(userId: string, currentUserId: string): Promise<StickerPack[]> {
+  async findByUserId(
+    userId: string,
+    currentUserId: string,
+  ): Promise<StickerPack[]> {
     const userObjectId = MongoUtils.toObjectId(
       userId,
       "ID de usuário inválido",
@@ -57,7 +95,11 @@ export class PackService {
       return [];
     }
 
-    PermissionUtils.verifyOwnership(currentUserIdObject, userObjectId, "pacotes do usuário");
+    PermissionUtils.verifyOwnership(
+      currentUserIdObject,
+      userObjectId,
+      "pacotes do usuário",
+    );
 
     return packs;
   }
@@ -78,7 +120,11 @@ export class PackService {
       throw new Error("Pacote não encontrado");
     }
 
-    PermissionUtils.verifyOwnership(existingPack.user_id, userObjectId, "pacote");
+    PermissionUtils.verifyOwnership(
+      existingPack.user_id,
+      userObjectId,
+      "pacote",
+    );
 
     const pack = await this.packRepository.update(
       packObjectId,
@@ -92,10 +138,7 @@ export class PackService {
     return pack;
   }
 
-  async delete(
-    id: string,
-    userId: string,
-  ): Promise<boolean> {
+  async delete(id: string, userId: string): Promise<boolean> {
     const packObjectId = MongoUtils.toObjectId(id, "ID do pacote inválido");
     const userObjectId = MongoUtils.toObjectId(
       userId,
@@ -107,12 +150,13 @@ export class PackService {
       throw new Error("Pacote não encontrado");
     }
 
-    PermissionUtils.verifyOwnership(existingPack.user_id, userObjectId, "pacote");
-
-    const result = await this.packRepository.delete(
-      packObjectId,
+    PermissionUtils.verifyOwnership(
+      existingPack.user_id,
       userObjectId,
+      "pacote",
     );
+
+    const result = await this.packRepository.delete(packObjectId, userObjectId);
     if (!result) {
       throw new Error("Failed to delete pack, try again later");
     }
