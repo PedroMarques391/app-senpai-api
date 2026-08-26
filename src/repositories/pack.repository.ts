@@ -42,7 +42,11 @@ export class PackRepository implements IPackRepository {
     }
 
     if (options?.search) {
-      filter.pack_name = { $regex: options.search, $options: "i" };
+      filter.$or = [
+        { pack_name: { $regex: options.search, $options: "i" } },
+        { description: { $regex: options.search, $options: "i" } },
+        { publisher: { $regex: options.search, $options: "i" } },
+      ];
     }
 
     return filter;
@@ -53,7 +57,6 @@ export class PackRepository implements IPackRepository {
     pagination: PaginationOptions,
   ): Promise<PackRepositoryFindAllResult> {
     const filter = this.buildQuery(options);
-    console.log(filter);
 
     const [packs, total] = await Promise.all([
       this.collection

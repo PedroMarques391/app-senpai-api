@@ -13,7 +13,7 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
       schema: {
         querystring: z.object({
           user: z.string().optional(),
-          name: z.string().optional(),
+          search: z.string().optional(),
           tags: z
             .union([z.string(), z.array(z.string())])
             .transform((value) => (typeof value === "string" ? [value] : value))
@@ -25,7 +25,7 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
-      const { user, name, tags, category, page, limit } = request.query;
+      const { user, search, tags, category, page, limit } = request.query;
 
       if (user) {
         const packs = await packService.findByUserId(user, request.user._id);
@@ -34,7 +34,7 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
 
       const result = await packService.findAll(
         {
-          search: name,
+          search,
           tags,
           category,
         },
