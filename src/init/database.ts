@@ -1,10 +1,14 @@
 import { Db, MongoClient } from "mongodb";
 
 export class MongoInitializer {
-  private static client: MongoClient;
-  private static db: Db;
+  private static client: MongoClient | null = null;
+  private static db: Db | null = null;
 
   public static async init(): Promise<void> {
+    if (this.client) {
+      return;
+    }
+
     const uri = process.env.MONGO_URI;
 
     if (!uri) {
@@ -27,10 +31,15 @@ export class MongoInitializer {
         .collection("customers")
         .createIndex({ userName: 1 }, { unique: true, sparse: true });
 
-      await this.db.collection("packages").createIndex({ user_id: 1 });
+      await this.db.collection("stickerPacks").createIndex({ user_id: 1 });
+      await this.db.collection("stickerPacks").createIndex({ category: 1 });
+      await this.db.collection("stickerPacks").createIndex({ tags: 1 });
+      await this.db.collection("stickerPacks").createIndex({ created_at: -1 });
 
       await this.db.collection("stickers").createIndex({ user_id: 1, type: 1 });
       await this.db.collection("stickers").createIndex({ pack_id: 1 });
+
+      await this.db.collection("store_items").createIndex({ is_active: 1 });
 
       await this.db
         .collection("daily_missions")
@@ -45,7 +54,9 @@ export class MongoInitializer {
 
   public static getDb(): Db {
     if (!this.db) {
-      throw new Error("Database not initialized. Call Mongo.init() first.");
+      throw new Error(
+        "Database not initialized. Call MongoInitializer.init() first.",
+      );
     }
     return this.db;
   }
@@ -53,9 +64,18 @@ export class MongoInitializer {
   public static getClient(): MongoClient {
     if (!this.client) {
       throw new Error(
-        "Database client not initialized. Call Mongo.init() first.",
+        "Database client not initialized. Call MongoInitializer.init() first.",
       );
     }
     return this.client;
+  }
+
+  public static async close(): Promise<void> {
+    if (this.client) {
+      await this.client.close();
+      this.client = null;
+      this.db = null;
+      console.log("🔌 MongoDB connection closed");
+    }
   }
 }
