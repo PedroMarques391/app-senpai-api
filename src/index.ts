@@ -3,6 +3,7 @@ import authPlugin from "@/plugin/auth.plugin";
 import { errorPlugin } from "@/plugin/error.plugin";
 import {
   authRoutes,
+  inventoryRoutes,
   packRoutes,
   profileRoutes,
   stickerRoutes,
@@ -42,6 +43,7 @@ server.register(async (app) => {
     return "This is senpai backend...";
   });
 
+  app.register(inventoryRoutes, { prefix: "/inventory" });
   app.register(packRoutes, { prefix: "/pack" });
   app.register(profileRoutes, { prefix: "/profile" });
   app.register(stickerRoutes, { prefix: "/sticker" });

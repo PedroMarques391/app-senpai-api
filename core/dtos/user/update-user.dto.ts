@@ -16,7 +16,6 @@ export const updateUserDtoSchema = userSchema
     isEmailVerified: true,
     isNumberVerified: true,
     petals_balance: true,
-    inventory_id: true,
     stickers_count: true,
     daily_missions: true,
     subscriptions: true,

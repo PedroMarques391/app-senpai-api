@@ -42,6 +42,16 @@ export class MongoInitializer {
       await this.db.collection("store_items").createIndex({ is_active: 1 });
 
       await this.db
+        .collection("user_items")
+        .createIndex({ user_id: 1, item_id: 1 }, { unique: true });
+      await this.db
+        .collection("user_items")
+        .createIndex({ user_id: 1, item_type: 1 });
+      await this.db
+        .collection("user_items")
+        .createIndex({ user_id: 1, acquired_at: -1 });
+
+      await this.db
         .collection("daily_missions")
         .createIndex({ mission_key: 1 }, { unique: true });
 
