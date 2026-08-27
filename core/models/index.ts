@@ -1,4 +1,6 @@
 export * from "./daily-mission.model";
+export * from "./inventory-item.model";
+export * from "./inventory.repository.model";
 export * from "./pack.repository";
 export * from "./sticker-pack.model";
 export * from "./sticker.model";
