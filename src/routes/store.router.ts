@@ -31,6 +31,22 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
   );
 
   app.post(
+    "/:id/purchase",
+    { schema: { params: z.object({ id: z.string() }) } },
+    async (request, reply) => {
+      const item = await storeService.purchaseItem(
+        request.user._id,
+        request.params.id,
+      );
+      return reply.status(200).send({
+        success: true,
+        message: "Item adquirido com sucesso",
+        item,
+      });
+    },
+  );
+
+  app.post(
     "/",
     {
       preHandler: [verifyAdmin],

@@ -1,9 +1,18 @@
 import type { CreateStoreItemDto, UpdateStoreItemDto } from "@/dtos";
-import type { StoreItem, StoreRepository } from "@/models";
+import type { InventoryItem, InventoryItemType, StoreItem } from "@/models";
+import type {
+  InventoryRepository,
+  StoreRepository,
+  UserRepository,
+} from "@/repositories";
 import { MongoUtils } from "@/utils";
 
 export class StoreService {
-  constructor(private readonly storeRepository: StoreRepository) {}
+  constructor(
+    private readonly storeRepository: StoreRepository,
+    private readonly userRepository?: UserRepository,
+    private readonly inventoryRepository?: InventoryRepository,
+  ) {}
 
   async listItems(): Promise<StoreItem[]> {
     return this.storeRepository.findAll();
@@ -47,5 +56,62 @@ export class StoreService {
 
     const result = await this.storeRepository.delete(storeObjectId);
     if (!result) throw new Error("Falha ao deletar item da loja");
+  }
+
+  async purchaseItem(userId: string, itemId: string): Promise<InventoryItem> {
+    if (!this.userRepository || !this.inventoryRepository) {
+      throw new Error(
+        "Dependências de compra não configuradas no StoreService",
+      );
+    }
+
+    const userObjectId = MongoUtils.toObjectId(
+      userId,
+      "ID de usuário inválido",
+    );
+    const itemObjectId = MongoUtils.toObjectId(
+      itemId,
+      "ID do item da loja inválido",
+    );
+
+    const storeItem = await this.storeRepository.findById(itemObjectId);
+    if (!storeItem || !storeItem.is_active) {
+      throw new Error("Item da loja não encontrado ou inativo");
+    }
+
+    const user = await this.userRepository.find({ _id: userObjectId });
+    if (!user) {
+      throw new Error("Usuário não encontrado");
+    }
+    const alreadyOwned = await this.inventoryRepository.findByUserAndItem(
+      userObjectId,
+      itemObjectId,
+    );
+    if (alreadyOwned) {
+      throw new Error("Você já possui este item em seu inventário");
+    }
+
+    if (user.petals_balance < storeItem.price_in_petals) {
+      throw new Error("Pétalas insuficientes para adquirir este item");
+    }
+
+    const deducted = await this.userRepository.deductPetals(
+      userObjectId,
+      storeItem.price_in_petals,
+    );
+    if (!deducted) {
+      throw new Error("Falha ao debitar pétalas da conta");
+    }
+
+    const itemType = storeItem.type as InventoryItemType;
+    const inventoryItem = await this.inventoryRepository.create(
+      userObjectId,
+      itemObjectId,
+      itemType,
+    );
+
+    await this.storeRepository.incrementPurchasesCount(itemObjectId);
+
+    return inventoryItem;
   }
 }

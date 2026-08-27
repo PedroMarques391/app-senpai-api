@@ -1,6 +1,13 @@
-import { PackRepository, StickerRepository, StoreRepository, UserRepository } from "@/repositories";
+import {
+  InventoryRepository,
+  PackRepository,
+  StickerRepository,
+  StoreRepository,
+  UserRepository,
+} from "@/repositories";
 import {
   AuthService,
+  InventoryService,
   PackService,
   ProfileService,
   StickerService,
@@ -12,12 +19,20 @@ import {
 import type { JWT as FastifyJWT } from "@fastify/jwt";
 
 export class ServiceFactory {
+  private static inventoryService: InventoryService;
   private static packService: PackService;
   private static profileService: ProfileService;
   private static stickerService: StickerService;
   private static storeService: StoreService;
   private static uploadService: UploadService;
   private static userService: UserService;
+
+  static getInventoryService(): InventoryService {
+    if (!this.inventoryService) {
+      this.inventoryService = new InventoryService(new InventoryRepository());
+    }
+    return this.inventoryService;
+  }
 
   static getPackService(): PackService {
     if (!this.packService) {
@@ -60,7 +75,11 @@ export class ServiceFactory {
 
   static getStoreService(): StoreService {
     if (!this.storeService) {
-      this.storeService = new StoreService(new StoreRepository());
+      this.storeService = new StoreService(
+        new StoreRepository(),
+        new UserRepository(),
+        new InventoryRepository(),
+      );
     }
     return this.storeService;
   }

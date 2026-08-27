@@ -26,7 +26,10 @@ export class UserRepository implements IUserRepository {
     return this.collection.findOne({ _id: result.insertedId });
   }
 
-  async update(identifier: UserId, updateData: Partial<User>): Promise<User | null> {
+  async update(
+    identifier: UserId,
+    updateData: Partial<User>,
+  ): Promise<User | null> {
     const result = await this.collection.findOneAndUpdate(
       identifier,
       { $set: updateData },
@@ -48,5 +51,14 @@ export class UserRepository implements IUserRepository {
       { _id: userId },
       { $inc: { [`stickers_count.${type}`]: amount } },
     );
+  }
+
+  async deductPetals(userId: ObjectId, amount: number): Promise<boolean> {
+    const result = await this.collection.updateOne(
+      { _id: userId, petals_balance: { $gte: amount } },
+      { $inc: { petals_balance: -amount } },
+    );
+
+    return result.modifiedCount > 0;
   }
 }

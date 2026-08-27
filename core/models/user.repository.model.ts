@@ -1,6 +1,6 @@
 import type { UserId, UserIdentifier } from "core/types";
-import type { CreateUserPayload, User } from "./user.model";
 import { ObjectId } from "mongodb";
+import type { CreateUserPayload, User } from "./user.model";
 
 export interface UserRepository {
   find(identifier: UserIdentifier): Promise<User | null>;
@@ -12,4 +12,5 @@ export interface UserRepository {
     type: "static" | "dynamic",
     amount?: number,
   ): Promise<void>;
+  deductPetals(userId: ObjectId, amount: number): Promise<boolean>;
 }

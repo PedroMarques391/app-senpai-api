@@ -45,4 +45,11 @@ export class StoreRepository implements IStoreRepository {
     const result = await this.collection.deleteOne({ _id: id });
     return result.deletedCount > 0;
   }
+
+  async incrementPurchasesCount(id: ObjectId): Promise<void> {
+    await this.collection.updateOne(
+      { _id: id },
+      { $inc: { purchases_count: 1 } },
+    );
+  }
 }

@@ -7,4 +7,5 @@ export interface StoreRepository {
   create(data: CreateStoreItemPayload): Promise<StoreItem>;
   update(id: ObjectId, data: Partial<StoreItem>): Promise<StoreItem | null>;
   delete(id: ObjectId): Promise<boolean>;
+  incrementPurchasesCount(id: ObjectId): Promise<void>;
 }
