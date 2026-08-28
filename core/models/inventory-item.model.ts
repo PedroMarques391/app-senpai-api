@@ -1,6 +1,7 @@
 import {
   inventoryItemSchema,
-  inventoryItemTypeEnum,
+  storeItemTypeEnum,
+  type StoreItemType,
   type InventoryItemType,
 } from "@/schemas";
 import { z } from "zod";
@@ -14,4 +15,4 @@ export type CreateInventoryItemPayload = z.input<
   typeof insertInventoryItemSchema
 >;
 
-export { inventoryItemTypeEnum, type InventoryItemType };
+export { storeItemTypeEnum, type StoreItemType, type InventoryItemType };

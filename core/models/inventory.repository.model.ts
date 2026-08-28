@@ -1,4 +1,4 @@
-import type { InventoryItem, InventoryItemType } from "@/models";
+import type { InventoryItem, StoreItemType } from "@/models";
 import type { ObjectId } from "mongodb";
 
 export interface InventoryRepository {
@@ -10,6 +10,6 @@ export interface InventoryRepository {
   create(
     userId: ObjectId,
     itemId: ObjectId,
-    itemType: InventoryItemType,
+    itemType: StoreItemType,
   ): Promise<InventoryItem>;
 }

@@ -1,5 +1,5 @@
 import type { CreateStoreItemDto, UpdateStoreItemDto } from "@/dtos";
-import type { InventoryItem, InventoryItemType, StoreItem } from "@/models";
+import type { InventoryItem, StoreItem } from "@/models";
 import type {
   InventoryRepository,
   StoreRepository,
@@ -79,35 +79,27 @@ export class StoreService {
       throw new Error("Item da loja não encontrado ou inativo");
     }
 
-    const user = await this.userRepository.find({ _id: userObjectId });
+    const [user, alreadyOwned, deducted] = await Promise.all([
+      this.userRepository.find({ _id: userObjectId }),
+      this.inventoryRepository.findByUserAndItem(userObjectId, itemObjectId),
+      this.userRepository.deductPetals(userObjectId, storeItem.price_in_petals),
+    ]);
+
     if (!user) {
       throw new Error("Usuário não encontrado");
     }
-    const alreadyOwned = await this.inventoryRepository.findByUserAndItem(
-      userObjectId,
-      itemObjectId,
-    );
     if (alreadyOwned) {
       throw new Error("Você já possui este item em seu inventário");
     }
 
-    if (user.petals_balance < storeItem.price_in_petals) {
+    if (user.petals_balance < storeItem.price_in_petals || !deducted) {
       throw new Error("Pétalas insuficientes para adquirir este item");
     }
 
-    const deducted = await this.userRepository.deductPetals(
-      userObjectId,
-      storeItem.price_in_petals,
-    );
-    if (!deducted) {
-      throw new Error("Falha ao debitar pétalas da conta");
-    }
-
-    const itemType = storeItem.type as InventoryItemType;
     const inventoryItem = await this.inventoryRepository.create(
       userObjectId,
       itemObjectId,
-      itemType,
+      storeItem.type,
     );
 
     await this.storeRepository.incrementPurchasesCount(itemObjectId);

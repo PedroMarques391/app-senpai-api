@@ -1,7 +1,7 @@
 import { MongoInitializer } from "@/init";
 import {
   type InventoryItem,
-  type InventoryItemType,
+  type StoreItemType,
   type InventoryRepository as IInventoryRepository,
 } from "@/models";
 import type { ObjectId } from "mongodb";
@@ -28,7 +28,7 @@ export class InventoryRepository implements IInventoryRepository {
   async create(
     userId: ObjectId,
     itemId: ObjectId,
-    itemType: InventoryItemType,
+    itemType: StoreItemType,
   ): Promise<InventoryItem> {
     const newItem: Omit<InventoryItem, "_id"> = {
       user_id: userId,
