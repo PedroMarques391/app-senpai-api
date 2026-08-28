@@ -13,6 +13,9 @@ export const storeItemTypeEnum = z.enum([
 ]);
 export type StoreItemType = z.infer<typeof storeItemTypeEnum>;
 
+export const storeItemStatusEnum = z.enum(["active", "inactive"]);
+export type StoreItemStatus = z.infer<typeof storeItemStatusEnum>;
+
 export const storeItemSchema = z.object({
   _id: z.instanceof(ObjectId),
   name: z.string().min(3).max(50),
@@ -24,7 +27,7 @@ export const storeItemSchema = z.object({
   thumbnail_url: z.url(),
   file_cloudinary_id: z.string().optional(),
   file_url: z.url().optional(),
-  is_active: z.boolean().default(true),
+  status: storeItemStatusEnum.default("active"),
   created_at: z.coerce.date().default(() => new Date()),
   updated_at: z.coerce.date().default(() => new Date()),
 });

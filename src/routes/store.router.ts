@@ -1,5 +1,6 @@
 import { createStoreItemDtoSchema, updateStoreItemDtoSchema } from "@/dtos";
 import { ServiceFactory } from "@/factories";
+import { storeItemStatusEnum } from "@/schemas";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
@@ -16,10 +17,20 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
     }
   };
 
-  app.get("/", async (request, reply) => {
-    const items = await storeService.listItems();
-    return reply.status(200).send({ success: true, items });
-  });
+  app.get(
+    "/",
+    {
+      schema: {
+        querystring: z.object({
+          status: storeItemStatusEnum.optional(),
+        }),
+      },
+    },
+    async (request, reply) => {
+      const items = await storeService.listItems(request.query.status);
+      return reply.status(200).send({ success: true, items });
+    },
+  );
 
   app.get(
     "/:id",

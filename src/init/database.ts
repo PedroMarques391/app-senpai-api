@@ -39,7 +39,7 @@ export class MongoInitializer {
       await this.db.collection("stickers").createIndex({ user_id: 1, type: 1 });
       await this.db.collection("stickers").createIndex({ pack_id: 1 });
 
-      await this.db.collection("store_items").createIndex({ is_active: 1 });
+      await this.db.collection("store_items").createIndex({ status: 1 });
 
       await this.db
         .collection("user_items")

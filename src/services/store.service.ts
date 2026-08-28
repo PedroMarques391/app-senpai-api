@@ -1,5 +1,5 @@
 import type { CreateStoreItemDto, UpdateStoreItemDto } from "@/dtos";
-import type { InventoryItem, StoreItem } from "@/models";
+import type { InventoryItem, StoreItem, StoreItemStatus } from "@/models";
 import type {
   InventoryRepository,
   StoreRepository,
@@ -14,8 +14,8 @@ export class StoreService {
     private readonly inventoryRepository?: InventoryRepository,
   ) {}
 
-  async listItems(): Promise<StoreItem[]> {
-    return this.storeRepository.findAll();
+  async listItems(status?: StoreItemStatus): Promise<StoreItem[]> {
+    return this.storeRepository.findAll(status);
   }
 
   async getItem(id: string): Promise<StoreItem> {
@@ -28,40 +28,40 @@ export class StoreService {
     return item;
   }
 
-  async createItem(data: CreateStoreItemDto): Promise<StoreItem> {
-    if (!data) throw new Error("Dados inválidos");
-    const item = await this.storeRepository.create(data);
-    if (!item) throw new Error("Falha ao criar item da loja");
-    return item;
+  async createItem(dto: CreateStoreItemDto): Promise<StoreItem> {
+    return this.storeRepository.create(dto);
   }
 
-  async updateItem(id: string, data: UpdateStoreItemDto): Promise<StoreItem> {
+  async updateItem(id: string, dto: UpdateStoreItemDto): Promise<StoreItem> {
     const storeObjectId = MongoUtils.toObjectId(
       id,
       "ID do item da loja inválido",
     );
-    const updated = await this.storeRepository.update(storeObjectId, data);
-    if (!updated) throw new Error("Item da loja não encontrado");
+
+    const existing = await this.storeRepository.findById(storeObjectId);
+    if (!existing) throw new Error("Item da loja não encontrado");
+
+    const updated = await this.storeRepository.update(storeObjectId, dto);
+    if (!updated) throw new Error("Falha ao atualizar item da loja");
     return updated;
   }
 
-  async deleteItem(id: string): Promise<void> {
+  async deleteItem(id: string): Promise<boolean> {
     const storeObjectId = MongoUtils.toObjectId(
       id,
       "ID do item da loja inválido",
     );
 
-    const item = await this.storeRepository.findById(storeObjectId);
-    if (!item) throw new Error("Item da loja não encontrado");
+    const existing = await this.storeRepository.findById(storeObjectId);
+    if (!existing) throw new Error("Item da loja não encontrado");
 
-    const result = await this.storeRepository.delete(storeObjectId);
-    if (!result) throw new Error("Falha ao deletar item da loja");
+    return this.storeRepository.delete(storeObjectId);
   }
 
   async purchaseItem(userId: string, itemId: string): Promise<InventoryItem> {
     if (!this.userRepository || !this.inventoryRepository) {
       throw new Error(
-        "Dependências de compra não configuradas no StoreService",
+        "Dependências do serviço de compra não configuradas no construtor",
       );
     }
 
@@ -75,7 +75,7 @@ export class StoreService {
     );
 
     const storeItem = await this.storeRepository.findById(itemObjectId);
-    if (!storeItem || !storeItem.is_active) {
+    if (!storeItem || storeItem.status !== "active") {
       throw new Error("Item da loja não encontrado ou inativo");
     }
 

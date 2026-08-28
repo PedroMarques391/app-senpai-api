@@ -1,8 +1,12 @@
 import type { ObjectId } from "mongodb";
-import type { CreateStoreItemPayload, StoreItem } from "./store.model";
+import type {
+  CreateStoreItemPayload,
+  StoreItem,
+  StoreItemStatus,
+} from "./store.model";
 
 export interface StoreRepository {
-  findAll(): Promise<StoreItem[]>;
+  findAll(status?: StoreItemStatus): Promise<StoreItem[]>;
   findById(id: ObjectId): Promise<StoreItem | null>;
   create(data: CreateStoreItemPayload): Promise<StoreItem>;
   update(id: ObjectId, data: Partial<StoreItem>): Promise<StoreItem | null>;
