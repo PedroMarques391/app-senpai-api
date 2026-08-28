@@ -1,5 +1,5 @@
-export * from "./api.types";
-export * from "./auth.types";
-export * from "./upload.types";
-export * from "./user-identifier.type";
-
+export * from "./api";
+export * from "./auth";
+export * from "./pagination";
+export * from "./upload";
+export * from "./user";

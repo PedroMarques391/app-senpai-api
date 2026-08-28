@@ -1,5 +1,5 @@
-import type { User } from "@/models/user.model";
-import { userSchema } from "@/schemas/user.schema";
+import type { User } from "@/models";
+import { userSchema } from "@/schemas";
 
 export class UserUtils {
   static isDifferentUser(

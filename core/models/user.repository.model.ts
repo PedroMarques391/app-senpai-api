@@ -1,4 +1,4 @@
-import type { UserId, UserIdentifier } from "core/types";
+import type { UserId, UserIdentifier } from "@/types";
 import { ObjectId } from "mongodb";
 import type { CreateUserPayload, User } from "./user.model";
 

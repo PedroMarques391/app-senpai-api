@@ -2,18 +2,16 @@ import type {
   CreateStickerPackPayload,
   PackCategory,
   StickerPack,
-} from "core/models/sticker-pack.model";
+} from "@/models";
+import type { PaginationOptions } from "@/types";
 import type { ObjectId } from "mongodb";
+
+export type { PaginationOptions } from "@/types";
 
 export interface PackRepositoryOptions {
   category?: PackCategory;
   tags?: string[];
   search?: string;
-}
-
-export interface PaginationOptions {
-  page: number;
-  limit: number;
 }
 
 export interface PackRepositoryFindAllResult {

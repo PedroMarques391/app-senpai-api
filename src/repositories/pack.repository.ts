@@ -1,11 +1,11 @@
 import { MongoInitializer } from "@/init";
+import type { PaginationOptions } from "@/types";
 import {
   insertStickerPackSchema,
   type CreateStickerPackPayload,
   type PackRepository as IPackRepository,
   type PackRepositoryFindAllResult,
   type PackRepositoryOptions,
-  type PaginationOptions,
   type Sticker,
   type StickerPack,
 } from "@/models";

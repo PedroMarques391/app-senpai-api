@@ -2,9 +2,9 @@ import type { CreatePackDto, UpdatePackDto } from "@/dtos";
 import type {
   PackRepositoryOptions,
   PaginatedPacksResult,
-  PaginationOptions,
   StickerPack,
 } from "@/models";
+import type { PaginationOptions } from "@/types";
 import type { PackRepository } from "@/repositories";
 import { MongoUtils, PermissionUtils } from "@/utils";
 
