@@ -4,6 +4,7 @@ import "fastify";
 declare module "fastify" {
   export interface FastifyInstance {
     authenticate: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    requireAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
 }
 

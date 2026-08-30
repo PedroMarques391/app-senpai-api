@@ -17,3 +17,9 @@ dist/*
 
 #!.yarn/cache
 .pnp.*
+
+# Temporary / Scratch directories
+temp/
+tmp/
+.temp/
+

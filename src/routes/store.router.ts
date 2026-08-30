@@ -1,21 +1,11 @@
 import { createStoreItemDtoSchema, updateStoreItemDtoSchema } from "@/dtos";
 import { ServiceFactory } from "@/factories";
 import { storeItemStatusEnum } from "@/schemas";
-import type { FastifyReply, FastifyRequest } from "fastify";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
 
 export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
   const storeService = ServiceFactory.getStoreService();
-
-  const verifyAdmin = async (request: FastifyRequest, reply: FastifyReply) => {
-    if (request.user.role !== "admin") {
-      return reply.status(403).send({
-        success: false,
-        message: "Acesso negado. Requer privilégios de administrador.",
-      });
-    }
-  };
 
   app.get(
     "/",
@@ -60,7 +50,7 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post(
     "/",
     {
-      preHandler: [verifyAdmin],
+      preHandler: [app.requireAdmin],
       schema: { body: createStoreItemDtoSchema },
     },
     async (request, reply) => {
@@ -76,7 +66,7 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
   app.put(
     "/:id",
     {
-      preHandler: [verifyAdmin],
+      preHandler: [app.requireAdmin],
       schema: {
         params: z.object({ id: z.string() }),
         body: updateStoreItemDtoSchema,
@@ -98,7 +88,7 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
   app.delete(
     "/:id",
     {
-      preHandler: [verifyAdmin],
+      preHandler: [app.requireAdmin],
       schema: { params: z.object({ id: z.string() }) },
     },
     async (request, reply) => {
