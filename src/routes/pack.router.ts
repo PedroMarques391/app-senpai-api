@@ -1,6 +1,9 @@
-import { createPackDtoSchema, updatePackDtoSchema } from "@/dtos";
+import {
+  createPackDtoSchema,
+  listPackQuerySchema,
+  updatePackDtoSchema,
+} from "@/dtos";
 import { ServiceFactory } from "@/factories";
-import { packCategoryEnum } from "@/models";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
 
@@ -11,17 +14,7 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
     "/",
     {
       schema: {
-        querystring: z.object({
-          user: z.string().optional(),
-          search: z.string().optional(),
-          tags: z
-            .union([z.string(), z.array(z.string())])
-            .transform((value) => (typeof value === "string" ? [value] : value))
-            .optional(),
-          category: packCategoryEnum.optional(),
-          page: z.coerce.number().int().min(1).default(1),
-          limit: z.coerce.number().int().min(1).max(50).default(20),
-        }),
+        querystring: listPackQuerySchema,
       },
     },
     async (request, reply) => {

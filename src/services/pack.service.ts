@@ -1,11 +1,11 @@
-import type { CreatePackDto, UpdatePackDto } from "@/dtos";
 import type {
+  CreatePackDto,
   PackRepositoryOptions,
-  PaginatedPacksResult,
-  StickerPack,
-} from "@/models";
-import type { PaginationOptions } from "@/types";
+  UpdatePackDto,
+} from "@/dtos";
+import type { StickerPack } from "@/models";
 import type { PackRepository } from "@/repositories";
+import type { PaginatedResult, PaginationOptions } from "@/types";
 import { MongoUtils, PermissionUtils } from "@/utils";
 
 export class PackService {
@@ -42,7 +42,7 @@ export class PackService {
   async findAll(
     options: PackRepositoryOptions,
     pagination: PaginationOptions,
-  ): Promise<PaginatedPacksResult> {
+  ): Promise<PaginatedResult<StickerPack>> {
     const page = pagination.page > 0 ? pagination.page : 1;
     const limit = pagination.limit > 0 ? Math.min(pagination.limit, 50) : 20;
 
@@ -57,13 +57,13 @@ export class PackService {
       tags: options.tags?.map((tag) => tag.toLowerCase().trim()),
     };
 
-    const { packs, total } = await this.packRepository.findAll(
+    const { data, total } = await this.packRepository.findAll(
       repositoryOptions,
       paginationOptions,
     );
 
     return {
-      packs,
+      data,
       total,
       page,
       limit,

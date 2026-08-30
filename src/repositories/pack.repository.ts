@@ -1,14 +1,13 @@
+import type { PackRepositoryOptions } from "@/dtos";
 import { MongoInitializer } from "@/init";
-import type { PaginationOptions } from "@/types";
 import {
   insertStickerPackSchema,
   type CreateStickerPackPayload,
   type PackRepository as IPackRepository,
-  type PackRepositoryFindAllResult,
-  type PackRepositoryOptions,
   type Sticker,
   type StickerPack,
 } from "@/models";
+import type { PaginationOptions, RepositoryPaginatedResult } from "@/types";
 import type { Filter, ObjectId } from "mongodb";
 
 export class PackRepository implements IPackRepository {
@@ -55,7 +54,7 @@ export class PackRepository implements IPackRepository {
   async findAll(
     options: PackRepositoryOptions,
     pagination: PaginationOptions,
-  ): Promise<PackRepositoryFindAllResult> {
+  ): Promise<RepositoryPaginatedResult<StickerPack>> {
     const filter = this.buildQuery(options);
 
     const [packs, total] = await Promise.all([
@@ -73,7 +72,7 @@ export class PackRepository implements IPackRepository {
     );
 
     return {
-      packs: populatedPacks,
+      data: populatedPacks,
       total,
     };
   }
