@@ -12,7 +12,7 @@ export interface ContentRepository {
     pagination: PaginationOptions,
   ): Promise<RepositoryPaginatedResult<Content>>;
   create(
-    adminId: ObjectId,
+    createdBy: ObjectId,
     content: CreateContentPayload,
   ): Promise<Content | null>;
   update(id: ObjectId, content: Partial<Content>): Promise<Content | null>;

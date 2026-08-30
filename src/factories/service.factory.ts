@@ -1,4 +1,5 @@
 import {
+  ContentRepository,
   InventoryRepository,
   PackRepository,
   StickerRepository,
@@ -7,6 +8,7 @@ import {
 } from "@/repositories";
 import {
   AuthService,
+  ContentService,
   InventoryService,
   PackService,
   ProfileService,
@@ -28,6 +30,7 @@ export class ServiceFactory {
   private static storeService: StoreService;
   private static uploadService: UploadService;
   private static userService: UserService;
+  private static contentService: ContentService;
 
   static getInventoryService(): InventoryService {
     if (!this.inventoryService) {
@@ -95,5 +98,11 @@ export class ServiceFactory {
 
   static getAuthService(jwtInstance: FastifyJWT): AuthService {
     return new AuthService(new UserRepository(), jwtInstance);
+  }
+  static getContentService(): ContentService {
+    if (!this.contentService) {
+      this.contentService = new ContentService(new ContentRepository());
+    }
+    return this.contentService;
   }
 }

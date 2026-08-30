@@ -25,7 +25,6 @@ export type AnnouncementSeverity = z.infer<typeof announcementSeverityEnum>;
 
 export const baseContentSchema = z.object({
   _id: z.instanceof(ObjectId),
-  admin_id: z.instanceof(ObjectId),
   title: z.string().min(1).max(120),
   body: z.string().max(500).optional(),
   status: contentStatusEnum.default("active"),
@@ -34,17 +33,17 @@ export const baseContentSchema = z.object({
   priority: z.number().int().min(0).default(0),
   platform: contentPlatformEnum.default("all"),
   target_audience: z.string().default("all"),
-  created_by: z.instanceof(ObjectId).optional(),
+  created_by: z.instanceof(ObjectId),
   created_at: z.coerce.date().default(() => new Date()),
   updated_at: z.coerce.date().default(() => new Date()),
 });
 
 export const bannerContentSchema = baseContentSchema.extend({
   type: z.literal("banner"),
-  image_url: z.string().url(),
+  image_url: z.url(),
   image_cloudinary_id: z.string().optional(),
   cta_label: z.string().max(50).optional(),
-  cta_link: z.string().url().optional(),
+  cta_link: z.url().optional(),
 });
 
 export const notificationContentSchema = baseContentSchema.extend({

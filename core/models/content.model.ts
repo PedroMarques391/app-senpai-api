@@ -32,7 +32,10 @@ export const insertContentSchema = z.discriminatedUnion("type", [
   insertAnnouncementSchema,
 ]);
 
-export type CreateContentPayload = z.input<typeof insertContentSchema>;
+export type CreateContentPayload = Omit<
+  z.input<typeof insertContentSchema>,
+  "created_by"
+>;
 
 export {
   announcementSeverityEnum,

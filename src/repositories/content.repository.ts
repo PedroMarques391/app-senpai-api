@@ -57,11 +57,11 @@ export class ContentRepository implements IContentRepository {
   }
 
   async create(
-    adminId: ObjectId,
+    createdBy: ObjectId,
     content: CreateContentPayload,
   ): Promise<Content | null> {
     const parsedData = insertContentSchema.parse({
-      admin_id: adminId,
+      created_by: createdBy,
       ...content,
     });
     const result = await this.collection.insertOne(parsedData as Content);

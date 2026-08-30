@@ -7,6 +7,7 @@ import { z } from "zod";
 
 const omitFields = {
   _id: true,
+  created_by: true,
   created_at: true,
   updated_at: true,
 } as const;
@@ -37,7 +38,4 @@ export const createContentDtoSchema = z
     },
   );
 
-export type CreateBannerDto = z.infer<typeof createBannerDtoSchema>;
-export type CreateNotificationDto = z.infer<typeof createNotificationDtoSchema>;
-export type CreateAnnouncementDto = z.infer<typeof createAnnouncementDtoSchema>;
 export type CreateContentDto = z.infer<typeof createContentDtoSchema>;
