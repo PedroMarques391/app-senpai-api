@@ -3,6 +3,7 @@ import authPlugin from "@/plugin/auth.plugin";
 import { errorPlugin } from "@/plugin/error.plugin";
 import {
   authRoutes,
+  contentRoutes,
   inventoryRoutes,
   packRoutes,
   profileRoutes,
@@ -49,6 +50,7 @@ server.register(async (app) => {
   app.register(stickerRoutes, { prefix: "/sticker" });
   app.register(storeRoutes, { prefix: "/store" });
   app.register(uploadRoutes, { prefix: "/upload" });
+  app.register(contentRoutes, { prefix: "/content" });
 });
 
 const bootstrap = async () => {

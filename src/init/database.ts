@@ -55,6 +55,12 @@ export class MongoInitializer {
         .collection("daily_missions")
         .createIndex({ mission_key: 1 }, { unique: true });
 
+      await this.db
+        .collection("contents")
+        .createIndex({ status: 1, start_at: 1, end_at: 1 });
+      await this.db.collection("contents").createIndex({ type: 1 });
+      await this.db.collection("contents").createIndex({ platform: 1 });
+
       console.log("✅ Successfully connected to MongoDB");
     } catch (error) {
       console.error("❌ Failed to connect to MongoDB");

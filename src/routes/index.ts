@@ -1,4 +1,5 @@
 export * from "./auth.router";
+export * from "./content.router";
 export * from "./inventory.router";
 export * from "./pack.router";
 export * from "./profile.router";
