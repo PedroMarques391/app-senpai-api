@@ -25,6 +25,7 @@ export type AnnouncementSeverity = z.infer<typeof announcementSeverityEnum>;
 
 export const baseContentSchema = z.object({
   _id: z.instanceof(ObjectId),
+  admin_id: z.instanceof(ObjectId),
   title: z.string().min(1).max(120),
   body: z.string().max(500).optional(),
   status: contentStatusEnum.default("active"),

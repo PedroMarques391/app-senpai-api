@@ -11,7 +11,10 @@ export interface ContentRepository {
     filters: ContentFilterOptions,
     pagination: PaginationOptions,
   ): Promise<RepositoryPaginatedResult<Content>>;
-  create(content: CreateContentPayload): Promise<Content | null>;
+  create(
+    adminId: ObjectId,
+    content: CreateContentPayload,
+  ): Promise<Content | null>;
   update(id: ObjectId, content: Partial<Content>): Promise<Content | null>;
   delete(id: ObjectId): Promise<boolean>;
 }

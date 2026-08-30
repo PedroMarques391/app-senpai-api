@@ -1,4 +1,5 @@
 export * from "./auth.service";
+export * from "./content.service";
 export * from "./inventory.service";
 export * from "./pack.service";
 export * from "./profile.service";

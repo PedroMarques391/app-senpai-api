@@ -1,5 +1,5 @@
-import { MongoInitializer } from "@/init";
 import type { ActiveContentParams, ContentFilterOptions } from "@/dtos";
+import { MongoInitializer } from "@/init";
 import {
   insertContentSchema,
   type Content,
@@ -56,8 +56,14 @@ export class ContentRepository implements IContentRepository {
     return { data, total };
   }
 
-  async create(content: CreateContentPayload): Promise<Content | null> {
-    const parsedData = insertContentSchema.parse(content);
+  async create(
+    adminId: ObjectId,
+    content: CreateContentPayload,
+  ): Promise<Content | null> {
+    const parsedData = insertContentSchema.parse({
+      admin_id: adminId,
+      ...content,
+    });
     const result = await this.collection.insertOne(parsedData as Content);
     if (!result.insertedId) return null;
     return this.collection.findOne({ _id: result.insertedId });
