@@ -10,6 +10,7 @@ import {
   InventoryService,
   PackService,
   ProfileService,
+  PurchaseService,
   StickerService,
   StoreService,
   UploadService,
@@ -22,6 +23,7 @@ export class ServiceFactory {
   private static inventoryService: InventoryService;
   private static packService: PackService;
   private static profileService: ProfileService;
+  private static purchaseService: PurchaseService;
   private static stickerService: StickerService;
   private static storeService: StoreService;
   private static uploadService: UploadService;
@@ -75,13 +77,20 @@ export class ServiceFactory {
 
   static getStoreService(): StoreService {
     if (!this.storeService) {
-      this.storeService = new StoreService(
+      this.storeService = new StoreService(new StoreRepository());
+    }
+    return this.storeService;
+  }
+
+  static getPurchaseService(): PurchaseService {
+    if (!this.purchaseService) {
+      this.purchaseService = new PurchaseService(
         new StoreRepository(),
         new UserRepository(),
         new InventoryRepository(),
       );
     }
-    return this.storeService;
+    return this.purchaseService;
   }
 
   static getAuthService(jwtInstance: FastifyJWT): AuthService {

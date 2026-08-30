@@ -1,18 +1,9 @@
 import type { CreateStoreItemDto, UpdateStoreItemDto } from "@/dtos";
-import type { InventoryItem, StoreItem, StoreItemStatus } from "@/models";
-import type {
-  InventoryRepository,
-  StoreRepository,
-  UserRepository,
-} from "@/repositories";
+import type { StoreItem, StoreItemStatus, StoreRepository } from "@/models";
 import { MongoUtils } from "@/utils";
 
 export class StoreService {
-  constructor(
-    private readonly storeRepository: StoreRepository,
-    private readonly userRepository?: UserRepository,
-    private readonly inventoryRepository?: InventoryRepository,
-  ) {}
+  constructor(private readonly storeRepository: StoreRepository) {}
 
   async listItems(status?: StoreItemStatus): Promise<StoreItem[]> {
     return this.storeRepository.findAll(status);
@@ -56,54 +47,5 @@ export class StoreService {
     if (!existing) throw new Error("Item da loja não encontrado");
 
     return this.storeRepository.delete(storeObjectId);
-  }
-
-  async purchaseItem(userId: string, itemId: string): Promise<InventoryItem> {
-    if (!this.userRepository || !this.inventoryRepository) {
-      throw new Error(
-        "Dependências do serviço de compra não configuradas no construtor",
-      );
-    }
-
-    const userObjectId = MongoUtils.toObjectId(
-      userId,
-      "ID de usuário inválido",
-    );
-    const itemObjectId = MongoUtils.toObjectId(
-      itemId,
-      "ID do item da loja inválido",
-    );
-
-    const storeItem = await this.storeRepository.findById(itemObjectId);
-    if (!storeItem || storeItem.status !== "active") {
-      throw new Error("Item da loja não encontrado ou inativo");
-    }
-
-    const [user, alreadyOwned, deducted] = await Promise.all([
-      this.userRepository.find({ _id: userObjectId }),
-      this.inventoryRepository.findByUserAndItem(userObjectId, itemObjectId),
-      this.userRepository.deductPetals(userObjectId, storeItem.price_in_petals),
-    ]);
-
-    if (!user) {
-      throw new Error("Usuário não encontrado");
-    }
-    if (alreadyOwned) {
-      throw new Error("Você já possui este item em seu inventário");
-    }
-
-    if (user.petals_balance < storeItem.price_in_petals || !deducted) {
-      throw new Error("Pétalas insuficientes para adquirir este item");
-    }
-
-    const inventoryItem = await this.inventoryRepository.create(
-      userObjectId,
-      itemObjectId,
-      storeItem.type,
-    );
-
-    await this.storeRepository.incrementPurchasesCount(itemObjectId);
-
-    return inventoryItem;
   }
 }

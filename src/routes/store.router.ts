@@ -6,6 +6,7 @@ import z from "zod";
 
 export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
   const storeService = ServiceFactory.getStoreService();
+  const purchaseService = ServiceFactory.getPurchaseService();
 
   app.get(
     "/",
@@ -35,7 +36,7 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
     "/:id/purchase",
     { schema: { params: z.object({ id: z.string() }) } },
     async (request, reply) => {
-      const item = await storeService.purchaseItem(
+      const item = await purchaseService.execute(
         request.user._id,
         request.params.id,
       );
