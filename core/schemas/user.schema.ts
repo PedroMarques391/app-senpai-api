@@ -40,13 +40,6 @@ export const userSchema = z.object({
       missions: z.array(dailyMissionSchema),
     })
     .optional(),
-  otp_secret: z
-    .object({
-      code: z.string(),
-      expires_at: z.coerce.date(),
-      lastSend: z.coerce.date(),
-    })
-    .optional(),
   stickers_count: z
     .object({
       static: z.number().default(0),

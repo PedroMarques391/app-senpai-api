@@ -8,7 +8,6 @@ export const updateUserDtoSchema = userSchema
     createdAt: true,
     updatedAt: true,
     deletedAt: true,
-    otp_secret: true,
     role: true,
     status: true,
     password: true,
