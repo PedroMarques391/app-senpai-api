@@ -1,12 +1,18 @@
+import type { UserAdminFilterOptions } from "@/dtos";
 import { MongoInitializer } from "@/init";
 import {
   insertUserSchema,
   type CreateUserPayload,
-  type User,
   type UserRepository as IUserRepository,
+  type User,
 } from "@/models";
-import type { UserId, UserIdentifier } from "@/types";
-import { ObjectId } from "mongodb";
+import type {
+  PaginationOptions,
+  RepositoryPaginatedResult,
+  UserId,
+  UserIdentifier,
+} from "@/types";
+import { ObjectId, type Filter } from "mongodb";
 
 export class UserRepository implements IUserRepository {
   private get collection() {
@@ -42,6 +48,41 @@ export class UserRepository implements IUserRepository {
     await this.collection.deleteOne(identifier);
   }
 
+  async findAll(
+    filters: UserAdminFilterOptions,
+    pagination: PaginationOptions,
+  ): Promise<RepositoryPaginatedResult<User>> {
+    const query: Filter<User> = {};
+
+    if (filters.role) {
+      query.role = filters.role;
+    }
+
+    if (filters.status) {
+      query.status = filters.status;
+    }
+
+    if (filters.search) {
+      query.$or = [
+        { name: { $regex: filters.search, $options: "i" } },
+        { userName: { $regex: filters.search, $options: "i" } },
+        { email: { $regex: filters.search, $options: "i" } },
+      ];
+    }
+
+    const [data, total] = await Promise.all([
+      this.collection
+        .find(query)
+        .sort({ createdAt: -1 })
+        .skip((pagination.page - 1) * pagination.limit)
+        .limit(pagination.limit)
+        .toArray(),
+      this.collection.countDocuments(query),
+    ]);
+
+    return { data, total };
+  }
+
   async incrementStickersCount(
     userId: ObjectId,
     type: "static" | "dynamic",
@@ -53,10 +94,29 @@ export class UserRepository implements IUserRepository {
     );
   }
 
+  async incrementPetals(
+    userId: ObjectId,
+    amount: number,
+  ): Promise<User | null> {
+    const result = await this.collection.findOneAndUpdate(
+      { _id: userId },
+      {
+        $inc: { petals_balance: amount },
+        $set: { updatedAt: new Date() },
+      },
+      { returnDocument: "after" },
+    );
+
+    return result;
+  }
+
   async deductPetals(userId: ObjectId, amount: number): Promise<boolean> {
     const result = await this.collection.updateOne(
       { _id: userId, petals_balance: { $gte: amount } },
-      { $inc: { petals_balance: -amount } },
+      {
+        $inc: { petals_balance: -amount },
+        $set: { updatedAt: new Date() },
+      },
     );
 
     return result.modifiedCount > 0;
