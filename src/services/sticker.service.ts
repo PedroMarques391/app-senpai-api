@@ -50,12 +50,12 @@ export class StickerService {
     return sticker;
   }
 
-  async listStickers(): Promise<Sticker[]> {
+  async findManyStickers(): Promise<Sticker[]> {
     const stickers = await this.stickerRepository.findAll();
     return stickers;
   }
 
-  async findSticker(id: string): Promise<Sticker | null> {
+  async findStickerById(id: string): Promise<Sticker | null> {
     const stickerObjectId = MongoUtils.toObjectId(
       id,
       "ID da figurinha inválido",

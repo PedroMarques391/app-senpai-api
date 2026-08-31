@@ -32,7 +32,7 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
         return reply.status(200).send({ success: true, stickers });
       }
 
-      const stickers = await stickerService.listStickers();
+      const stickers = await stickerService.findManyStickers();
       return reply.status(200).send({ success: true, stickers });
     },
   );
@@ -63,7 +63,7 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
     "/:id",
     { schema: { params: z.object({ id: z.string() }) } },
     async (request, reply) => {
-      const sticker = await stickerService.findSticker(request.params.id);
+      const sticker = await stickerService.findStickerById(request.params.id);
       if (!sticker) {
         return reply.status(404).send({
           success: false,
