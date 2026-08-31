@@ -1,6 +1,5 @@
 import { CloudinaryInitializer, MongoInitializer } from "@/init";
-import authPlugin from "@/plugin/auth.plugin";
-import { errorPlugin } from "@/plugin/error.plugin";
+import { authPlugin, errorPlugin, redisPlugin } from "@/plugin";
 import {
   adminRouter,
   authRoutes,
@@ -28,6 +27,7 @@ server.setSerializerCompiler(serializerCompiler);
 
 server.register(errorPlugin);
 server.register(authPlugin);
+server.register(redisPlugin);
 server.register(authRoutes, { prefix: "/auth" });
 server.register(adminRouter, { prefix: "/admin" });
 
