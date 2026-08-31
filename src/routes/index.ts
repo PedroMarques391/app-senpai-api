@@ -1,3 +1,4 @@
+export * from "./admin";
 export * from "./auth.router";
 export * from "./content.router";
 export * from "./inventory.router";

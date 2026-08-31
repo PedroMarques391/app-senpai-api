@@ -2,6 +2,7 @@ import { CloudinaryInitializer, MongoInitializer } from "@/init";
 import authPlugin from "@/plugin/auth.plugin";
 import { errorPlugin } from "@/plugin/error.plugin";
 import {
+  adminRouter,
   authRoutes,
   contentRoutes,
   inventoryRoutes,
@@ -28,6 +29,7 @@ server.setSerializerCompiler(serializerCompiler);
 server.register(errorPlugin);
 server.register(authPlugin);
 server.register(authRoutes, { prefix: "/auth" });
+server.register(adminRouter, { prefix: "/admin" });
 
 server.register(async (app) => {
   app.addHook("onRequest", app.authenticate);
