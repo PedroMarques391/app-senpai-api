@@ -1,9 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import fp from "fastify-plugin";
-import { createClient } from "redis";
+import { createClient, type RedisClientType } from "redis";
 
 async function redisPlugin(fastify: FastifyInstance) {
-  const redis: ReturnType<typeof createClient> = createClient({
+  const redis: RedisClientType = createClient({
     url: process.env.REDIS_URL,
   });
 

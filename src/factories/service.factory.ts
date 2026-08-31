@@ -8,6 +8,7 @@ import {
 } from "@/repositories";
 import {
   AuthService,
+  CacheService,
   ContentService,
   InventoryService,
   PackService,
@@ -20,8 +21,10 @@ import {
 } from "@/services";
 
 import type { JWT as FastifyJWT } from "@fastify/jwt";
+import type { RedisClientType } from "redis";
 
 export class ServiceFactory {
+  private static cacheService: CacheService;
   private static inventoryService: InventoryService;
   private static packService: PackService;
   private static profileService: ProfileService;
@@ -104,5 +107,12 @@ export class ServiceFactory {
       this.contentService = new ContentService(new ContentRepository());
     }
     return this.contentService;
+  }
+
+  static getCacheService(redisInstance: RedisClientType): CacheService {
+    if (!this.cacheService) {
+      this.cacheService = new CacheService(redisInstance);
+    }
+    return this.cacheService;
   }
 }

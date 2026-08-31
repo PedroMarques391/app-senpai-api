@@ -1,11 +1,11 @@
 import type { UserRole } from "@/schemas";
 import "@fastify/jwt";
 import "fastify";
-import type { createClient } from "redis";
+import type { RedisClientType } from "redis";
 
 declare module "fastify" {
   export interface FastifyInstance {
-    redis: ReturnType<typeof createClient>;
+    redis: RedisClientType;
     authenticate: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
     requireAdmin: (
       ...allowedRoles: UserRole[]
