@@ -96,7 +96,9 @@ export class UserService {
       : this.deductPetals(userId, Math.abs(amount));
   }
 
-  async listAll(query: ListUsersAdminQueryDto): Promise<PaginatedResult<User>> {
+  async findManyUsers(
+    query: ListUsersAdminQueryDto,
+  ): Promise<PaginatedResult<User>> {
     const filters: UserAdminFilterOptions = {
       role: query.role,
       status: query.status,
@@ -117,7 +119,7 @@ export class UserService {
     };
   }
 
-  async findById(userId: string): Promise<User> {
+  async findUserById(userId: string): Promise<User> {
     const objectId = MongoUtils.toObjectId(userId, "ID de usuário inválido");
     const user = await this.userRepository.find({ _id: objectId });
     if (!user) {

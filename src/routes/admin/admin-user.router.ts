@@ -19,7 +19,7 @@ export const adminUserRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
-      const result = await userService.listAll(request.query);
+      const result = await userService.findManyUsers(request.query);
       return reply.status(200).send({
         success: true,
         data: result,
@@ -35,7 +35,7 @@ export const adminUserRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
-      const user = await userService.findById(request.params.id);
+      const user = await userService.findUserById(request.params.id);
       return reply.status(200).send({
         success: true,
         user,
