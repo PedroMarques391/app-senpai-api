@@ -25,7 +25,7 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
         return reply.status(200).send({ success: true, packs });
       }
 
-      const result = await packService.findAll(
+      const result = await packService.findManyPacks(
         {
           search,
           tags,
@@ -48,7 +48,7 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
     "/",
     { schema: { body: createPackDtoSchema } },
     async (request, reply) => {
-      const pack = await packService.create(
+      const pack = await packService.createPack(
         request.user._id,
         request.user.userName,
         request.body,
@@ -65,7 +65,7 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
     "/:id",
     { schema: { params: z.object({ id: z.string() }) } },
     async (request, reply) => {
-      const pack = await packService.findById(request.params.id);
+      const pack = await packService.findPackById(request.params.id);
       if (!pack) {
         return reply.status(404).send({
           success: false,
@@ -85,7 +85,7 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
-      const pack = await packService.update(
+      const pack = await packService.updatePack(
         request.params.id,
         request.user._id,
         request.body,
@@ -102,7 +102,7 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
     "/:id",
     { schema: { params: z.object({ id: z.string() }) } },
     async (request, reply) => {
-      await packService.delete(request.params.id, request.user._id);
+      await packService.deletePack(request.params.id, request.user._id);
       return reply.status(200).send({
         success: true,
         message: "Pacote deletado com sucesso",

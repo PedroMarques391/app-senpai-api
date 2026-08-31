@@ -11,7 +11,7 @@ import { MongoUtils, PermissionUtils } from "@/utils";
 export class PackService {
   constructor(private readonly packRepository: PackRepository) {}
 
-  async create(
+  async createPack(
     userId: string,
     publisher: string,
     packData: CreatePackDto,
@@ -39,7 +39,7 @@ export class PackService {
     return pack;
   }
 
-  async findAll(
+  async findManyPacks(
     options: PackRepositoryOptions,
     pagination: PaginationOptions,
   ): Promise<PaginatedResult<StickerPack>> {
@@ -71,7 +71,7 @@ export class PackService {
     };
   }
 
-  async findById(id: string): Promise<StickerPack | null> {
+  async findPackById(id: string): Promise<StickerPack | null> {
     const packObjectId = MongoUtils.toObjectId(id, "ID do pacote inválido");
     const pack = await this.packRepository.findById(packObjectId);
     return pack;
@@ -104,7 +104,7 @@ export class PackService {
     return packs;
   }
 
-  async update(
+  async updatePack(
     id: string,
     userId: string,
     updateData: UpdatePackDto,
@@ -138,7 +138,7 @@ export class PackService {
     return pack;
   }
 
-  async delete(id: string, userId: string): Promise<boolean> {
+  async deletePack(id: string, userId: string): Promise<boolean> {
     const packObjectId = MongoUtils.toObjectId(id, "ID do pacote inválido");
     const userObjectId = MongoUtils.toObjectId(
       userId,
