@@ -9,6 +9,7 @@ import z from "zod";
 
 export const adminContentRoutes: FastifyPluginAsyncZod = async (app) => {
   const contentService = ServiceFactory.getContentService();
+  const cacheService = ServiceFactory.getCacheService(app.redis);
 
   app.get(
     "/",
@@ -37,6 +38,7 @@ export const adminContentRoutes: FastifyPluginAsyncZod = async (app) => {
         createdBy,
         request.body,
       );
+      await cacheService.delPattern("content:active:*");
       return reply.status(201).send({
         success: true,
         message: "Conteúdo criado com sucesso",
@@ -72,6 +74,7 @@ export const adminContentRoutes: FastifyPluginAsyncZod = async (app) => {
         request.params.id,
         request.body,
       );
+      await cacheService.delPattern("content:active:*");
       return reply.status(200).send({
         success: true,
         message: "Conteúdo atualizado com sucesso",
@@ -88,6 +91,7 @@ export const adminContentRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (request, reply) => {
       await contentService.deleteContent(request.params.id);
+      await cacheService.delPattern("content:active:*");
       return reply.status(200).send({
         success: true,
         message: "Conteúdo removido com sucesso",
