@@ -51,7 +51,7 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post(
     "/",
     {
-      preHandler: [app.requireAdmin],
+      preHandler: [app.requireAdmin()],
       schema: { body: createStoreItemDtoSchema },
     },
     async (request, reply) => {
@@ -67,7 +67,7 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
   app.put(
     "/:id",
     {
-      preHandler: [app.requireAdmin],
+      preHandler: [app.requireAdmin()],
       schema: {
         params: z.object({ id: z.string() }),
         body: updateStoreItemDtoSchema,
@@ -89,7 +89,7 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
   app.delete(
     "/:id",
     {
-      preHandler: [app.requireAdmin],
+      preHandler: [app.requireAdmin()],
       schema: { params: z.object({ id: z.string() }) },
     },
     async (request, reply) => {

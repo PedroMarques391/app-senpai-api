@@ -2,6 +2,12 @@ import { ObjectId } from "mongodb";
 import { z } from "zod";
 import { dailyMissionSchema } from "./daily-mission.schema";
 
+export const userRoleEnum = z.enum(["user", "admin", "moderator", "company"]);
+export type UserRole = z.infer<typeof userRoleEnum>;
+
+export const userStatusEnum = z.enum(["active", "inactive"]);
+export type UserStatus = z.infer<typeof userStatusEnum>;
+
 export const userSchema = z.object({
   _id: z.instanceof(ObjectId),
   wa_id: z.string(),
@@ -10,12 +16,12 @@ export const userSchema = z.object({
   userName: z.string(),
   password: z.string(),
   premium: z.boolean().default(false),
-  role: z.enum(["user", "admin", "moderator", "company"]).default("user"),
+  role: userRoleEnum.default("user"),
   createdAt: z.coerce.date().default(() => new Date()),
   updatedAt: z.coerce.date().default(() => new Date()),
   deletedAt: z.coerce.date().optional(),
   last_login: z.coerce.date().default(() => new Date()),
-  status: z.enum(["active", "inactive"]).default("active"),
+  status: userStatusEnum.default("active"),
   preferred_payment: z.string().optional(),
   avatar_url: z.url().optional(),
   banner_url: z.url().optional(),
