@@ -7,6 +7,7 @@ import z from "zod";
 export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
   const storeService = ServiceFactory.getStoreService();
   const purchaseService = ServiceFactory.getPurchaseService();
+  const cacheService = ServiceFactory.getCacheService(app.redis);
 
   app.get(
     "/",
@@ -18,7 +19,16 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
+      const cacheKey = `store:items:${request.query.status || "all"}`;
+      const cached = await cacheService.get(cacheKey);
+
+      if (cached) {
+        return reply.status(200).send({ success: true, items: cached });
+      }
+
       const items = await storeService.findManyStoreItems(request.query.status);
+      await cacheService.set(cacheKey, items, 60 * 60 * 24);
+
       return reply.status(200).send({ success: true, items });
     },
   );
@@ -27,7 +37,18 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
     "/:id",
     { schema: { params: z.object({ id: z.string() }) } },
     async (request, reply) => {
+      const cacheKey = `store:item:${request.params.id}`;
+      const cached = await cacheService.get(cacheKey);
+
+      if (cached) {
+        return reply.status(200).send({ success: true, item: cached });
+      }
+
       const item = await storeService.findStoreItemById(request.params.id);
+      if (item) {
+        await cacheService.set(cacheKey, item, 60 * 60 * 24);
+      }
+
       return reply.status(200).send({ success: true, item });
     },
   );
@@ -40,6 +61,12 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
         request.user._id,
         request.params.id,
       );
+
+      await Promise.all([
+        cacheService.del(`inventory:${request.user._id}`),
+        cacheService.del(`profile:${request.user._id}`),
+      ]);
+
       return reply.status(200).send({
         success: true,
         message: "Item adquirido com sucesso",
@@ -56,6 +83,8 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (request, reply) => {
       const item = await storeService.createStoreItem(request.body);
+      await cacheService.delPattern("store:items:*");
+
       return reply.status(201).send({
         success: true,
         message: "Item criado com sucesso",
@@ -78,6 +107,12 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
         request.params.id,
         request.body,
       );
+
+      await Promise.all([
+        cacheService.delPattern("store:items:*"),
+        cacheService.del(`store:item:${request.params.id}`),
+      ]);
+
       return reply.status(200).send({
         success: true,
         message: "Item atualizado com sucesso",
@@ -94,6 +129,12 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (request, reply) => {
       await storeService.deleteStoreItem(request.params.id);
+
+      await Promise.all([
+        cacheService.delPattern("store:items:*"),
+        cacheService.del(`store:item:${request.params.id}`),
+      ]);
+
       return reply.status(200).send({
         success: true,
         message: "Item removido com sucesso",
