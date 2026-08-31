@@ -1,7 +1,7 @@
-import type { UpdateUserDto } from "@/dtos";
+import type { PublicProfileDto, UpdateUserDto } from "@/dtos";
 import type { User } from "@/models";
 import type { UserRepository } from "@/repositories";
-import { MongoUtils } from "@/utils";
+import { MongoUtils, PermissionUtils } from "@/utils";
 
 export class ProfileService {
   constructor(private readonly userRepository: UserRepository) {}
@@ -9,10 +9,29 @@ export class ProfileService {
   async getProfile(id: string): Promise<User | null> {
     const userObjectId = MongoUtils.toObjectId(id, "ID de usuário inválido");
     const user = await this.userRepository.find({ _id: userObjectId });
-    if (!user) {
+    if (!user || user.status === "inactive") {
       throw new Error("Perfil de usuário não encontrado");
     }
+    PermissionUtils.verifyOwnership(user._id, userObjectId, "Perfil Privado");
     return user;
+  }
+
+  async getProfileByUsername(
+    username: string,
+  ): Promise<PublicProfileDto | null> {
+    const user = await this.userRepository.find({ userName: username });
+    if (!user || user.status === "inactive") {
+      throw new Error("Perfil de usuário não encontrado");
+    }
+
+    return {
+      name: user.name,
+      userName: user.userName,
+      createdAt: user.createdAt,
+      avatar_url: user.avatar_url,
+      banner_url: user.banner_url,
+      isVerifiedCreator: user.isVerifiedCreator,
+    };
   }
 
   async deleteProfile(id: string): Promise<User | null> {
