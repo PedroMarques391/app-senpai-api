@@ -5,11 +5,11 @@ import { MongoUtils } from "@/utils";
 export class StoreService {
   constructor(private readonly storeRepository: StoreRepository) {}
 
-  async listItems(status?: StoreItemStatus): Promise<StoreItem[]> {
+  async findManyStoreItems(status?: StoreItemStatus): Promise<StoreItem[]> {
     return this.storeRepository.findAll(status);
   }
 
-  async getItem(id: string): Promise<StoreItem> {
+  async findStoreItemById(id: string): Promise<StoreItem> {
     const storeObjectId = MongoUtils.toObjectId(
       id,
       "ID do item da loja inválido",
@@ -19,11 +19,14 @@ export class StoreService {
     return item;
   }
 
-  async createItem(dto: CreateStoreItemDto): Promise<StoreItem> {
+  async createStoreItem(dto: CreateStoreItemDto): Promise<StoreItem> {
     return this.storeRepository.create(dto);
   }
 
-  async updateItem(id: string, dto: UpdateStoreItemDto): Promise<StoreItem> {
+  async updateStoreItem(
+    id: string,
+    dto: UpdateStoreItemDto,
+  ): Promise<StoreItem> {
     const storeObjectId = MongoUtils.toObjectId(
       id,
       "ID do item da loja inválido",
@@ -37,7 +40,7 @@ export class StoreService {
     return updated;
   }
 
-  async deleteItem(id: string): Promise<boolean> {
+  async deleteStoreItem(id: string): Promise<boolean> {
     const storeObjectId = MongoUtils.toObjectId(
       id,
       "ID do item da loja inválido",

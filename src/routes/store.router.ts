@@ -18,7 +18,7 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
-      const items = await storeService.listItems(request.query.status);
+      const items = await storeService.findManyStoreItems(request.query.status);
       return reply.status(200).send({ success: true, items });
     },
   );
@@ -27,7 +27,7 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
     "/:id",
     { schema: { params: z.object({ id: z.string() }) } },
     async (request, reply) => {
-      const item = await storeService.getItem(request.params.id);
+      const item = await storeService.findStoreItemById(request.params.id);
       return reply.status(200).send({ success: true, item });
     },
   );
@@ -55,7 +55,7 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
       schema: { body: createStoreItemDtoSchema },
     },
     async (request, reply) => {
-      const item = await storeService.createItem(request.body);
+      const item = await storeService.createStoreItem(request.body);
       return reply.status(201).send({
         success: true,
         message: "Item criado com sucesso",
@@ -74,7 +74,7 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
-      const item = await storeService.updateItem(
+      const item = await storeService.updateStoreItem(
         request.params.id,
         request.body,
       );
@@ -93,7 +93,7 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
       schema: { params: z.object({ id: z.string() }) },
     },
     async (request, reply) => {
-      await storeService.deleteItem(request.params.id);
+      await storeService.deleteStoreItem(request.params.id);
       return reply.status(200).send({
         success: true,
         message: "Item removido com sucesso",
