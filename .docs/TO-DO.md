@@ -17,13 +17,13 @@
 
 ## ⚡ 3. Performance, Infraestrutura & Caching (Redis)
 
-- [ ] Configurar Redis no Docker Compose e cliente de conexão (`ioredis` ou `redis`).
-- [ ] Implementar camada/helper de cache com TTL e invalidação inteligente.
-- [ ] Cachear endpoints de alta leitura:
+- [x] Configurar Redis no Docker Compose e cliente de conexão (`ioredis` ou `redis`).
+- [x] Implementar camada/helper de cache com TTL e invalidação inteligente.
+- [x] Cachear endpoints de alta leitura:
   - Perfil público (`/profile/:userName`)
   - Listagem de Packs públicos e populares
   - Listagem da Loja (`/store`)
-- [ ] Implementar Invalidação de Cache em mutações (ex: ao criar/atualizar um pack, invalidar a listagem).
+- [x] Implementar Invalidação de Cache em mutações (ex: ao criar/atualizar um pack, invalidar a listagem).
 
 ## 📬 4. Mensageria & Background Jobs (RabbitMQ)
 
