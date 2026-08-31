@@ -11,7 +11,10 @@ import { MongoUtils } from "@/utils";
 export class ContentService {
   constructor(private readonly contentRepository: ContentRepository) {}
 
-  async create(createdBy: string, data: CreateContentDto): Promise<Content> {
+  async createContent(
+    createdBy: string,
+    data: CreateContentDto,
+  ): Promise<Content> {
     const createdByObjectId = MongoUtils.toObjectId(
       createdBy,
       "ID de usuário inválido",
@@ -34,7 +37,7 @@ export class ContentService {
     });
   }
 
-  async findAllAdmin(
+  async findManyContents(
     query: ListContentAdminQueryDto,
   ): Promise<PaginatedResult<Content>> {
     const { data, total } = await this.contentRepository.findAll(
@@ -57,7 +60,7 @@ export class ContentService {
     };
   }
 
-  async findById(id: string): Promise<Content> {
+  async findContentById(id: string): Promise<Content> {
     const objectId = MongoUtils.toObjectId(id, "ID de conteúdo inválido");
     const content = await this.contentRepository.findById(objectId);
     if (!content) {
@@ -66,7 +69,7 @@ export class ContentService {
     return content;
   }
 
-  async update(id: string, data: UpdateContentDto): Promise<Content> {
+  async updateContent(id: string, data: UpdateContentDto): Promise<Content> {
     const objectId = MongoUtils.toObjectId(id, "ID de conteúdo inválido");
     const existing = await this.contentRepository.findById(objectId);
     if (!existing) {
@@ -80,7 +83,7 @@ export class ContentService {
     return updated;
   }
 
-  async delete(id: string): Promise<boolean> {
+  async deleteContent(id: string): Promise<boolean> {
     const objectId = MongoUtils.toObjectId(id, "ID de conteúdo inválido");
     const existing = await this.contentRepository.findById(objectId);
     if (!existing) {

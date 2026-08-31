@@ -18,7 +18,7 @@ export const adminContentRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
-      const result = await contentService.findAllAdmin(request.query);
+      const result = await contentService.findManyContents(request.query);
       return reply.status(200).send({
         success: true,
         data: result,
@@ -33,7 +33,10 @@ export const adminContentRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (request, reply) => {
       const createdBy = request.user._id;
-      const content = await contentService.create(createdBy, request.body);
+      const content = await contentService.createContent(
+        createdBy,
+        request.body,
+      );
       return reply.status(201).send({
         success: true,
         message: "Conteúdo criado com sucesso",
@@ -48,7 +51,7 @@ export const adminContentRoutes: FastifyPluginAsyncZod = async (app) => {
       schema: { params: z.object({ id: z.string() }) },
     },
     async (request, reply) => {
-      const content = await contentService.findById(request.params.id);
+      const content = await contentService.findContentById(request.params.id);
       return reply.status(200).send({
         success: true,
         content,
@@ -65,7 +68,7 @@ export const adminContentRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
-      const content = await contentService.update(
+      const content = await contentService.updateContent(
         request.params.id,
         request.body,
       );
@@ -84,7 +87,7 @@ export const adminContentRoutes: FastifyPluginAsyncZod = async (app) => {
       schema: { params: z.object({ id: z.string() }) },
     },
     async (request, reply) => {
-      await contentService.delete(request.params.id);
+      await contentService.deleteContent(request.params.id);
       return reply.status(200).send({
         success: true,
         message: "Conteúdo removido com sucesso",
