@@ -10,7 +10,17 @@ services:
       - "27017:27017"
     volumes:
       - senpai-db:/data/db
+  redis:
+    image: redis:alpine
+    container_name: senpai-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - senpai-redis:/data
 
 volumes:
   senpai-db:
+    driver: local
+  senpai-redis:
     driver: local
