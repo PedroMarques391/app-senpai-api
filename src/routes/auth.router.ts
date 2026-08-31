@@ -4,7 +4,7 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
 
 export const authRoutes: FastifyPluginAsyncZod = async (app) => {
-  const authService = ServiceFactory.getAuthService(app.jwt);
+  const authService = ServiceFactory.getAuthService(app.jwt, app.redis);
 
   app.post(
     "/login/otp",

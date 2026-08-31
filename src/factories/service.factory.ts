@@ -99,8 +99,15 @@ export class ServiceFactory {
     return this.purchaseService;
   }
 
-  static getAuthService(jwtInstance: FastifyJWT): AuthService {
-    return new AuthService(new UserRepository(), jwtInstance);
+  static getAuthService(
+    jwtInstance: FastifyJWT,
+    redisInstance: RedisClientType,
+  ): AuthService {
+    return new AuthService(
+      new UserRepository(),
+      jwtInstance,
+      this.getCacheService(redisInstance),
+    );
   }
   static getContentService(): ContentService {
     if (!this.contentService) {

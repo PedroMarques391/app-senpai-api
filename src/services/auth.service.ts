@@ -1,12 +1,13 @@
 import { createUserDtoSchema, type CreateUserDto } from "@/dtos";
 import type { User, UserRepository } from "@/models";
+import type { CacheService } from "@/services";
 import type {
   AuthResult,
   OtpSecret,
   SendOtpResult,
   ServiceResponse,
 } from "@/types";
-import { AuthUtils, MongoUtils, UserUtils } from "@/utils";
+import { AuthUtils, UserUtils } from "@/utils";
 import type { JWT as FastifyJWT } from "@fastify/jwt";
 
 export class AuthService {
@@ -16,23 +17,11 @@ export class AuthService {
       "find" | "create" | "update"
     >,
     private readonly jwtInstance: FastifyJWT,
+    private readonly cacheService: CacheService,
   ) {}
-
-  async generateOTP(): Promise<OtpSecret> {
-    const code = AuthUtils.generateOTP();
-    const expires_at = AuthUtils.generateExpiresAt();
-
-    return {
-      code,
-      expires_at,
-      lastSend: new Date(),
-    };
-  }
 
   async sendOTP(waId: string): Promise<ServiceResponse<SendOtpResult>> {
     const url = `https://graph.facebook.com/v25.0/${process.env.WHATSAPP_PHONE_ID}/messages`;
-    const currentDate = new Date();
-    let otp: OtpSecret | undefined;
 
     const user = await this.userRepository.find({ wa_id: waId });
 
@@ -55,9 +44,11 @@ export class AuthService {
       };
     }
 
-    if (user.otp_secret && user.otp_secret.lastSend) {
-      const timeSinceLastSend =
-        currentDate.getTime() - user.otp_secret.lastSend.getTime();
+    const cacheKey = `otp:${waId}`;
+    const cachedOtp = await this.cacheService.get<OtpSecret>(cacheKey);
+
+    if (cachedOtp) {
+      const timeSinceLastSend = Date.now() - cachedOtp.createdAt;
 
       if (timeSinceLastSend < 60000) {
         const remainingSeconds = Math.ceil((60000 - timeSinceLastSend) / 1000);
@@ -67,19 +58,10 @@ export class AuthService {
           message: `Por favor, aguarde ${remainingSeconds} segundos antes de solicitar um novo código.`,
         };
       }
-
-      if (user.otp_secret.expires_at > currentDate) {
-        otp = {
-          code: user.otp_secret.code,
-          expires_at: user.otp_secret.expires_at,
-          lastSend: currentDate,
-        };
-      }
     }
 
-    if (!otp) {
-      otp = await this.generateOTP();
-    }
+    const code = cachedOtp?.code ?? AuthUtils.generateOTP();
+
     const data = {
       messaging_product: "whatsapp",
       to: user.wa_id,
@@ -95,7 +77,7 @@ export class AuthService {
             parameters: [
               {
                 type: "text",
-                text: otp.code,
+                text: code,
               },
             ],
           },
@@ -106,7 +88,7 @@ export class AuthService {
             parameters: [
               {
                 type: "text",
-                text: otp.code,
+                text: code,
               },
             ],
           },
@@ -131,13 +113,16 @@ export class AuthService {
       );
     }
 
-    user.otp_secret = { ...otp };
-    await this.userRepository.update({ wa_id: waId }, user);
+    await this.cacheService.set(
+      cacheKey,
+      { code, createdAt: Date.now() },
+      5 * 60,
+    );
 
     return {
       success: true,
       data: {
-        otp: otp.code,
+        otp: code,
         wa_id: user.wa_id,
       },
     };
@@ -155,17 +140,17 @@ export class AuthService {
       );
     }
 
-    if (
-      !user.otp_secret ||
-      user.otp_secret.code !== otpCode ||
-      user.otp_secret.expires_at < new Date()
-    ) {
+    const cacheKey = `otp:${waId}`;
+    const cachedOtp = await this.cacheService.get<OtpSecret>(cacheKey);
+
+    if (!cachedOtp || cachedOtp.code !== otpCode) {
       throw new Error("Invalid or expired OTP");
     }
 
+    await this.cacheService.del(cacheKey);
+
     const fullUser = UserUtils.applyDefaults({
       ...user,
-      otp_secret: undefined,
       isNumberVerified: true,
       last_login: new Date(),
     });
@@ -183,10 +168,7 @@ export class AuthService {
       role: fullUser.role,
     };
 
-    const token = AuthUtils.generateJWT(
-      this.jwtInstance,
-      payload,
-    );
+    const token = AuthUtils.generateJWT(this.jwtInstance, payload);
 
     return { user: fullUser, token };
   }
@@ -234,10 +216,7 @@ export class AuthService {
       isNumberVerified: user.isNumberVerified,
       role: user.role,
     };
-    const token = AuthUtils.generateJWT(
-      this.jwtInstance,
-      payload,
-    );
+    const token = AuthUtils.generateJWT(this.jwtInstance, payload);
 
     await this.userRepository.update({ _id: user._id }, user);
 
