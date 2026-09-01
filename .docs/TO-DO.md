@@ -45,3 +45,11 @@
 - [ ] Adicionar suporte a autenticação JWT Bearer diretamente na interface do Swagger UI.
 - [ ] Escrever README do projeto com instruções de setup, variáveis de ambiente e arquitetura.
 - [ ] Endpoint de Health Check (`GET /health`) monitorando status do MongoDB e dependências.
+
+## 🎨 7. Figurinhas & Pacotes (Stickers & Packs)
+
+- [ ] Implementar criação de figurinhas em lote (`POST /stickers/:packId/bulk`):
+  - [ ] Adicionar método `createMany` no `StickerRepository` com `insertMany`.
+  - [ ] Implementar `createManyStickers` no `StickerService` com validação de posse e incremento atômico de contagem (estáticos/dinâmicos).
+  - [ ] Criar rota `POST /stickers/:packId/bulk` no `sticker.router.ts` com validação Zod de array de figurinhas e invalidação de cache do pacote.
+
