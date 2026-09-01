@@ -1,4 +1,4 @@
-import { updateUserDtoSchema } from "@/dtos";
+import { completeRegistrationDtoSchema, updateUserDtoSchema } from "@/dtos";
 import { ServiceFactory } from "@/factories";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
@@ -57,6 +57,32 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
 
       return reply.status(200).send({
         success: true,
+        profile,
+      });
+    },
+  );
+
+  app.patch(
+    "/complete-registration",
+    {
+      schema: {
+        body: completeRegistrationDtoSchema,
+      },
+    },
+    async (request, reply) => {
+      const profile = await profileService.completeRegistration(
+        request.user._id,
+        request.body,
+      );
+
+      await Promise.all([
+        cacheService.del(`profile:${request.user._id}`),
+        cacheService.del(`profile:username:${profile.userName}`),
+      ]);
+
+      return reply.status(200).send({
+        success: true,
+        message: "Cadastro finalizado com sucesso",
         profile,
       });
     },
