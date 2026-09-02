@@ -30,6 +30,7 @@ server.register(errorPlugin);
 server.register(authPlugin);
 server.register(redisPlugin);
 server.register(authRoutes, { prefix: "/auth" });
+server.register(packRoutes, { prefix: "/pack" });
 server.register(adminRouter, { prefix: "/admin" });
 
 server.register(async (app) => {
@@ -44,7 +45,6 @@ server.register(async (app) => {
   });
 
   app.register(inventoryRoutes, { prefix: "/inventory" });
-  app.register(packRoutes, { prefix: "/pack" });
   app.register(profileRoutes, { prefix: "/profile" });
   app.register(stickerRoutes, { prefix: "/sticker" });
   app.register(storeRoutes, { prefix: "/store" });

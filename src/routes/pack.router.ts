@@ -22,6 +22,17 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
       const { user, search, tags, category, page, limit } = request.query;
 
       if (user) {
+        if (!request.user) {
+          try {
+            await request.jwtVerify();
+          } catch {
+            return reply.status(401).send({
+              message: "Operation not permitted",
+              success: false,
+            });
+          }
+        }
+
         const cacheKey = `pack:user:${user}`;
         const cached = await cacheService.get(cacheKey);
 
@@ -76,7 +87,10 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
 
   app.post(
     "/",
-    { schema: { body: createPackDtoSchema } },
+    {
+      onRequest: [app.authenticate],
+      schema: { body: createPackDtoSchema },
+    },
     async (request, reply) => {
       const pack = await packService.createPack(
         request.user._id,
@@ -124,6 +138,7 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
   app.put(
     "/:id",
     {
+      onRequest: [app.authenticate],
       schema: {
         params: z.object({ id: z.string() }),
         body: updatePackDtoSchema,
@@ -152,7 +167,10 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
 
   app.delete(
     "/:id",
-    { schema: { params: z.object({ id: z.string() }) } },
+    {
+      onRequest: [app.authenticate],
+      schema: { params: z.object({ id: z.string() }) },
+    },
     async (request, reply) => {
       await packService.deletePack(request.params.id, request.user._id);
 
