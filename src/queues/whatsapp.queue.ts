@@ -39,9 +39,13 @@ export class WhatsAppQueue {
     };
   }
 
-  async getQueue(id: string) {
+  async getJob(id: string) {
     const job = await this.queue.getJob(id);
 
     return job;
+  }
+
+  async close(): Promise<void> {
+    await this.queue.close();
   }
 }

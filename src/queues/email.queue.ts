@@ -34,7 +34,11 @@ export class EmailQueue {
     };
   }
 
-  async getQueue(id: string) {
+  async getJob(id: string) {
     return await this.queue.getJob(id);
+  }
+
+  async close(): Promise<void> {
+    await this.queue.close();
   }
 }
