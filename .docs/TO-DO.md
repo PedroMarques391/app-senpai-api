@@ -20,16 +20,16 @@
 - [x] Configurar Redis no Docker Compose e cliente de conexão (`ioredis` ou `redis`).
 - [x] Implementar camada/helper de cache com TTL e invalidação inteligente.
 - [x] Cachear endpoints de alta leitura:
-  - Perfil público (`/profile/:userName`)
-  - Listagem de Packs públicos e populares
-  - Listagem da Loja (`/store`)
+- [x] Perfil público (`/profile/:userName`)
+- [x] Listagem de Packs públicos e populares
+- [x] Listagem da Loja (`/store`)
 - [x] Implementar Invalidação de Cache em mutações (ex: ao criar/atualizar um pack, invalidar a listagem).
 
 ## 📬 4. Mensageria & Background Jobs (RabbitMQ)
 
-- [ ] Configurar RabbitMQ no Docker Compose e cliente de mensageria (ex: `amqplib`).
-- [ ] Criar fila e consumer para envio de OTP (WhatsApp / E-mail).
-- [ ] Criar fila e consumer para e-mails transacionais (boas-vindas, confirmação de conta, redefinição de senha).
+- [x] Configurar BullMQ para mensageria.
+- [x] Criar fila e consumer para envio de OTP (WhatsApp / E-mail).
+- [x] Criar fila e consumer para e-mails transacionais (boas-vindas, confirmação de conta, redefinição de senha).
 
 ## 🔐 5. Segurança & Autenticação
 
@@ -52,4 +52,3 @@
   - [ ] Adicionar método `createMany` no `StickerRepository` com `insertMany`.
   - [ ] Implementar `createManyStickers` no `StickerService` com validação de posse e incremento atômico de contagem (estáticos/dinâmicos).
   - [ ] Criar rota `POST /stickers/:packId/bulk` no `sticker.router.ts` com validação Zod de array de figurinhas e invalidação de cache do pacote.
-
