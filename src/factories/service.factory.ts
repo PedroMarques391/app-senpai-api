@@ -20,6 +20,7 @@ import {
   UserService,
 } from "@/services";
 
+import { QueueFactory } from "./queue.factory";
 import type { JWT as FastifyJWT } from "@fastify/jwt";
 import type { RedisClientType } from "redis";
 
@@ -107,6 +108,7 @@ export class ServiceFactory {
       new UserRepository(),
       jwtInstance,
       this.getCacheService(redisInstance),
+      QueueFactory.getWhatsAppQueue(),
     );
   }
   static getContentService(): ContentService {

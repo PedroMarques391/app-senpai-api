@@ -17,7 +17,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
 
       return reply.status(200).send({
         message: "OTP sent successfully",
-        otp: result.data,
+        otp: result.data?.otp,
       });
     },
   );
@@ -79,5 +79,4 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
       });
     },
   );
-
 };

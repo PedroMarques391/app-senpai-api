@@ -1,5 +1,6 @@
 import { createUserDtoSchema, type CreateUserDto } from "@/dtos";
 import type { User, UserRepository } from "@/models";
+import type { WhatsAppQueue } from "@/queues";
 import type { CacheService } from "@/services";
 import type {
   AuthResult,
@@ -18,11 +19,10 @@ export class AuthService {
     >,
     private readonly jwtInstance: FastifyJWT,
     private readonly cacheService: CacheService,
+    private readonly whatsappQueue: WhatsAppQueue,
   ) {}
 
   async sendOTP(waId: string): Promise<ServiceResponse<SendOtpResult>> {
-    const url = `https://graph.facebook.com/v25.0/${process.env.WHATSAPP_PHONE_ID}/messages`;
-
     const user = await this.userRepository.find({ wa_id: waId });
 
     if (user?.status === "inactive") {
@@ -30,7 +30,7 @@ export class AuthService {
         success: false,
         userExists: true,
         message:
-          "Conta desativada. Entre em contato com o suporte para recuperar o acesso.",
+          "Não foi possível concluir o cadastro. Verifique os dados informados ou tente fazer login.",
       };
     }
 
@@ -62,56 +62,16 @@ export class AuthService {
 
     const code = cachedOtp?.code ?? AuthUtils.generateOTP();
 
-    const data = {
-      messaging_product: "whatsapp",
-      to: user.wa_id,
-      type: "template",
-      template: {
-        name: "senpai_login_code",
-        language: {
-          code: "pt_BR",
-        },
-        components: [
-          {
-            type: "body",
-            parameters: [
-              {
-                type: "text",
-                text: code,
-              },
-            ],
-          },
-          {
-            type: "button",
-            sub_type: "url",
-            index: "0",
-            parameters: [
-              {
-                type: "text",
-                text: code,
-              },
-            ],
-          },
-        ],
+    await this.whatsappQueue.addJob(
+      "send-message",
+      {
+        number: user.wa_id,
+        message: code,
       },
-    };
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
-        "Content-Type": "application/json",
+      {
+        attempts: 2,
       },
-      body: JSON.stringify(data),
-    });
-
-    const responseData = await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        `Failed to send OTP: ${responseData.error?.message || "Unknown error"}`,
-      );
-    }
+    );
 
     await this.cacheService.set(
       cacheKey,
