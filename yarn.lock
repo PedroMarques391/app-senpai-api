@@ -212,6 +212,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@fastify/cors@npm:^11.3.0":
+  version: 11.3.0
+  resolution: "@fastify/cors@npm:11.3.0"
+  dependencies:
+    fastify-plugin: "npm:^6.0.0"
+    toad-cache: "npm:^3.7.0"
+  checksum: 10c0/2b37bdf7f5a6c48dd329aeb1ab213514515f285969acd803c72a75a044cb2b6c30077c5d09f4c72bcf4dd5ade00adb4d34696ea9dcc0ffc39bf95e6b76a8d4b0
+  languageName: node
+  linkType: hard
+
 "@fastify/deepmerge@npm:^3.0.0":
   version: 3.2.1
   resolution: "@fastify/deepmerge@npm:3.2.1"
@@ -801,31 +811,6 @@ __metadata:
   checksum: 10c0/faa7bfc0bae70d7c30d56252fbe4671ebbf1e0b8c1bdb3d1febcad6549d3521d7bd0e535f903310d5a6af357447fc9cf6407229c7d46b2f2502d40dca341f625
   languageName: node
   linkType: hard
-
-"backend-app@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "backend-app@workspace:."
-  dependencies:
-    "@fastify/jwt": "npm:^10.0.0"
-    "@fastify/multipart": "npm:^10.1.0"
-    "@fastify/swagger": "npm:^9.6.1"
-    "@fastify/swagger-ui": "npm:^5.2.3"
-    "@types/bcrypt": "npm:^6.0.0"
-    "@types/node": "npm:^26.1.1"
-    bcrypt: "npm:^6.0.0"
-    bullmq: "npm:^6.3.4"
-    cloudinary: "npm:^2.10.0"
-    fastify: "npm:^5.6.1"
-    fastify-plugin: "npm:^5.1.0"
-    fastify-type-provider-zod: "npm:^6.1.0"
-    mongodb: "npm:^7.5.0"
-    redis: "npm:^6.2.1"
-    tsup: "npm:^8.5.1"
-    typescript: "npm:^5.9.3"
-    uuid: "npm:^13.0.0"
-    zod: "npm:^4.2.0"
-  languageName: unknown
-  linkType: soft
 
 "balanced-match@npm:^4.0.2":
   version: 4.0.4
@@ -2118,6 +2103,32 @@ __metadata:
   checksum: 10c0/b1f3127a5be8125a94f37188b361c212466c292c6910adce3ec106cff5dc211ccaedc4739c11bb70fda59d6fc1f040a9bca289f4e093451521a2372e5231fe0c
   languageName: node
   linkType: hard
+
+"senpai-figurinhas-api@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "senpai-figurinhas-api@workspace:."
+  dependencies:
+    "@fastify/cors": "npm:^11.3.0"
+    "@fastify/jwt": "npm:^10.0.0"
+    "@fastify/multipart": "npm:^10.1.0"
+    "@fastify/swagger": "npm:^9.6.1"
+    "@fastify/swagger-ui": "npm:^5.2.3"
+    "@types/bcrypt": "npm:^6.0.0"
+    "@types/node": "npm:^26.1.1"
+    bcrypt: "npm:^6.0.0"
+    bullmq: "npm:^6.3.4"
+    cloudinary: "npm:^2.10.0"
+    fastify: "npm:^5.6.1"
+    fastify-plugin: "npm:^5.1.0"
+    fastify-type-provider-zod: "npm:^6.1.0"
+    mongodb: "npm:^7.5.0"
+    redis: "npm:^6.2.1"
+    tsup: "npm:^8.5.1"
+    typescript: "npm:^5.9.3"
+    uuid: "npm:^13.0.0"
+    zod: "npm:^4.2.0"
+  languageName: unknown
+  linkType: soft
 
 "set-cookie-parser@npm:^2.6.0":
   version: 2.7.2

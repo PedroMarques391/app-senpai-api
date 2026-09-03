@@ -20,7 +20,16 @@ import {
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
 
+import fastifyCors from "@fastify/cors";
+
 const server = fastify().withTypeProvider<ZodTypeProvider>();
+
+server.register(fastifyCors, {
+  origin: true,
+  credentials: true,
+  exposedHeaders: ["Authorization"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+});
 
 server.register(fastifyMultipart);
 server.setValidatorCompiler(validatorCompiler);
@@ -57,7 +66,7 @@ const bootstrap = async () => {
     CloudinaryInitializer.init();
     await MongoInitializer.init();
     new WhatsAppWorker();
-    server.listen({ port: 3000 }, (err, address) => {
+    server.listen({ port: 3000, host: "0.0.0.0" }, (err, address) => {
       if (err) {
         console.error(err);
         process.exit(1);
