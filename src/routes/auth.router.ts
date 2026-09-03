@@ -11,6 +11,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     { schema: { body: z.object({ wa_id: z.string() }) } },
     async (request, reply) => {
       const { wa_id } = request.body;
+
       const result = await authService.sendOTP(wa_id);
 
       if (!result.success) return reply.status(403).send(result);
