@@ -1,15 +1,24 @@
 import type {
   CreatePackDto,
+  CreateStickerDto,
   PackRepositoryOptions,
   UpdatePackDto,
 } from "@/dtos";
 import type { StickerPack } from "@/models";
-import type { PackRepository } from "@/repositories";
+import type {
+  PackRepository,
+  StickerRepository,
+  UserRepository,
+} from "@/repositories";
 import type { PaginatedResult, PaginationOptions } from "@/types";
 import { MongoUtils, PermissionUtils } from "@/utils";
 
 export class PackService {
-  constructor(private readonly packRepository: PackRepository) {}
+  constructor(
+    private readonly packRepository: PackRepository,
+    private readonly stickerRepository?: StickerRepository,
+    private readonly userRepository?: UserRepository,
+  ) {}
 
   async createPack(
     userId: string,
@@ -26,9 +35,10 @@ export class PackService {
     }
 
     const sanitizedTags = packData.tags?.map((tag) => tag.toLowerCase().trim());
+    const { stickers, ...packFields } = packData;
 
     const pack = await this.packRepository.create({
-      ...packData,
+      ...packFields,
       tags: sanitizedTags,
       user_id: userObjectId,
       publisher,
@@ -36,6 +46,46 @@ export class PackService {
     if (!pack) {
       throw new Error("Error to create pack, try again later");
     }
+
+    if (
+      stickers &&
+      stickers.length > 0 &&
+      this.stickerRepository &&
+      this.userRepository
+    ) {
+      const staticCount = stickers.filter(
+        (s: CreateStickerDto) => s.type === "static",
+      ).length;
+      const animatedCount = stickers.filter(
+        (s: CreateStickerDto) => s.type === "dynamic",
+      ).length;
+
+      await Promise.all(
+        stickers.map((stickerData: CreateStickerDto) =>
+          this.stickerRepository!.create({
+            ...stickerData,
+            pack_id: pack._id,
+            user_id: userObjectId,
+          }),
+        ),
+      );
+
+      if (staticCount > 0) {
+        await this.userRepository.incrementStickersCount(
+          userObjectId,
+          "static",
+          staticCount,
+        );
+      }
+      if (animatedCount > 0) {
+        await this.userRepository.incrementStickersCount(
+          userObjectId,
+          "dynamic",
+          animatedCount,
+        );
+      }
+    }
+
     return pack;
   }
 
@@ -46,15 +96,14 @@ export class PackService {
     const page = pagination.page > 0 ? pagination.page : 1;
     const limit = pagination.limit > 0 ? Math.min(pagination.limit, 50) : 20;
 
-    const paginationOptions: PaginationOptions = {
-      page,
-      limit,
-    };
+    const paginationOptions: PaginationOptions = { page, limit };
 
     const repositoryOptions: PackRepositoryOptions = {
       category: options.category,
       search: options.search,
       tags: options.tags?.map((tag) => tag.toLowerCase().trim()),
+      sort: options.sort ?? "recent",
+      order: options.order ?? "desc",
     };
 
     const { data, total } = await this.packRepository.findAll(

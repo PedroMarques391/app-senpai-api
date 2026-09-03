@@ -45,7 +45,11 @@ export class ServiceFactory {
 
   static getPackService(): PackService {
     if (!this.packService) {
-      this.packService = new PackService(new PackRepository());
+      this.packService = new PackService(
+        new PackRepository(),
+        new StickerRepository(),
+        new UserRepository(),
+      );
     }
     return this.packService;
   }

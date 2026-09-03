@@ -57,10 +57,25 @@ export class PackRepository implements IPackRepository {
   ): Promise<RepositoryPaginatedResult<StickerPack>> {
     const filter = this.buildQuery(options);
 
+    const direction = options.order === "asc" ? 1 : -1;
+    const sortField: Record<string, 1 | -1> = (() => {
+      switch (options.sort) {
+        case "downloads":
+          return { downloads_count: direction };
+        case "likes":
+          return { likes_count: direction };
+        case "popular":
+          return { downloads_count: direction, likes_count: direction };
+        case "recent":
+        default:
+          return { created_at: direction };
+      }
+    })();
+
     const [packs, total] = await Promise.all([
       this.collection
         .find(filter)
-        .sort({ created_at: -1 })
+        .sort(sortField)
         .skip((pagination.page - 1) * pagination.limit)
         .limit(pagination.limit)
         .toArray(),
