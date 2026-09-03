@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 export class UploadUtils {
   private static cleanUserName(userName: string): string {
     return userName.toLowerCase().replace(/[^a-z0-9_-]/g, "_");
