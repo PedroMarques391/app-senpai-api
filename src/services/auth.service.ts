@@ -34,7 +34,7 @@ export class AuthService {
       };
     }
 
-    if (!user) {
+    if (!user || !user.premium) {
       return {
         success: false,
         userExists: !!user,
