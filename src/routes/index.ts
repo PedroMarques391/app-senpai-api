@@ -7,3 +7,4 @@ export * from "./profile.router";
 export * from "./sticker.router";
 export * from "./store.router";
 export * from "./upload.router";
+export * from "./terms.router";
