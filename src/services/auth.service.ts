@@ -55,6 +55,7 @@ export class AuthService {
         return {
           success: false,
           userExists: true,
+          retryAfter: remainingSeconds,
           message: `Por favor, aguarde ${remainingSeconds} segundos antes de solicitar um novo código.`,
         };
       }

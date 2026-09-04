@@ -19,6 +19,8 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
       return reply.status(200).send({
         message: "OTP sent successfully",
         otp: result.data?.otp,
+        expiresIn: 300,
+        retryAfter: 60,
       });
     },
   );

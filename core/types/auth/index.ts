@@ -28,4 +28,9 @@ export interface JwtPayload {
 
 export type ServiceResponse<T> =
   | { success: true; data: T }
-  | { success: false; userExists: boolean; message: string };
+  | {
+      success: false;
+      userExists: boolean;
+      message: string;
+      retryAfter?: number;
+    };
