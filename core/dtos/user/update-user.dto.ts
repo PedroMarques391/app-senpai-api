@@ -19,6 +19,7 @@ export const updateUserDtoSchema = userSchema
     daily_missions: true,
     subscriptions: true,
     last_login: true,
+    termsAccepted: true,
   })
   .partial()
   .strict();
