@@ -18,6 +18,7 @@ import {
   StoreService,
   UploadService,
   UserService,
+  TermsService,
 } from "@/services";
 
 import { QueueFactory } from "./queue.factory";
@@ -35,6 +36,7 @@ export class ServiceFactory {
   private static uploadService: UploadService;
   private static userService: UserService;
   private static contentService: ContentService;
+  private static termsService: TermsService;
 
   static getInventoryService(): InventoryService {
     if (!this.inventoryService) {
@@ -120,6 +122,13 @@ export class ServiceFactory {
       this.contentService = new ContentService(new ContentRepository());
     }
     return this.contentService;
+  }
+
+  static getTermsService(): TermsService {
+    if (!this.termsService) {
+      this.termsService = new TermsService(new UserRepository());
+    }
+    return this.termsService;
   }
 
   static getCacheService(redisInstance: RedisClientType): CacheService {

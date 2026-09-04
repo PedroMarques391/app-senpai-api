@@ -9,3 +9,4 @@ export * from "./sticker.service";
 export * from "./store.service";
 export * from "./upload.service";
 export * from "./user.service";
+export * from "./terms.service";
