@@ -59,8 +59,8 @@ A API possui tratamento centralizado (`error.plugin.ts`). O Flutter deve tratar 
 | :--- | :--- | :--- | :--- | :--- |
 | `wa_id` | `z.string()` | `String` | Sim | Número do WhatsApp do usuário. |
 **Respostas:**
-- `200 OK`: `{"message": "OTP sent successfully", "otp": "123456"}`
-- `403 Forbidden`: `{"success": false, "userExists": true/false, "message": "..."}`
+- `200 OK`: `{"message": "OTP sent successfully", "otp": "123456", "expiresIn": 300, "retryAfter": 60}`
+- `403 Forbidden`: `{"success": false, "userExists": true/false, "retryAfter": 45, "message": "Por favor, aguarde 45 segundos antes de solicitar um novo código."}`
 
 #### `POST /auth/login/verify`
 **Propósito & Regra de Negócio:** Valida o código OTP e conclui o login. Em caso de sucesso, marca o número como verificado, atualiza `last_login` e gera o token JWT.
