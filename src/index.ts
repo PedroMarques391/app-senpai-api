@@ -9,8 +9,8 @@ import {
   profileRoutes,
   stickerRoutes,
   storeRoutes,
-  uploadRoutes,
   termsRoutes,
+  uploadRoutes,
 } from "@/routes";
 import { WhatsAppWorker } from "@/workers";
 import fastifyMultipart from "@fastify/multipart";
@@ -61,7 +61,6 @@ server.register(async (app) => {
   app.register(uploadRoutes, { prefix: "/upload" });
   app.register(contentRoutes, { prefix: "/content" });
   app.register(termsRoutes, { prefix: "/terms" });
-  app.register(termsRoutes, { prefix: "/account" });
 });
 
 const bootstrap = async () => {
