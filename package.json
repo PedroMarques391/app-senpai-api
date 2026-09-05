@@ -35,8 +35,11 @@
     "build": "tsc --noEmit && tsup",
     "start": "node --env-file=.env dist/index.js",
     "dev": "tsup --watch --onSuccess \"node --env-file=.env dist/index.js\"",
-    "up:db": "docker compose up -d",
-    "down:db": "docker compose down"
+    "up:development": "docker compose up -d",
+    "up:prod": "docker compose up -d redis api",
+    "up:build": "docker compose up -d --build",
+    "up:db": "docker compose up -d mongo redis",
+    "down": "docker compose down"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

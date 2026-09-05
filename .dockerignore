@@ -1,0 +1,10 @@
+node_modules
+dist
+# .env
+.git
+temp
+tmp
+Dockerfile*
+.dockerignore
+.agents*
+.vscode
