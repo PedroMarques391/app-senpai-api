@@ -42,6 +42,12 @@ server.register(redisPlugin);
 server.register(authRoutes, { prefix: "/auth" });
 server.register(packRoutes, { prefix: "/pack" });
 server.register(adminRouter, { prefix: "/admin" });
+server.get("/health", (request, reply) => {
+  return reply.status(200).send({
+    message: "Server is running",
+    success: true,
+  });
+});
 
 server.register(async (app) => {
   app.addHook("onRequest", app.authenticate);
