@@ -57,7 +57,7 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
     "/:id/purchase",
     { schema: { params: z.object({ id: z.string() }) } },
     async (request, reply) => {
-      const item = await purchaseService.execute(
+      const { item, newBalance } = await purchaseService.execute(
         request.user._id,
         request.params.id,
       );
@@ -71,6 +71,7 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
         success: true,
         message: "Item adquirido com sucesso",
         item,
+        newBalance,
       });
     },
   );

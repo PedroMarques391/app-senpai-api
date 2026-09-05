@@ -110,15 +110,16 @@ export class UserRepository implements IUserRepository {
     return result;
   }
 
-  async deductPetals(userId: ObjectId, amount: number): Promise<boolean> {
-    const result = await this.collection.updateOne(
+  async deductPetals(userId: ObjectId, amount: number): Promise<number | null> {
+    const result = await this.collection.findOneAndUpdate(
       { _id: userId, petals_balance: { $gte: amount } },
       {
         $inc: { petals_balance: -amount },
         $set: { updatedAt: new Date() },
       },
+      { returnDocument: "after" },
     );
 
-    return result.modifiedCount > 0;
+    return result?.petals_balance ?? null;
   }
 }

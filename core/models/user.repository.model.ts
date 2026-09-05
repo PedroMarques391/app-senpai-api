@@ -23,5 +23,5 @@ export interface UserRepository {
     amount?: number,
   ): Promise<void>;
   incrementPetals(userId: ObjectId, amount: number): Promise<User | null>;
-  deductPetals(userId: ObjectId, amount: number): Promise<boolean>;
+  deductPetals(userId: ObjectId, amount: number): Promise<number | null>;
 }

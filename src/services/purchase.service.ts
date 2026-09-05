@@ -5,6 +5,10 @@ import type {
   UserRepository,
 } from "@/models";
 import { MongoUtils } from "@/utils";
+export interface PurchaseResult {
+  item: InventoryItem;
+  newBalance: number;
+}
 
 export class PurchaseService {
   constructor(
@@ -13,7 +17,7 @@ export class PurchaseService {
     private readonly inventoryRepository: InventoryRepository,
   ) {}
 
-  async execute(userId: string, itemId: string): Promise<InventoryItem> {
+  async execute(userId: string, itemId: string): Promise<PurchaseResult> {
     const userObjectId = MongoUtils.toObjectId(
       userId,
       "ID de usuário inválido",
@@ -43,11 +47,13 @@ export class PurchaseService {
       throw new Error("Pétalas insuficientes para adquirir este item");
     }
 
-    const deducted = await this.userRepository.deductPetals(
+    // deductPetals agora retorna o saldo atualizado (ou null se falhar,
+    // ex.: condição de saldo insuficiente verificada no próprio update atômico)
+    const newBalance = await this.userRepository.deductPetals(
       userObjectId,
       storeItem.price_in_petals,
     );
-    if (!deducted) {
+    if (newBalance === null) {
       throw new Error("Pétalas insuficientes para adquirir este item");
     }
 
@@ -59,6 +65,9 @@ export class PurchaseService {
 
     await this.storeRepository.incrementPurchasesCount(itemObjectId);
 
-    return inventoryItem;
+    return {
+      item: inventoryItem,
+      newBalance,
+    };
   }
 }

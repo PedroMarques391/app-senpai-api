@@ -70,11 +70,11 @@ export class UserService {
       "ID de usuário inválido",
     );
 
-    const deducted = await this.userRepository.deductPetals(
+    const newBalance = await this.userRepository.deductPetals(
       userObjectId,
       amount,
     );
-    if (!deducted) {
+    if (newBalance === null) {
       throw new Error(
         "Saldo de pétalas insuficiente ou usuário não encontrado",
       );
