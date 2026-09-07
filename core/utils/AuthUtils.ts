@@ -34,4 +34,16 @@ export class AuthUtils {
   static verifyJWT<T>(jwtInstance: FastifyJWT, token: string) {
     return jwtInstance.verify(token) as T;
   }
+
+  static normalizeWaId(waId: string): string {
+    if (!waId) return waId;
+    let clean = waId.replace(/\D/g, "");
+    if (
+      (clean.length === 10 || clean.length === 11) &&
+      !clean.startsWith("55")
+    ) {
+      clean = `55${clean}`;
+    }
+    return clean.replace(/^55(\d{2})9(\d{8})$/, "55$1$2");
+  }
 }

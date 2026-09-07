@@ -9,12 +9,13 @@ import type {
 } from "@/dtos";
 import type { User, UserRepository } from "@/models";
 import type { PaginatedResult } from "@/types";
-import { MongoUtils } from "@/utils";
+import { AuthUtils, MongoUtils } from "@/utils";
 
 export class UserService {
   constructor(private readonly userRepository: UserRepository) {}
 
-  async findUserByWAId(waId: string): Promise<User | null> {
+  async findUserByWAId(rawWaId: string): Promise<User | null> {
+    const waId = AuthUtils.normalizeWaId(rawWaId);
     const user = await this.userRepository.find({ wa_id: waId });
     if (!user) {
       throw new Error("User not found");
@@ -23,22 +24,28 @@ export class UserService {
   }
 
   async createUser(userData: CreateUserDto): Promise<User | null> {
-    const user = await this.userRepository.find({ wa_id: userData.wa_id });
+    const waId = AuthUtils.normalizeWaId(userData.wa_id);
+    const user = await this.userRepository.find({ wa_id: waId });
     if (user) {
       throw new Error("User already exists");
     }
 
-    return this.userRepository.create(userData);
+    return this.userRepository.create({
+      ...userData,
+      wa_id: waId,
+    });
   }
 
   async updateUser(
-    waId: string,
+    rawWaId: string,
     updateData: UpdateUserDto,
   ): Promise<User | null> {
+    const waId = AuthUtils.normalizeWaId(rawWaId);
     return this.userRepository.update({ wa_id: waId }, updateData);
   }
 
-  async deleteUser(waId: string): Promise<void> {
+  async deleteUser(rawWaId: string): Promise<void> {
+    const waId = AuthUtils.normalizeWaId(rawWaId);
     return this.userRepository.delete({ wa_id: waId });
   }
 

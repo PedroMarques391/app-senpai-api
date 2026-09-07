@@ -22,7 +22,8 @@ export class AuthService {
     private readonly whatsappQueue: WhatsAppQueue,
   ) {}
 
-  async sendOTP(waId: string): Promise<ServiceResponse<SendOtpResult>> {
+  async sendOTP(rawWaId: string): Promise<ServiceResponse<SendOtpResult>> {
+    const waId = AuthUtils.normalizeWaId(rawWaId);
     const user = await this.userRepository.find({ wa_id: waId });
 
     if (user?.status === "inactive") {
@@ -89,7 +90,11 @@ export class AuthService {
     };
   }
 
-  async verifyOtpAndLogin(waId: string, otpCode: string): Promise<AuthResult> {
+  async verifyOtpAndLogin(
+    rawWaId: string,
+    otpCode: string,
+  ): Promise<AuthResult> {
+    const waId = AuthUtils.normalizeWaId(rawWaId);
     const user = await this.userRepository.find({ wa_id: waId });
     if (!user) {
       throw new Error("User not found");
@@ -184,7 +189,11 @@ export class AuthService {
     return { user, token };
   }
 
-  async register(waId: string, userData: CreateUserDto): Promise<User | null> {
+  async register(
+    rawWaId: string,
+    userData: CreateUserDto,
+  ): Promise<User | null> {
+    const waId = AuthUtils.normalizeWaId(rawWaId || userData.wa_id);
     const data = createUserDtoSchema.parse({
       ...userData,
       wa_id: waId,
