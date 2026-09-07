@@ -20,7 +20,7 @@ export class AuthService {
     private readonly jwtInstance: FastifyJWT,
     private readonly cacheService: CacheService,
     private readonly whatsappQueue: WhatsAppQueue,
-  ) {}
+  ) { }
 
   async sendOTP(rawWaId: string): Promise<ServiceResponse<SendOtpResult>> {
     const waId = AuthUtils.normalizeWaId(rawWaId);
@@ -40,7 +40,7 @@ export class AuthService {
         success: false,
         userExists: !!user,
         message: !!user
-          ? "Certo, nós temos seu número de whatsapp. Agora você precisa finalizar a criação da sua conta."
+          ? "Parece que você ainda não é um usuário premium, cria sua conta ou faça login para continuar."
           : "Você ainda não é um usuário da Senpai, por favor crie sua conta.",
       };
     }
@@ -101,9 +101,7 @@ export class AuthService {
     }
 
     if (user.status === "inactive") {
-      throw new Error(
-        "Conta desativada. Entre em contato com o suporte para recuperar o acesso.",
-      );
+      throw new Error("Credenciais inválidas");
     }
 
     const cacheKey = `otp:${waId}`;
@@ -152,9 +150,7 @@ export class AuthService {
     }
 
     if (user.status === "inactive") {
-      throw new Error(
-        "Conta desativada. Entre em contato com o suporte para recuperar o acesso.",
-      );
+      throw new Error("Credenciais inválidas");
     }
 
     if (!user.email || !user.password) {
@@ -211,7 +207,7 @@ export class AuthService {
       usernameUser?.status === "inactive"
     ) {
       throw new Error(
-        "Este número ou e-mail está associado a uma conta desativada. Entre em contato com o suporte.",
+        "Não foi possível concluir o cadastro. Verifique os dados informados ou tente fazer login.",
       );
     }
 
