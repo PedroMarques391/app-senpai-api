@@ -16,7 +16,9 @@ services:
     restart: always
     volumes:
       - senpai-redis:/data
-  api: 
+    ports:
+      - "6379:6379"
+  api:
     build: .
     container_name: senpai-api
     restart: always
