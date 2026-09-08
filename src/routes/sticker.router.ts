@@ -5,7 +5,9 @@ import z from "zod";
 
 export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
   const stickerService = ServiceFactory.getStickerService();
+  const packService = ServiceFactory.getPackService();
   const cacheService = ServiceFactory.getCacheService(app.redis);
+  const creationQuotaService = ServiceFactory.getCreationQuotaService();
 
   app.get(
     "/",
@@ -49,6 +51,7 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post(
     "/:packId",
     {
+      preHandler: [app.checkStickerCreationQuota],
       schema: {
         body: createStickerDtoSchema,
         params: z.object({ packId: z.string() }),
@@ -60,6 +63,17 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
         request.user._id,
         request.body,
       );
+
+      const pack = await packService.findPackById(request.params.packId);
+      if (pack) {
+        await creationQuotaService.recordUsage(
+          request.user._id,
+          pack.pack_name,
+          1,
+          request.user.premium === true,
+        );
+      }
+
       await cacheService.del(`stickers:pack:${request.params.packId}`);
       return reply.status(201).send({
         success: true,

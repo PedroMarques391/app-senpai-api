@@ -1,9 +1,10 @@
 import { CloudinaryInitializer, MongoInitializer } from "@/init";
-import { authPlugin, errorPlugin, redisPlugin } from "@/plugin";
+import { authPlugin, errorPlugin, redisPlugin, quotaPlugin } from "@/plugin";
 import {
   adminRouter,
   authRoutes,
   contentRoutes,
+  creationQuotaRoutes,
   inventoryRoutes,
   packRoutes,
   profileRoutes,
@@ -29,7 +30,7 @@ server.register(fastifyCors, {
   origin: true,
   credentials: true,
   exposedHeaders: ["Authorization"],
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
 });
 
 server.register(fastifyMultipart);
@@ -39,6 +40,7 @@ server.setSerializerCompiler(serializerCompiler);
 server.register(errorPlugin);
 server.register(authPlugin);
 server.register(redisPlugin);
+server.register(quotaPlugin);
 server.register(authRoutes, { prefix: "/auth" });
 server.register(packRoutes, { prefix: "/pack" });
 server.register(adminRouter, { prefix: "/admin" });
@@ -67,6 +69,7 @@ server.register(async (app) => {
   app.register(uploadRoutes, { prefix: "/upload" });
   app.register(contentRoutes, { prefix: "/content" });
   app.register(termsRoutes, { prefix: "/terms" });
+  app.register(creationQuotaRoutes, { prefix: "/creation/quota" });
 });
 
 const bootstrap = async () => {

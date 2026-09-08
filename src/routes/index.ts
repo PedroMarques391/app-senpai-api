@@ -8,3 +8,4 @@ export * from "./sticker.router";
 export * from "./store.router";
 export * from "./upload.router";
 export * from "./terms.router";
+export * from "./creation-quota.router";

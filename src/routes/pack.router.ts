@@ -11,6 +11,7 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
   const packService = ServiceFactory.getPackService();
   const packFavoriteService = ServiceFactory.getPackFavoriteService();
   const cacheService = ServiceFactory.getCacheService(app.redis);
+  const creationQuotaService = ServiceFactory.getCreationQuotaService();
 
   app.get(
     "/",
@@ -94,6 +95,7 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
     "/",
     {
       onRequest: [app.authenticate],
+      preHandler: [app.checkPackCreationQuota],
       schema: { body: createPackDtoSchema },
     },
     async (request, reply) => {
@@ -101,6 +103,14 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
         request.user._id,
         request.user.userName,
         request.body,
+      );
+
+      const stickerCount = request.body.stickers?.length ?? 0;
+      await creationQuotaService.recordUsage(
+        request.user._id,
+        request.body.pack_name,
+        stickerCount,
+        request.user.premium === true,
       );
 
       await Promise.all([
