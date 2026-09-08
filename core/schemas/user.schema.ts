@@ -8,6 +8,9 @@ export type UserRole = z.infer<typeof userRoleEnum>;
 export const userStatusEnum = z.enum(["active", "inactive"]);
 export type UserStatus = z.infer<typeof userStatusEnum>;
 
+export const vipTypeEnum = z.enum(["PRO", "MESTRE"]);
+export type VipType = z.infer<typeof vipTypeEnum>;
+
 export const userSchema = z.object({
   _id: z.instanceof(ObjectId),
   wa_id: z.string(),
@@ -28,6 +31,8 @@ export const userSchema = z.object({
   subscriptions: z
     .object({
       start: z.coerce.date(),
+      end: z.coerce.date(),
+      type: vipTypeEnum,
     })
     .optional(),
   email: z.email(),
