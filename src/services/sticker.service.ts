@@ -5,7 +5,7 @@ import type {
   StickerRepository,
   UserRepository,
 } from "@/repositories";
-import { MongoUtils, PermissionUtils } from "@/utils";
+import { MongoUtils, PermissionUtils, CloudinaryUtils } from "@/utils";
 
 export class StickerService {
   constructor(
@@ -46,6 +46,15 @@ export class StickerService {
       sticker.type,
       1,
     );
+
+    if (!pack.icon_url && sticker.sticker_url) {
+      const transformedUrl = CloudinaryUtils.transformUrlForPackIcon(
+        sticker.sticker_url,
+      );
+      await this.packRepository.update(packObjectId, userObjectId, {
+        icon_url: transformedUrl,
+      });
+    }
 
     return sticker;
   }
