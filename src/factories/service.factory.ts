@@ -6,6 +6,7 @@ import {
   StickerRepository,
   StoreRepository,
   UserRepository,
+  CreationQuotaRepository,
 } from "@/repositories";
 import {
   AuthService,
@@ -21,6 +22,7 @@ import {
   UploadService,
   UserService,
   TermsService,
+  CreationQuotaService,
 } from "@/services";
 
 import { QueueFactory } from "./queue.factory";
@@ -40,6 +42,7 @@ export class ServiceFactory {
   private static contentService: ContentService;
   private static termsService: TermsService;
   private static packFavoriteService: PackFavoriteService;
+  private static creationQuotaService: CreationQuotaService;
 
   static getInventoryService(): InventoryService {
     if (!this.inventoryService) {
@@ -149,5 +152,15 @@ export class ServiceFactory {
       this.cacheService = new CacheService(redisInstance);
     }
     return this.cacheService;
+  }
+
+  static getCreationQuotaService(): CreationQuotaService {
+    if (!this.creationQuotaService) {
+      this.creationQuotaService = new CreationQuotaService(
+        new CreationQuotaRepository(),
+        new PackRepository(),
+      );
+    }
+    return this.creationQuotaService;
   }
 }
