@@ -3,3 +3,4 @@ export * from "./MongoUtils";
 export * from "./PermissionUtils";
 export * from "./UploadUtils";
 export * from "./UserUtils";
+export * from "./CloudinaryUtils";
