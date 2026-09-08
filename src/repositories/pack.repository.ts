@@ -19,10 +19,15 @@ export class PackRepository implements IPackRepository {
     return MongoInitializer.getDb().collection<Sticker>("stickers");
   }
 
-  private async populateStickers(pack: StickerPack): Promise<StickerPack> {
-    const stickers = await this.stickerCollection
-      .find({ pack_id: pack._id })
-      .toArray();
+  private async populateStickers(
+    pack: StickerPack,
+    limit?: number,
+  ): Promise<StickerPack> {
+    let cursor = this.stickerCollection.find({ pack_id: pack._id });
+    if (limit && limit > 0) {
+      cursor = cursor.limit(limit);
+    }
+    const stickers = await cursor.toArray();
     return {
       ...pack,
       stickers,
@@ -83,7 +88,7 @@ export class PackRepository implements IPackRepository {
     ]);
 
     const populatedPacks = await Promise.all(
-      packs.map((pack) => this.populateStickers(pack)),
+      packs.map((pack) => this.populateStickers(pack, 4)),
     );
 
     return {
