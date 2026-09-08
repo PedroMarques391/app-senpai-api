@@ -11,7 +11,7 @@ import type {
   UserRepository,
 } from "@/repositories";
 import type { PaginatedResult, PaginationOptions } from "@/types";
-import { MongoUtils, PermissionUtils } from "@/utils";
+import { MongoUtils, PermissionUtils, CloudinaryUtils } from "@/utils";
 
 export class PackService {
   constructor(
@@ -37,8 +37,14 @@ export class PackService {
     const sanitizedTags = packData.tags?.map((tag) => tag.toLowerCase().trim());
     const { stickers, ...packFields } = packData;
 
+    let iconUrlToSave = packFields.icon_url;
+    if (!iconUrlToSave && stickers && stickers.length > 0 && stickers[0]?.sticker_url) {
+      iconUrlToSave = CloudinaryUtils.transformUrlForPackIcon(stickers[0].sticker_url);
+    }
+
     const pack = await this.packRepository.create({
       ...packFields,
+      icon_url: iconUrlToSave,
       tags: sanitizedTags,
       user_id: userObjectId,
       publisher,
