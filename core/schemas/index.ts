@@ -6,3 +6,4 @@ export * from "./sticker.schema";
 export * from "./store.schema";
 export * from "./user.schema";
 export * from "./followers.schema";
+export * from "./pack-favorite.schema";

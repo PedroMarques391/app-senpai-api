@@ -150,4 +150,11 @@ export class PackRepository implements IPackRepository {
 
     return false;
   }
+
+  async updateLikesCount(packId: ObjectId, delta: 1 | -1): Promise<void> {
+    await this.collection.updateOne(
+      { _id: packId },
+      { $inc: { likes_count: delta } },
+    );
+  }
 }

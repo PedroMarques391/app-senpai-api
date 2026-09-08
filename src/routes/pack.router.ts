@@ -9,6 +9,7 @@ import z from "zod";
 
 export const packRoutes: FastifyPluginAsyncZod = async (app) => {
   const packService = ServiceFactory.getPackService();
+  const packFavoriteService = ServiceFactory.getPackFavoriteService();
   const cacheService = ServiceFactory.getCacheService(app.redis);
 
   app.get(
@@ -188,6 +189,33 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
       return reply.status(200).send({
         success: true,
         message: "Pacote deletado com sucesso",
+      });
+    },
+  );
+
+  app.post(
+    "/:id/favorite",
+    {
+      onRequest: [app.authenticate],
+      schema: { params: z.object({ id: z.string() }) },
+    },
+    async (request, reply) => {
+      const result = await packFavoriteService.toggleFavorite(
+        request.params.id,
+        request.user._id,
+      );
+
+      await Promise.all([
+        cacheService.del(`pack:${request.params.id}`),
+        cacheService.delPattern("pack:list:*"),
+      ]);
+
+      return reply.status(200).send({
+        success: true,
+        isFavorite: result.isFavorite,
+        message: result.isFavorite
+          ? "Pacote adicionado aos favoritos"
+          : "Pacote removido dos favoritos",
       });
     },
   );

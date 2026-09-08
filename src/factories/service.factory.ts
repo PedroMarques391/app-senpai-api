@@ -2,6 +2,7 @@ import {
   ContentRepository,
   InventoryRepository,
   PackRepository,
+  PackFavoriteRepository,
   StickerRepository,
   StoreRepository,
   UserRepository,
@@ -12,6 +13,7 @@ import {
   ContentService,
   InventoryService,
   PackService,
+  PackFavoriteService,
   ProfileService,
   PurchaseService,
   StickerService,
@@ -37,6 +39,7 @@ export class ServiceFactory {
   private static userService: UserService;
   private static contentService: ContentService;
   private static termsService: TermsService;
+  private static packFavoriteService: PackFavoriteService;
 
   static getInventoryService(): InventoryService {
     if (!this.inventoryService) {
@@ -54,6 +57,16 @@ export class ServiceFactory {
       );
     }
     return this.packService;
+  }
+
+  static getPackFavoriteService(): PackFavoriteService {
+    if (!this.packFavoriteService) {
+      this.packFavoriteService = new PackFavoriteService(
+        new PackFavoriteRepository(),
+        new PackRepository(),
+      );
+    }
+    return this.packFavoriteService;
   }
 
   static getStickerService(): StickerService {

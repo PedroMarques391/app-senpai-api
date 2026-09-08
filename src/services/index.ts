@@ -3,6 +3,7 @@ export * from "./cache.service";
 export * from "./content.service";
 export * from "./inventory.service";
 export * from "./pack.service";
+export * from "./pack-favorite.service";
 export * from "./profile.service";
 export * from "./purchase.service";
 export * from "./sticker.service";
