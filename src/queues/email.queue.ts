@@ -1,5 +1,5 @@
 import { BullMQInitializer } from "@/init";
-import { Queue } from "bullmq";
+import { Queue, type JobsOptions } from "bullmq";
 
 export interface EmailJobData {
   to: string;
@@ -24,8 +24,14 @@ export class EmailQueue {
     });
   }
 
-  async addJob(name: string, job: EmailJobData): Promise<EmailJobResponse> {
-    const result = await this.queue.add(name, job);
+  async addJob(
+    name: string,
+    job: EmailJobData,
+    options?: JobsOptions,
+  ): Promise<EmailJobResponse> {
+    const result = await this.queue.add(name, job, {
+      ...options,
+    });
 
     return {
       id: result.id,
@@ -35,7 +41,9 @@ export class EmailQueue {
   }
 
   async getJob(id: string) {
-    return await this.queue.getJob(id);
+    const job = await this.queue.getJob(id);
+
+    return job;
   }
 
   async close(): Promise<void> {
