@@ -1,4 +1,4 @@
-# Senpai Figurinhas API — Documentação Oficial e Guia de Integração Flutter
+# Senpai Figurinhas API - Documentação Oficial e Guia de Integração Flutter
 
 Esta documentação serve como a **fonte única de verdade** (Single Source of Truth) para o backend Fastify e para a integração com o cliente Flutter, detalhando contratos rigorosos, regras de negócio, ciclo de vida de cotas e estruturas de erro.
 
