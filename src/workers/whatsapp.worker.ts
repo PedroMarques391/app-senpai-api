@@ -1,5 +1,6 @@
 import { BullMQInitializer } from "@/init";
 import type { WhatsAppJobData } from "@/queues";
+import type { FastifyBaseLogger } from "fastify";
 import { Worker, type Job } from "bullmq";
 
 export class WhatsAppWorker {
@@ -8,7 +9,7 @@ export class WhatsAppWorker {
   private readonly PHONE_ID = process.env.WHATSAPP_PHONE_ID;
   private readonly TOKEN = process.env.WHATSAPP_TOKEN;
 
-  constructor() {
+  constructor(private readonly logger?: FastifyBaseLogger) {
     this.worker = new Worker<WhatsAppJobData>(
       this.QUEUE_NAME,
       this.process.bind(this),
@@ -79,15 +80,15 @@ export class WhatsAppWorker {
 
   private setupListeners(): void {
     this.worker.on("ready", () => {
-      console.log(`✅ WhatsAppWorker ready`);
+      this.logger?.info("WhatsAppWorker ready");
     });
 
     this.worker.on("completed", (job) => {
-      console.log(`[WhatsAppWorker] Job ${job.id} concluído com sucesso`);
+      this.logger?.info({ jobId: job.id }, `[WhatsAppWorker] Job ${job.id} concluído com sucesso`);
     });
 
     this.worker.on("failed", (job, err) => {
-      console.error(`[WhatsAppWorker] Job ${job?.id} falhou:`, err.message);
+      this.logger?.error({ jobId: job?.id, err: err.message }, `[WhatsAppWorker] Job ${job?.id} falhou: ${err.message}`);
     });
   }
 

@@ -1,9 +1,15 @@
 import { createNodeRedisClient, type RedisClient } from "bullmq";
+import type { FastifyBaseLogger } from "fastify";
 import { createClient, type RedisClientType } from "redis";
 
 export class BullMQInitializer {
   private static client: RedisClient | null = null;
   private static rawClient: RedisClientType | null = null;
+  private static logger?: FastifyBaseLogger;
+
+  public static setLogger(logger: FastifyBaseLogger): void {
+    this.logger = logger;
+  }
 
   public static connect(): RedisClient {
     if (!this.client) {
@@ -12,7 +18,7 @@ export class BullMQInitializer {
       });
 
       this.rawClient.on("error", (err) => {
-        console.error("❌ BullMQ Redis error:", err);
+        this.logger?.error(err, "BullMQ Redis error");
       });
 
       this.client = createNodeRedisClient(this.rawClient);

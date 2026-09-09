@@ -1,10 +1,15 @@
 import { Db, MongoClient } from "mongodb";
+import type { FastifyBaseLogger } from "fastify";
 
 export class MongoInitializer {
   private static client: MongoClient | null = null;
   private static db: Db | null = null;
+  private static logger?: FastifyBaseLogger;
 
-  public static async init(): Promise<void> {
+  public static async init(logger?: FastifyBaseLogger): Promise<void> {
+    if (logger) {
+      this.logger = logger;
+    }
     if (this.client) {
       return;
     }
@@ -61,9 +66,9 @@ export class MongoInitializer {
       await this.db.collection("contents").createIndex({ type: 1 });
       await this.db.collection("contents").createIndex({ platform: 1 });
 
-      console.log("✅ Successfully connected to MongoDB");
+      this.logger?.info("Successfully connected to MongoDB");
     } catch (error) {
-      console.error("❌ Failed to connect to MongoDB");
+      this.logger?.error(error, "Failed to connect to MongoDB");
       throw error;
     }
   }
@@ -91,7 +96,7 @@ export class MongoInitializer {
       await this.client.close();
       this.client = null;
       this.db = null;
-      console.log("🔌 MongoDB connection closed");
+      this.logger?.info("MongoDB connection closed");
     }
   }
 }

@@ -16,9 +16,9 @@ async function mailerPlugin(fastify: FastifyInstance, options: FastifyPluginOpti
 
     try {
         await transporter.verify();
-        console.log("✅ Server is ready to take our messages");
+        fastify.log.info("Server is ready to take our messages");
     } catch (err) {
-        console.error("❌ Server is not ready to take our messages", err);
+        fastify.log.error(err, "Server is not ready to take our messages");
         process.exit(1);
     }
 

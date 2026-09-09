@@ -1,4 +1,4 @@
-import { CloudinaryInitializer, MongoInitializer } from "@/init";
+import { CloudinaryInitializer, MongoInitializer, BullMQInitializer } from "@/init";
 import { authPlugin, errorPlugin, redisPlugin, quotaPlugin, mailerPlugin } from "@/plugin";
 import {
   adminRouter,
@@ -24,7 +24,21 @@ import {
 
 import fastifyCors from "@fastify/cors";
 
-const server = fastify().withTypeProvider<ZodTypeProvider>();
+const server = fastify({
+  logger:
+    process.env.NODE_ENV === "production"
+      ? true
+      : {
+        transport: {
+          target: "pino-pretty",
+          options: {
+            colorize: true,
+            translateTime: "HH:MM:ss Z",
+            ignore: "pid,hostname",
+          },
+        },
+      },
+}).withTypeProvider<ZodTypeProvider>();
 
 server.register(fastifyCors, {
   origin: true,
@@ -76,17 +90,18 @@ server.register(async (app) => {
 const bootstrap = async () => {
   try {
     CloudinaryInitializer.init();
-    await MongoInitializer.init();
-    new WhatsAppWorker();
+    BullMQInitializer.setLogger(server.log);
+    await MongoInitializer.init(server.log);
+    new WhatsAppWorker(server.log);
     server.listen({ port: 3000, host: "0.0.0.0" }, (err, address) => {
       if (err) {
-        console.error(err);
+        server.log.error(err);
         process.exit(1);
       }
-      console.log(`✅ Server is running at ${address}`);
+      server.log.info(`Server is running at ${address}`);
     });
   } catch (err) {
-    console.error(err);
+    server.log.error(err);
     process.exit(1);
   }
 };

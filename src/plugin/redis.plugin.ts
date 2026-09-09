@@ -8,11 +8,11 @@ async function redisPlugin(fastify: FastifyInstance) {
   });
 
   redis.on("error", (err) => {
-    fastify.log.error(err, "❌ Redis error");
+    fastify.log.error(err, "Redis error");
   });
 
   redis.on("connect", () => {
-    console.log("✅ Redis connected");
+    fastify.log.info("Redis connected");
   });
 
   await redis.connect();
