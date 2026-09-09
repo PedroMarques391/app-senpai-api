@@ -5,3 +5,4 @@ export * from "./UploadUtils";
 export * from "./UserUtils";
 export * from "./CloudinaryUtils";
 export * from "./QuotaUtils";
+export * from "./OtpUtils";

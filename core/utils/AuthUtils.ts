@@ -5,14 +5,6 @@ import bcrypt from "bcrypt";
 export class AuthUtils {
   private static readonly SALT_ROUNDS = 10;
 
-  static generateOTP(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  }
-
-  static generateExpiresAt(): Date {
-    return new Date(Date.now() + 10 * 60 * 1000);
-  }
-
   static async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, this.SALT_ROUNDS);
   }

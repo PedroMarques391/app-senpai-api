@@ -1,10 +1,5 @@
 import type { User } from "@/models";
 
-export interface OtpSecret {
-  code: string;
-  createdAt: number;
-}
-
 export interface SendOtpResult {
   otp: string;
   wa_id: string;

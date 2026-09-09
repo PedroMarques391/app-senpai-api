@@ -1,10 +1,9 @@
 import { createUserDtoSchema, type CreateUserDto } from "@/dtos";
 import type { User, UserRepository } from "@/models";
 import type { WhatsAppQueue } from "@/queues";
-import type { CacheService } from "@/services";
+import type { OtpService } from "./otp.service";
 import type {
   AuthResult,
-  OtpSecret,
   SendOtpResult,
   ServiceResponse,
 } from "@/types";
@@ -18,8 +17,8 @@ export class AuthService {
       "find" | "create" | "update"
     >,
     private readonly jwtInstance: FastifyJWT,
-    private readonly cacheService: CacheService,
     private readonly whatsappQueue: WhatsAppQueue,
+    private readonly otpService: OtpService,
   ) { }
 
   async sendOTP(rawWaId: string): Promise<ServiceResponse<SendOtpResult>> {
@@ -45,46 +44,32 @@ export class AuthService {
       };
     }
 
-    const cacheKey = `otp:${waId}`;
-    const cachedOtp = await this.cacheService.get<OtpSecret>(cacheKey);
+    const otpResult = await this.otpService.generateOtp(waId);
 
-    if (cachedOtp) {
-      const timeSinceLastSend = Date.now() - cachedOtp.createdAt;
-
-      if (timeSinceLastSend < 60000) {
-        const remainingSeconds = Math.ceil((60000 - timeSinceLastSend) / 1000);
-        return {
-          success: false,
-          userExists: true,
-          retryAfter: remainingSeconds,
-          message: `Por favor, aguarde ${remainingSeconds} segundos antes de solicitar um novo código.`,
-        };
-      }
+    if (otpResult.success === false) {
+      return {
+        success: false,
+        userExists: true,
+        retryAfter: otpResult.retryAfter,
+        message: otpResult.message,
+      };
     }
-
-    const code = cachedOtp?.code ?? AuthUtils.generateOTP();
 
     await this.whatsappQueue.addJob(
       "send-message",
       {
         number: user.wa_id,
-        message: code,
+        message: otpResult.code,
       },
       {
         attempts: 2,
       },
     );
 
-    await this.cacheService.set(
-      cacheKey,
-      { code, createdAt: Date.now() },
-      5 * 60,
-    );
-
     return {
       success: true,
       data: {
-        otp: code,
+        otp: otpResult.code,
         wa_id: user.wa_id,
       },
     };
@@ -104,14 +89,11 @@ export class AuthService {
       throw new Error("Credenciais inválidas");
     }
 
-    const cacheKey = `otp:${waId}`;
-    const cachedOtp = await this.cacheService.get<OtpSecret>(cacheKey);
+    const isValid = await this.otpService.verifyOtp(waId, otpCode);
 
-    if (!cachedOtp || cachedOtp.code !== otpCode) {
+    if (!isValid) {
       throw new Error("Invalid or expired OTP");
     }
-
-    await this.cacheService.del(cacheKey);
 
     const fullUser = UserUtils.applyDefaults({
       ...user,

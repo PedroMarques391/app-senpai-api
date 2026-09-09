@@ -23,6 +23,7 @@ import {
   UserService,
   TermsService,
   CreationQuotaService,
+  OtpService,
 } from "@/services";
 
 import { QueueFactory } from "./queue.factory";
@@ -43,6 +44,7 @@ export class ServiceFactory {
   private static termsService: TermsService;
   private static packFavoriteService: PackFavoriteService;
   private static creationQuotaService: CreationQuotaService;
+  private static otpService: OtpService;
 
   static getInventoryService(): InventoryService {
     if (!this.inventoryService) {
@@ -129,8 +131,8 @@ export class ServiceFactory {
     return new AuthService(
       new UserRepository(),
       jwtInstance,
-      this.getCacheService(redisInstance),
       QueueFactory.getWhatsAppQueue(),
+      this.getOtpService(redisInstance),
     );
   }
   static getContentService(): ContentService {
@@ -162,5 +164,12 @@ export class ServiceFactory {
       );
     }
     return this.creationQuotaService;
+  }
+
+  static getOtpService(redisInstance: RedisClientType): OtpService {
+    if (!this.otpService) {
+      this.otpService = new OtpService(this.getCacheService(redisInstance));
+    }
+    return this.otpService;
   }
 }
