@@ -2,10 +2,12 @@ import type { UserRole } from "@/schemas";
 import "@fastify/jwt";
 import "fastify";
 import type { RedisClientType } from "redis";
+import type { Mail, SMTPSentMessageInfo } from "nodemailer";
 
 declare module "fastify" {
   export interface FastifyInstance {
     redis: RedisClientType;
+    mailer: Mail<SMTPSentMessageInfo>;
     authenticate: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
     requireAdmin: (
       ...allowedRoles: UserRole[]

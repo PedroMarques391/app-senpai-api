@@ -1714,6 +1714,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"nodemailer@npm:^10.0.1":
+  version: 10.0.1
+  resolution: "nodemailer@npm:10.0.1"
+  checksum: 10c0/2a6ad2c400fb8c7fe9edbbedb3ec7a805c216717548ebc6439cdecd4bdf1c232da7d84d46c74c406f99274b86bcf998a3b23ed7781aeddf580447bf9285730ec
+  languageName: node
+  linkType: hard
+
 "nopt@npm:^10.0.0":
   version: 10.0.1
   resolution: "nopt@npm:10.0.1"
@@ -2122,6 +2129,7 @@ __metadata:
     fastify-plugin: "npm:^5.1.0"
     fastify-type-provider-zod: "npm:^6.1.0"
     mongodb: "npm:^7.5.0"
+    nodemailer: "npm:^10.0.1"
     redis: "npm:^6.2.1"
     tsup: "npm:^8.5.1"
     typescript: "npm:^5.9.3"

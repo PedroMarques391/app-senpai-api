@@ -1,5 +1,5 @@
 import { CloudinaryInitializer, MongoInitializer } from "@/init";
-import { authPlugin, errorPlugin, redisPlugin, quotaPlugin } from "@/plugin";
+import { authPlugin, errorPlugin, redisPlugin, quotaPlugin, mailerPlugin } from "@/plugin";
 import {
   adminRouter,
   authRoutes,
@@ -41,6 +41,7 @@ server.register(errorPlugin);
 server.register(authPlugin);
 server.register(redisPlugin);
 server.register(quotaPlugin);
+server.register(mailerPlugin);
 server.register(authRoutes, { prefix: "/auth" });
 server.register(packRoutes, { prefix: "/pack" });
 server.register(adminRouter, { prefix: "/admin" });
