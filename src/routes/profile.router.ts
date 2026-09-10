@@ -6,6 +6,7 @@ import z from "zod";
 export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
   const profileService = ServiceFactory.getProfileService();
   const cacheService = ServiceFactory.getCacheService(app.redis);
+  const emailService = ServiceFactory.getEmailService(app.redis);
 
   app.get("/", async (request, reply) => {
     const cacheKey = `profile:${request.user._id}`;
@@ -128,4 +129,54 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
       });
     },
   );
+
+  app.post(
+    "/email/code/send",
+    {
+      schema: {
+        body: z.object({ email: z.email() }),
+      },
+    },
+    async (request, reply) => {
+      const { email } = request.body;
+      const result = await emailService.sendOTP(email);
+
+      if (!result.success) {
+        return reply.status(403).send(result);
+      }
+
+      return reply.status(200).send({
+        success: true,
+        message: "Código enviado para o seu e-mail",
+        expiresIn: 300,
+        retryAfter: 60,
+      });
+    },
+  );
+
+  app.post(
+    "/email/code/verify",
+    {
+      schema: {
+        body: z.object({
+          email: z.string().email(),
+          code: z.string().length(6),
+        }),
+      },
+    },
+    async (request, reply) => {
+      const { email, code } = request.body;
+      const result = await emailService.verifyOtp(email, code);
+
+      await Promise.all([
+        cacheService.del(`profile:${request.user._id}`),
+        request.user.userName
+          ? cacheService.del(`profile:username:${request.user.userName}`)
+          : Promise.resolve(),
+      ]);
+
+      return reply.status(200).send(result);
+    },
+  );
 };
+

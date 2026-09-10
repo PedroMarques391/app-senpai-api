@@ -12,6 +12,7 @@ import {
   AuthService,
   CacheService,
   ContentService,
+  EmailService,
   InventoryService,
   PackService,
   PackFavoriteService,
@@ -32,6 +33,7 @@ import type { RedisClientType } from "redis";
 
 export class ServiceFactory {
   private static cacheService: CacheService;
+  private static emailService: EmailService;
   private static inventoryService: InventoryService;
   private static packService: PackService;
   private static profileService: ProfileService;
@@ -171,5 +173,16 @@ export class ServiceFactory {
       this.otpService = new OtpService(this.getCacheService(redisInstance));
     }
     return this.otpService;
+  }
+
+  static getEmailService(redisInstance: RedisClientType): EmailService {
+    if (!this.emailService) {
+      this.emailService = new EmailService(
+        this.getOtpService(redisInstance),
+        new UserRepository(),
+        QueueFactory.getEmailQueue(),
+      );
+    }
+    return this.emailService;
   }
 }

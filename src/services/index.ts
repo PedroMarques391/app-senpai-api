@@ -1,6 +1,7 @@
 export * from "./auth.service";
 export * from "./cache.service";
 export * from "./content.service";
+export * from "./email.service";
 export * from "./inventory.service";
 export * from "./pack.service";
 export * from "./pack-favorite.service";
