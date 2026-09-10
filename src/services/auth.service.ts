@@ -70,7 +70,7 @@ export class AuthService {
       success: true,
       data: {
         otp: otpResult.code,
-        wa_id: user.wa_id,
+        identifier: user.wa_id,
       },
     };
   }

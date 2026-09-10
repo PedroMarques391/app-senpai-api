@@ -2,7 +2,7 @@ import type { User } from "@/models";
 
 export interface SendOtpResult {
   otp: string;
-  wa_id: string;
+  identifier: string;
 }
 
 export interface AuthResult {
@@ -24,8 +24,8 @@ export interface JwtPayload {
 export type ServiceResponse<T> =
   | { success: true; data: T }
   | {
-      success: false;
-      userExists: boolean;
-      message: string;
-      retryAfter?: number;
-    };
+    success: false;
+    userExists: boolean;
+    message: string;
+    retryAfter?: number;
+  };
