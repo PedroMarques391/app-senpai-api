@@ -15,7 +15,8 @@ A API Senpai segue os princípios da **Clean Architecture**, organizada em 3 cam
 - **Node.js + Fastify + TypeScript**: Core da API de alta performance e tipagem estrita com Host binding `0.0.0.0` e CORS configurado.
 - **MongoDB Atlas**: Banco de dados NoSQL principal.
 - **Redis (`ioredis`)**: Cache de alta velocidade para leituras (TTL padrão de 24h), invalidação reativa em mutações e rate limit temporizado de OTP.
-- **BullMQ**: Mensageria assíncrona e background workers (ex: envio de mensagens no WhatsApp via Evolution API / Baileys).
+- **BullMQ**: Mensageria assíncrona e background workers (`WhatsAppWorker` para mensagens via Baileys/Evolution API e `EmailWorker` para e-mails transacionais com templates HTML).
+- **Nodemailer / SMTP (`MailerInitializer`)**: Inicialização centralizada com pool de conexão SMTP compartilhado entre plugins Fastify e o `EmailWorker` para envio de códigos de verificação OTP e comunicados.
 - **Cloudinary**: Upload de mídia e transformação automática de assets (ex: conversão WebP, redimensionamento 256x256 e otimização para ícones de pacotes).
 - **JWT (`@fastify/jwt`)**: Autenticação stateless com tokens Bearer contendo payload estrito do usuário.
 
@@ -34,6 +35,7 @@ A API Senpai segue os princípios da **Clean Architecture**, organizada em 3 cam
   - `role`: `"user" | "admin" | "moderator" | "company"`
   - `premium`: `boolean` (Define acesso a cotas ilimitadas e recursos VIP)
   - `isNumberVerified`: `boolean`
+  - `isEmailVerified`: `boolean` (Indica se o e-mail cadastrado foi autenticado via OTP)
 
 ### 2.2 Estrutura Padronizada de Respostas de Erro
 A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins). O cliente Flutter deve tratar os seguintes status HTTP e formatos:
@@ -583,6 +585,62 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 #### `DELETE /profile/`
 - **Descrição:** Desativa o perfil do usuário autenticado (soft-delete: `status = "inactive"`, define `deletedAt`).
 
+#### `POST /profile/email/code/send`
+- **Descrição e Regra de Negócio:** Dispara o envio de um código de verificação OTP de 6 dígitos para o endereço de e-mail informado.
+  1. **Enfileiramento Assíncrono:** O envio é processado via fila `email` no **BullMQ**, consumida pelo `EmailWorker` com template HTML responsivo estilizado.
+  2. **Verificação de Conta Ativa:** Bloqueia solicitações de usuários com status `inactive`.
+  3. **Validação de Assinatura Premium:** O envio é restrito a usuários com assinatura ativa (`user.premium === true`). Usuários não-premium recebem mensagem orientando o upgrade.
+  4. **Rate Limit:** Aplica intervalo mínimo de 60 segundos entre disparos para o mesmo e-mail. Se chamado antes do tempo, retorna `403 Forbidden` com `retryAfter` indicando os segundos restantes para reenvio.
+  5. **TTL:** O código OTP expira em 5 minutos (300 segundos).
+- **Request Body:**
+  | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `email` | `z.string().email()` | `String` | Sim | E-mail do usuário a receber o código OTP. |
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "message": "Código enviado para o seu e-mail",
+      "expiresIn": 300,
+      "retryAfter": 60
+    }
+    ```
+  - `403 Forbidden` (Rate limit ou não-premium):
+    ```json
+    {
+      "success": false,
+      "userExists": true,
+      "retryAfter": 45,
+      "message": "Por favor, aguarde 45 segundos antes de solicitar um novo código."
+    }
+    ```
+
+#### `POST /profile/email/code/verify`
+- **Descrição e Regra de Negócio:** Valida o código OTP de 6 dígitos e confirma o e-mail do usuário autenticado.
+  1. **Validação do Código:** Compara o código informado com o token armazenado no Redis. Lança erro caso o código seja inválido ou já tenha expirado.
+  2. **Atualização no Banco de Dados:** Atualiza o usuário com `isEmailVerified: true` de forma atômica no MongoDB.
+  3. **Invalidação de Cache Automática:** Remove imediatamente as chaves de cache de perfil no Redis (`profile:<userId>` e `profile:username:<userName>`), garantindo que o próximo `GET /profile/` retorne o status atualizado sem inconsistências de cache.
+- **Request Body:**
+  | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `email` | `z.string().email()` | `String` | Sim | E-mail validado. |
+  | `code` | `z.string().length(6)` | `String` | Sim | Código de 6 dígitos recebido por e-mail. |
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "message": "Email verified successfully"
+    }
+    ```
+  - `400 Bad Request` / `500 Internal Error`:
+    ```json
+    {
+      "message": "Invalid or expired OTP"
+    }
+    ```
+
 ---
 
 ### 3.9 Upload de Mídia (`/upload`)
@@ -708,3 +766,6 @@ export interface QuotaSnapshotDto {
    - Ao tocar no botão de curtir/favoritar, envie `POST /pack/:id/favorite` e atualize o ícone e o contador baseado no boolean `isFavorite` retornado.
 5. **Gestão do Ciclo Diário no App:**
    - Ao carregar a tela de criação de pacotes/figurinhas, consulte previamente `GET /creation/quota` para saber se o usuário Free já tem um pacote reservado no ciclo ou se ainda possui figurinhas disponíveis.
+6. **Fluxo de Verificação de E-mail via OTP:**
+   - Na tela de perfil ou configurações, use `POST /profile/email/code/send` e mapeie o campo `retryAfter` para acionar a contagem regressiva no botão de reenvio.
+   - Após o sucesso em `POST /profile/email/code/verify`, a próxima requisição a `GET /profile/` refletirá `isEmailVerified: true` automaticamente devido à invalidação de cache pelo backend.

@@ -59,13 +59,14 @@ A base de código está dividida em duas raízes: `core` (definições de dados,
 │
 ├── src/
 │   ├── factories/      # Provedores de injeção de dependência (ServiceFactory, QueueFactory)
-│   ├── init/           # Inicialização de infraestrutura (MongoDB, BullMQ, Cloudinary)
+│   ├── init/           # Inicialização de infraestrutura (MongoDB, BullMQ, Cloudinary, Mailer)
 │   ├── plugin/         # Plugins do Fastify (JWT, autenticação, redis, quota, mailer, erros)
 │   ├── queues/         # Definição e despacho de filas BullMQ
 │   ├── repositories/   # Acesso direto a dados e coleções do MongoDB
 │   ├── routes/         # Endpoints agrupados por domínio (auth, profile, pack, store, etc.)
 │   ├── services/       # Regras de negócio e fluxos de domínio
-│   ├── workers/        # Consumidores de filas em background
+│   ├── templates/      # Templates HTML de e-mails transacionais e comunicados
+│   ├── workers/        # Consumidores de filas em background (WhatsApp, E-mail)
 │   └── index.ts        # Ponto de entrada da aplicação e bootstrap do servidor
 │
 ├── docs/               # Documentação técnica de contratos e guias de integração
