@@ -1,4 +1,4 @@
-import { CloudinaryInitializer, MongoInitializer, BullMQInitializer } from "@/init";
+import { CloudinaryInitializer, MongoInitializer, BullMQInitializer, MailerInitializer } from "@/init";
 import { authPlugin, errorPlugin, redisPlugin, quotaPlugin, mailerPlugin } from "@/plugin";
 import {
   adminRouter,
@@ -13,7 +13,7 @@ import {
   termsRoutes,
   uploadRoutes,
 } from "@/routes";
-import { WhatsAppWorker } from "@/workers";
+import { WhatsAppWorker, EmailWorker } from "@/workers";
 import fastifyMultipart from "@fastify/multipart";
 import fastify from "fastify";
 import {
@@ -92,7 +92,9 @@ const bootstrap = async () => {
     CloudinaryInitializer.init();
     BullMQInitializer.setLogger(server.log);
     await MongoInitializer.init(server.log);
+    await MailerInitializer.init(server.log);
     new WhatsAppWorker(server.log);
+    new EmailWorker(MailerInitializer.getTransporter(), server.log);
     server.listen({ port: 3000, host: "0.0.0.0" }, (err, address) => {
       if (err) {
         server.log.error(err);

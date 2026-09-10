@@ -4,7 +4,9 @@ import { Queue, type JobsOptions } from "bullmq";
 export interface EmailJobData {
   to: string;
   subject: string;
+  userName: string
   body: string;
+
 }
 
 export interface EmailJobResponse {
