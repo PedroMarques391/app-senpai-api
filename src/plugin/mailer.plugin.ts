@@ -1,28 +1,12 @@
-// plugins/mailer.ts
-import type { FastifyInstance, FastifyPluginOptions } from 'fastify';
-import fp from 'fastify-plugin';
-import nodemailer from 'nodemailer';
+import { MailerInitializer } from "@/init";
+import type { FastifyInstance, FastifyPluginOptions } from "fastify";
+import fp from "fastify-plugin";
 
-async function mailerPlugin(fastify: FastifyInstance, options: FastifyPluginOptions) {
-    const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT),
-        secure: true,
-        auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
-        },
-    });
-
-    try {
-        await transporter.verify();
-        fastify.log.info("Server is ready to take our messages");
-    } catch (err) {
-        fastify.log.error(err, "Server is not ready to take our messages");
-        process.exit(1);
-    }
-
-    fastify.decorate('mailer', transporter);
+async function mailerPlugin(
+  fastify: FastifyInstance,
+  _options: FastifyPluginOptions,
+) {
+  fastify.decorate("mailer", MailerInitializer.getTransporter());
 }
 
 export default fp(mailerPlugin);
