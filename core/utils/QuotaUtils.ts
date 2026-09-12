@@ -1,7 +1,6 @@
 export class QuotaUtils {
   static readonly FREE_DAILY_STICKER_LIMIT = 3;
 
-
   static getCycleInfo(referenceDate: Date = new Date()): {
     cycleDate: string;
     cycleStart: Date;

@@ -1,5 +1,5 @@
 import { MongoUtils, QuotaUtils } from "@/utils";
-import type { CreationQuotaRepository, PackRepository } from "@/models";
+import type { CreationQuotaRepository } from "@/models";
 
 export interface QuotaSnapshotDto {
   cycleStart: string;
@@ -11,19 +11,45 @@ export interface QuotaSnapshotDto {
 export class CreationQuotaService {
   constructor(
     private readonly creationQuotaRepository: CreationQuotaRepository,
-    private readonly packRepository?: PackRepository,
   ) {}
+
+  private buildSnapshot(
+    cycleStart: Date,
+    isVip: boolean,
+    packName: string | null = null,
+    createdStickerCount = 0,
+  ): QuotaSnapshotDto {
+    return {
+      cycleStart: cycleStart.toISOString(),
+      packName,
+      createdStickerCount: isVip ? 0 : createdStickerCount,
+      isUnlimited: isVip,
+    };
+  }
+
+  private validatePackBinding(
+    activePackName: string | null | undefined,
+    requestedPackName: string,
+  ): { allowed: boolean; reason?: string } {
+    if (!activePackName) {
+      return { allowed: true };
+    }
+
+    if (activePackName.toLowerCase() !== requestedPackName.toLowerCase()) {
+      return {
+        allowed: false,
+        reason: `Sua criação grátis de hoje já está vinculada ao pack "${activePackName}". Você pode continuar nele até completar ${QuotaUtils.FREE_DAILY_STICKER_LIMIT} figurinhas.`,
+      };
+    }
+
+    return { allowed: true };
+  }
 
   async getQuota(userId: string, isVip: boolean): Promise<QuotaSnapshotDto> {
     const { cycleDate, cycleStart } = QuotaUtils.getCycleInfo();
 
     if (isVip) {
-      return {
-        cycleStart: cycleStart.toISOString(),
-        packName: null,
-        createdStickerCount: 0,
-        isUnlimited: true,
-      };
+      return this.buildSnapshot(cycleStart, true);
     }
 
     const userObjectId = MongoUtils.toObjectId(userId, "ID de usuário inválido");
@@ -32,12 +58,12 @@ export class CreationQuotaService {
       cycleDate,
     );
 
-    return {
-      cycleStart: (record?.cycle_start ?? cycleStart).toISOString(),
-      packName: record?.active_pack_name ?? null,
-      createdStickerCount: record?.stickers_count ?? 0,
-      isUnlimited: false,
-    };
+    return this.buildSnapshot(
+      record?.cycle_start ?? cycleStart,
+      false,
+      record?.active_pack_name ?? null,
+      record?.stickers_count ?? 0,
+    );
   }
 
   async reservePack(
@@ -49,12 +75,7 @@ export class CreationQuotaService {
     const { cycleDate, cycleStart } = QuotaUtils.getCycleInfo();
 
     if (isVip) {
-      return {
-        cycleStart: cycleStart.toISOString(),
-        packName: cleanPackName,
-        createdStickerCount: 0,
-        isUnlimited: true,
-      };
+      return this.buildSnapshot(cycleStart, true, cleanPackName);
     }
 
     const userObjectId = MongoUtils.toObjectId(userId, "ID de usuário inválido");
@@ -63,13 +84,9 @@ export class CreationQuotaService {
       cycleDate,
     );
 
-    if (
-      existing?.active_pack_name &&
-      existing.active_pack_name.toLowerCase() !== cleanPackName.toLowerCase()
-    ) {
-      throw new Error(
-        `Sua criação grátis de hoje já está vinculada ao pack "${existing.active_pack_name}". Você pode continuar nele até completar 3 figurinhas.`,
-      );
+    const packCheck = this.validatePackBinding(existing?.active_pack_name, cleanPackName);
+    if (!packCheck.allowed) {
+      throw new Error(packCheck.reason);
     }
 
     const updated = await this.creationQuotaRepository.reservePack(
@@ -79,61 +96,12 @@ export class CreationQuotaService {
       cleanPackName,
     );
 
-    return {
-      cycleStart: updated.cycle_start.toISOString(),
-      packName: updated.active_pack_name,
-      createdStickerCount: updated.stickers_count,
-      isUnlimited: false,
-    };
-  }
-
-  async commit(
-    userId: string,
-    packName: string,
-    stickerCount: number,
-    isVip: boolean,
-  ): Promise<QuotaSnapshotDto> {
-    const cleanPackName = packName.trim();
-    const { cycleDate, cycleStart } = QuotaUtils.getCycleInfo();
-
-    if (isVip) {
-      return {
-        cycleStart: cycleStart.toISOString(),
-        packName: cleanPackName,
-        createdStickerCount: 0,
-        isUnlimited: true,
-      };
-    }
-
-    const userObjectId = MongoUtils.toObjectId(userId, "ID de usuário inválido");
-    const existing = await this.creationQuotaRepository.findByUserAndDate(
-      userObjectId,
-      cycleDate,
+    return this.buildSnapshot(
+      updated.cycle_start,
+      false,
+      updated.active_pack_name,
+      updated.stickers_count,
     );
-
-    if (
-      existing?.active_pack_name &&
-      existing.active_pack_name.toLowerCase() !== cleanPackName.toLowerCase()
-    ) {
-      throw new Error(
-        `Sua criação grátis de hoje já está vinculada ao pack "${existing.active_pack_name}".`,
-      );
-    }
-
-    const updated = await this.creationQuotaRepository.incrementStickers(
-      userObjectId,
-      cycleDate,
-      cycleStart,
-      cleanPackName,
-      stickerCount,
-    );
-
-    return {
-      cycleStart: updated.cycle_start.toISOString(),
-      packName: updated.active_pack_name,
-      createdStickerCount: updated.stickers_count,
-      isUnlimited: false,
-    };
   }
 
   async canCreate(
@@ -155,15 +123,9 @@ export class CreationQuotaService {
       cycleDate,
     );
 
-    const activePack = record?.active_pack_name;
-    if (
-      activePack &&
-      activePack.toLowerCase() !== cleanPackName.toLowerCase()
-    ) {
-      return {
-        allowed: false,
-        reason: `Sua criação grátis de hoje já está vinculada ao pack "${activePack}". Você pode continuar nele até completar 3 figurinhas.`,
-      };
+    const packCheck = this.validatePackBinding(record?.active_pack_name, cleanPackName);
+    if (!packCheck.allowed) {
+      return packCheck;
     }
 
     const currentCount = record?.stickers_count ?? 0;
@@ -183,6 +145,41 @@ export class CreationQuotaService {
     }
 
     return { allowed: true };
+  }
+
+  async commit(
+    userId: string,
+    packName: string,
+    stickerCount: number,
+    isVip: boolean,
+  ): Promise<QuotaSnapshotDto> {
+    const cleanPackName = packName.trim();
+    const { cycleDate, cycleStart } = QuotaUtils.getCycleInfo();
+
+    if (isVip) {
+      return this.buildSnapshot(cycleStart, true, cleanPackName);
+    }
+
+    const check = await this.canCreate(userId, cleanPackName, stickerCount, false);
+    if (!check.allowed) {
+      throw new Error(check.reason || "Limite de cota excedido.");
+    }
+
+    const userObjectId = MongoUtils.toObjectId(userId, "ID de usuário inválido");
+    const updated = await this.creationQuotaRepository.incrementStickers(
+      userObjectId,
+      cycleDate,
+      cycleStart,
+      cleanPackName,
+      stickerCount,
+    );
+
+    return this.buildSnapshot(
+      updated.cycle_start,
+      false,
+      updated.active_pack_name,
+      updated.stickers_count,
+    );
   }
 
   async recordUsage(
@@ -208,3 +205,4 @@ export class CreationQuotaService {
     );
   }
 }
+

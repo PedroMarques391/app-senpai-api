@@ -162,7 +162,6 @@ export class ServiceFactory {
     if (!this.creationQuotaService) {
       this.creationQuotaService = new CreationQuotaService(
         new CreationQuotaRepository(),
-        new PackRepository(),
       );
     }
     return this.creationQuotaService;
