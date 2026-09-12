@@ -31,7 +31,7 @@ export class PackService {
     );
 
     if (!publisher) {
-      throw new Error("Publisher not provided");
+      throw new Error("O nome do criador do pacote é obrigatório.");
     }
 
     const sanitizedTags = packData.tags?.map((tag) => tag.toLowerCase().trim());
@@ -50,7 +50,7 @@ export class PackService {
       publisher,
     });
     if (!pack) {
-      throw new Error("Error to create pack, try again later");
+      throw new Error("Não foi possível criar o pacote de figurinhas agora. Tente novamente em instantes.");
     }
 
     if (
@@ -187,7 +187,7 @@ export class PackService {
       updateData,
     );
     if (!pack) {
-      throw new Error("Failed to update pack, try again later");
+      throw new Error("Não foi possível atualizar o pacote de figurinhas. Tente novamente em instantes.");
     }
 
     return pack;
@@ -213,7 +213,7 @@ export class PackService {
 
     const result = await this.packRepository.delete(packObjectId, userObjectId);
     if (!result) {
-      throw new Error("Failed to delete pack, try again later");
+      throw new Error("Não foi possível excluir o pacote de figurinhas. Tente novamente em instantes.");
     }
 
     return result;

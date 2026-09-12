@@ -30,7 +30,7 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
             await request.jwtVerify();
           } catch {
             return reply.status(401).send({
-              message: "Operation not permitted",
+              message: "Você precisa estar conectado para acessar seus pacotes.",
               success: false,
             });
           }
