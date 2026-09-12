@@ -16,7 +16,7 @@ export class UploadService {
         (error, uploadResult) => {
           if (error || !uploadResult) {
             return reject(
-              error || new Error("Falha ao realizar upload para o Cloudinary"),
+              error || new Error("Não foi possível enviar a imagem. Tente novamente."),
             );
           }
           return resolve({
@@ -38,7 +38,7 @@ export class UploadService {
   async delete(publicId: string): Promise<unknown> {
     const result = await cloudinary.uploader.destroy(publicId);
     if (result.result !== "ok") {
-      throw new Error("Falha ao deletar imagem do Cloudinary");
+      throw new Error("Não foi possível excluir a imagem. Tente novamente.");
     }
     return result;
   }
