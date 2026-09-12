@@ -33,7 +33,7 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
     {
       schema: {
         params: z.object({
-          username: z.string(),
+          username: z.string().trim().toLowerCase(),
         }),
       },
     },
@@ -134,7 +134,9 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
     "/email/code/send",
     {
       schema: {
-        body: z.object({ email: z.email() }),
+        body: z.object({
+          email: z.string().trim().toLowerCase().email(),
+        }),
       },
     },
     async (request, reply) => {
@@ -159,7 +161,7 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
     {
       schema: {
         body: z.object({
-          email: z.string().email(),
+          email: z.string().trim().toLowerCase().email(),
           code: z.string().length(6),
         }),
       },

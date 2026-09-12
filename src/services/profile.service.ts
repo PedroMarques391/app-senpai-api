@@ -5,10 +5,10 @@ import type {
 } from "@/dtos";
 import type { User } from "@/models";
 import type { UserRepository } from "@/repositories";
-import { AuthUtils, MongoUtils, PermissionUtils } from "@/utils";
+import { AuthUtils, MongoUtils, PermissionUtils, UserUtils } from "@/utils";
 
 export class ProfileService {
-  constructor(private readonly userRepository: UserRepository) { }
+  constructor(private readonly userRepository: UserRepository) {}
 
   async getProfile(id: string): Promise<User | null> {
     const userObjectId = MongoUtils.toObjectId(id, "ID de usuário inválido");
@@ -23,7 +23,8 @@ export class ProfileService {
   async getProfileByUsername(
     username: string,
   ): Promise<PublicProfileDto | null> {
-    const user = await this.userRepository.find({ userName: username });
+    const cleanUsername = UserUtils.normalizeIdentifier(username);
+    const user = await this.userRepository.find({ userName: cleanUsername });
     if (!user || user.status === "inactive") {
       throw new Error("Perfil de usuário não encontrado");
     }
@@ -38,6 +39,30 @@ export class ProfileService {
     };
   }
 
+  private async ensureUsernameAvailable(
+    userId: string,
+    newUsername?: string,
+    currentUsername?: string,
+  ): Promise<void> {
+    if (!newUsername || newUsername === currentUsername) return;
+    const userExists = await this.userRepository.find({ userName: newUsername });
+    if (userExists && userExists._id.toString() !== userId) {
+      throw new Error("Este nome de usuário já está em uso");
+    }
+  }
+
+  private async ensureEmailAvailable(
+    userId: string,
+    newEmail?: string,
+    currentEmail?: string,
+  ): Promise<void> {
+    if (!newEmail || newEmail === currentEmail) return;
+    const emailExists = await this.userRepository.find({ email: newEmail });
+    if (emailExists && emailExists._id.toString() !== userId) {
+      throw new Error("Este e-mail já está em uso");
+    }
+  }
+
   async completeRegistration(
     id: string,
     data: CompleteRegistrationDto,
@@ -49,18 +74,13 @@ export class ProfileService {
       throw new Error("Perfil de usuário não encontrado");
     }
 
-    const [userWithSameUsername, userWithSameEmail] = await Promise.all([
-      this.userRepository.find({ userName: data.userName }),
-      this.userRepository.find({ email: data.email }),
+    const cleanUsername = UserUtils.normalizeIdentifier(data.userName);
+    const cleanEmail = UserUtils.normalizeIdentifier(data.email);
+
+    await Promise.all([
+      this.ensureUsernameAvailable(id, cleanUsername, user.userName),
+      this.ensureEmailAvailable(id, cleanEmail, user.email),
     ]);
-
-    if (userWithSameUsername && userWithSameUsername._id.toString() !== id) {
-      throw new Error("Este nome de usuário já está em uso");
-    }
-
-    if (userWithSameEmail && userWithSameEmail._id.toString() !== id) {
-      throw new Error("Este e-mail já está em uso");
-    }
 
     const hashedPassword = await AuthUtils.hashPassword(data.password);
 
@@ -68,8 +88,8 @@ export class ProfileService {
       { _id: userObjectId },
       {
         name: data.name,
-        userName: data.userName,
-        email: data.email,
+        userName: cleanUsername,
+        email: cleanEmail,
         password: hashedPassword,
       },
     );
@@ -105,40 +125,31 @@ export class ProfileService {
     const userObjectId = MongoUtils.toObjectId(id, "ID de usuário inválido");
     const currentUser = await this.userRepository.find({ _id: userObjectId });
 
-    const { userName, email } = updateData;
-
     if (!currentUser) {
       throw new Error("Perfil de usuário não encontrado");
     }
 
-    if (userName && userName !== currentUser.userName) {
-      const hasUserWithSameUsername = await this.userRepository.find({
-        userName,
-      });
-      if (
-        hasUserWithSameUsername &&
-        hasUserWithSameUsername._id.toString() !== id
-      ) {
-        throw new Error("Este nome de usuário já está em uso");
-      }
+    if (updateData.userName) {
+      updateData.userName = UserUtils.normalizeIdentifier(updateData.userName);
+    }
+    if (updateData.email) {
+      updateData.email = UserUtils.normalizeIdentifier(updateData.email);
     }
 
-    if (email && email !== currentUser.email) {
-      const hasUserWithSameEmail = await this.userRepository.find({
-        email,
-      });
-      if (hasUserWithSameEmail && hasUserWithSameEmail._id.toString() !== id) {
-        throw new Error("Este e-mail já está em uso");
-      }
-    }
+    await Promise.all([
+      this.ensureUsernameAvailable(id, updateData.userName, currentUser.userName),
+      this.ensureEmailAvailable(id, updateData.email, currentUser.email),
+    ]);
 
     const updatedUser = await this.userRepository.update(
       { _id: userObjectId },
       updateData,
     );
+
     if (!updatedUser) {
       throw new Error("Falha ao atualizar o perfil do usuário");
     }
+
     return updatedUser;
   }
 }
