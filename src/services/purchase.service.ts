@@ -41,10 +41,10 @@ export class PurchaseService {
       throw new Error("Usuário não encontrado");
     }
     if (alreadyOwned) {
-      throw new Error("Você já possui este item em seu inventário");
+      throw new Error("Você já comprou este item anteriormente.");
     }
     if (user.petals_balance < storeItem.price_in_petals) {
-      throw new Error("Pétalas insuficientes para adquirir este item");
+      throw new Error("Você não tem pétalas suficientes para comprar este item.");
     }
 
     // deductPetals agora retorna o saldo atualizado (ou null se falhar,
@@ -54,7 +54,7 @@ export class PurchaseService {
       storeItem.price_in_petals,
     );
     if (newBalance === null) {
-      throw new Error("Pétalas insuficientes para adquirir este item");
+      throw new Error("Você não tem pétalas suficientes para comprar este item.");
     }
 
     const inventoryItem = await this.inventoryRepository.create(

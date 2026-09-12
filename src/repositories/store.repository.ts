@@ -28,7 +28,7 @@ export class StoreRepository implements IStoreRepository {
     const parsed = insertStoreItemSchema.parse(data);
     const result = await this.collection.insertOne(parsed as StoreItem);
     const created = await this.collection.findOne({ _id: result.insertedId });
-    if (!created) throw new Error("Failed to create store item");
+    if (!created) throw new Error("Não foi possível criar o item da loja. Tente novamente.");
     return created;
   }
 
