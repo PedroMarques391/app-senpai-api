@@ -74,6 +74,8 @@ async function quotaPlugin(fastify: FastifyInstance) {
         });
       }
 
+      request.pack = pack;
+
       const check = await creationQuotaService.canCreate(
         request.user._id,
         pack.pack_name,

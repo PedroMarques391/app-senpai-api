@@ -1,10 +1,15 @@
 import type { UserRole } from "@/schemas";
+import type { StickerPack } from "@/models";
 import "@fastify/jwt";
 import "fastify";
 import type { RedisClientType } from "redis";
 import type { Mail, SMTPSentMessageInfo } from "nodemailer";
 
 declare module "fastify" {
+  export interface FastifyRequest {
+    pack?: StickerPack;
+  }
+
   export interface FastifyInstance {
     redis: RedisClientType;
     mailer: Mail<SMTPSentMessageInfo>;

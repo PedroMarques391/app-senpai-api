@@ -64,14 +64,18 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
         request.body,
       );
 
-      const pack = await packService.findPackById(request.params.packId);
-      if (pack) {
-        await creationQuotaService.recordUsage(
-          request.user._id,
-          pack.pack_name,
-          1,
-          request.user.premium === true,
-        );
+      if (!request.user.premium) {
+        const pack =
+          request.pack ??
+          (await packService.findPackById(request.params.packId));
+        if (pack) {
+          await creationQuotaService.recordUsage(
+            request.user._id,
+            pack.pack_name,
+            1,
+            false,
+          );
+        }
       }
 
       await cacheService.del(`stickers:pack:${request.params.packId}`);
