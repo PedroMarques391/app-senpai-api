@@ -16,7 +16,7 @@ async function quotaPlugin(fastify: FastifyInstance) {
       if (!request.user) {
         return reply.status(401).send({
           success: false,
-          message: "Operation not permitted",
+          message: "Você precisa estar conectado para criar um pacote.",
         });
       }
 
@@ -56,7 +56,7 @@ async function quotaPlugin(fastify: FastifyInstance) {
       if (!request.user) {
         return reply.status(401).send({
           success: false,
-          message: "Operation not permitted",
+          message: "Você precisa estar conectado para adicionar figurinhas.",
         });
       }
 

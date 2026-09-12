@@ -15,7 +15,8 @@ async function authPlugin(fastify: FastifyInstance) {
         await request.jwtVerify();
       } catch (err) {
         return reply.status(401).send({
-          message: "Operation not permitted",
+          message:
+            "Sua sessão expirou ou é inválida. Por favor, faça login novamente.",
           success: false,
         });
       }

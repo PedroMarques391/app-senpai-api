@@ -71,7 +71,7 @@ server.register(async (app) => {
 
   app.get("/me", async (request, reply) => {
     return reply.status(200).send({
-      message: "User fetched successfully",
+      message: "Dados do usuário carregados com sucesso.",
       success: true,
       user: request.user,
     });
