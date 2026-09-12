@@ -18,7 +18,7 @@ export class UserService {
     const waId = AuthUtils.normalizeWaId(rawWaId);
     const user = await this.userRepository.find({ wa_id: waId });
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("Usuário não encontrado.");
     }
     return user;
   }
@@ -27,7 +27,7 @@ export class UserService {
     const waId = AuthUtils.normalizeWaId(userData.wa_id);
     const user = await this.userRepository.find({ wa_id: waId });
     if (user) {
-      throw new Error("User already exists");
+      throw new Error("Já existe uma conta cadastrada com este número.");
     }
 
     return this.userRepository.create({
