@@ -17,7 +17,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
       if (!result.success) return reply.status(403).send(result);
 
       return reply.status(200).send({
-        message: "OTP sent successfully",
+        message: "Código de verificação enviado com sucesso.",
         otp: result.data?.otp,
         expiresIn: 300,
         retryAfter: 60,
@@ -35,14 +35,14 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     async (request, reply) => {
       const { wa_id, otp } = request.body;
       if (!otp) {
-        throw new Error("Invalid or expired OTP");
+        throw new Error("Código de verificação inválido ou expirado. Solicite um novo código.");
       }
       const user = await authService.verifyOtpAndLogin(wa_id, otp);
 
       reply.header("Authorization", `Bearer ${user.token}`);
       return reply.status(200).send({
         success: true,
-        message: "OTP verified successfully",
+        message: "Código validado com sucesso.",
         user: user.user,
       });
     },
@@ -56,7 +56,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
       const user = await authService.register(userData.wa_id, userData);
 
       return reply.send({
-        message: "User created successfully",
+        message: "Usuário cadastrado com sucesso.",
         user,
       });
     },
@@ -80,7 +80,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
 
       return reply.status(200).send({
         success: true,
-        message: "Password verified successfully",
+        message: "Login realizado com sucesso.",
         user: user.user,
       });
     },

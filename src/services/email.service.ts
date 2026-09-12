@@ -74,7 +74,7 @@ export class EmailService {
         const cleanEmail = UserUtils.normalizeIdentifier(email);
         const user = await this.userRepository.find({ email: cleanEmail });
         if (!user) {
-            throw new Error("User not found");
+            throw new Error("Usuário não encontrado com este e-mail.");
         }
 
         if (user.status === "inactive") {
@@ -84,7 +84,7 @@ export class EmailService {
         const isValid = await this.otpService.verifyOtp(cleanEmail, otpCode);
 
         if (!isValid) {
-            throw new Error("Invalid or expired OTP");
+            throw new Error("Código de verificação inválido ou expirado. Solicite um novo código.");
         }
 
 
@@ -94,10 +94,10 @@ export class EmailService {
         );
 
         if (!updated) {
-            throw new Error("User not found");
+            throw new Error("Não foi possível confirmar o e-mail. Tente novamente.");
         }
 
-        return { success: true, message: "Email verified successfully" };
+        return { success: true, message: "E-mail verificado com sucesso!" };
     }
 
 

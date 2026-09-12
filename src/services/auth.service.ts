@@ -82,7 +82,7 @@ export class AuthService {
     const waId = AuthUtils.normalizeWaId(rawWaId);
     const user = await this.userRepository.find({ wa_id: waId });
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("Conta não encontrada. Verifique seu número de WhatsApp.");
     }
 
     if (user.status === "inactive") {
@@ -92,7 +92,7 @@ export class AuthService {
     const isValid = await this.otpService.verifyOtp(waId, otpCode);
 
     if (!isValid) {
-      throw new Error("Invalid or expired OTP");
+      throw new Error("Código de verificação inválido ou expirado. Solicite um novo código.");
     }
 
     const fullUser = UserUtils.applyDefaults({
@@ -129,7 +129,7 @@ export class AuthService {
       user = await this.userRepository.find({ userName: cleanIdentifier });
     }
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("E-mail, usuário ou senha incorretos. Verifique os dados e tente novamente.");
     }
 
     if (user.status === "inactive") {
@@ -138,7 +138,7 @@ export class AuthService {
 
     if (!user.email || !user.password) {
       throw new Error(
-        "This user does not have a email or password configured, please finish your account or go to signup",
+        "Sua conta ainda não possui senha cadastrada. Conclua seu cadastro ou entre pelo WhatsApp.",
       );
     }
 
@@ -147,7 +147,7 @@ export class AuthService {
       user.password,
     );
     if (!isMatch) {
-      throw new Error("Invalid credentials");
+      throw new Error("E-mail, usuário ou senha incorretos. Verifique os dados e tente novamente.");
     }
 
     user.last_login = new Date();
