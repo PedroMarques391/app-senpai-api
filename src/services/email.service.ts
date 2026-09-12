@@ -2,6 +2,7 @@ import type { EmailQueue } from "@/queues";
 import type { UserRepository } from "@/repositories";
 import type { OtpService } from "@/services";
 import type { ServiceResponse, SendOtpResult } from "@/types";
+import { UserUtils } from "@/utils";
 
 export class EmailService {
     constructor(
@@ -11,7 +12,8 @@ export class EmailService {
     ) { }
 
     async sendOTP(email: string): Promise<ServiceResponse<SendOtpResult>> {
-        const user = await this.userRepository.find({ email });
+        const cleanEmail = UserUtils.normalizeIdentifier(email);
+        const user = await this.userRepository.find({ email: cleanEmail });
 
         if (user?.status === "inactive") {
             return {
@@ -32,7 +34,7 @@ export class EmailService {
             };
         }
 
-        const otpResult = await this.otpService.generateOtp(email);
+        const otpResult = await this.otpService.generateOtp(cleanEmail);
 
         if (otpResult.success === false) {
             return {
@@ -60,7 +62,7 @@ export class EmailService {
             success: true,
             data: {
                 otp: otpResult.code,
-                identifier: user.email,
+                identifier: cleanEmail,
             },
         };
     }
@@ -69,7 +71,8 @@ export class EmailService {
         email: string,
         otpCode: string,
     ): Promise<{ success: boolean, message: string }> {
-        const user = await this.userRepository.find({ email });
+        const cleanEmail = UserUtils.normalizeIdentifier(email);
+        const user = await this.userRepository.find({ email: cleanEmail });
         if (!user) {
             throw new Error("User not found");
         }
@@ -78,7 +81,7 @@ export class EmailService {
             throw new Error("Credenciais inválidas");
         }
 
-        const isValid = await this.otpService.verifyOtp(email, otpCode);
+        const isValid = await this.otpService.verifyOtp(cleanEmail, otpCode);
 
         if (!isValid) {
             throw new Error("Invalid or expired OTP");

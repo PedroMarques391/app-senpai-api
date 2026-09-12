@@ -66,7 +66,10 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     "/login/loginWithIdentifier",
     {
       schema: {
-        body: z.object({ identifier: z.string(), password: z.string() }),
+        body: z.object({
+          identifier: z.string().trim().toLowerCase(),
+          password: z.string(),
+        }),
       },
     },
     async (request, reply) => {

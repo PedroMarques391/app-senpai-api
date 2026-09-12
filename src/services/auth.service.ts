@@ -123,9 +123,10 @@ export class AuthService {
     identifier: string,
     passwordString: string,
   ): Promise<AuthResult> {
-    let user = await this.userRepository.find({ email: identifier });
+    const cleanIdentifier = UserUtils.normalizeIdentifier(identifier);
+    let user = await this.userRepository.find({ email: cleanIdentifier });
     if (!user) {
-      user = await this.userRepository.find({ userName: identifier });
+      user = await this.userRepository.find({ userName: cleanIdentifier });
     }
     if (!user) {
       throw new Error("User not found");
