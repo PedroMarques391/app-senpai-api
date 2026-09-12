@@ -38,7 +38,7 @@ export class StickerService {
       user_id: userObjectId,
     });
     if (!sticker) {
-      throw new Error("Failed to create sticker, try again later");
+      throw new Error("Não foi possível criar a figurinha agora. Tente novamente em instantes.");
     }
 
     await this.userRepository.incrementStickersCount(
@@ -141,7 +141,7 @@ export class StickerService {
       updateData,
     );
     if (!sticker) {
-      throw new Error("Failed to update sticker, try again later");
+      throw new Error("Não foi possível atualizar a figurinha. Tente novamente em instantes.");
     }
 
     return sticker;
@@ -174,7 +174,7 @@ export class StickerService {
       userObjectId,
     );
     if (!result) {
-      throw new Error("Failed to delete sticker, try again later");
+      throw new Error("Não foi possível excluir a figurinha. Tente novamente em instantes.");
     }
 
     await this.userRepository.incrementStickersCount(
