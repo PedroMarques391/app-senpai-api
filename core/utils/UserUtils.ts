@@ -19,4 +19,9 @@ export class UserUtils {
     const partialSchema = userSchema.partial();
     return partialSchema.parse(user) as User;
   }
+
+  static normalizeIdentifier(identifier: string): string {
+    return identifier.trim().toLowerCase();
+  }
 }
+

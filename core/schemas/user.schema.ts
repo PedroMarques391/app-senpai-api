@@ -16,7 +16,7 @@ export const userSchema = z.object({
   wa_id: z.string(),
   isVerifiedCreator: z.boolean().default(false),
   name: z.string(),
-  userName: z.string(),
+  userName: z.string().trim().toLowerCase(),
   password: z.string(),
   premium: z.boolean().default(false),
   role: userRoleEnum.default("user"),
@@ -35,7 +35,7 @@ export const userSchema = z.object({
       type: vipTypeEnum,
     })
     .optional(),
-  email: z.email(),
+  email: z.string().trim().toLowerCase().email(),
   isEmailVerified: z.boolean().default(false),
   isNumberVerified: z.boolean().default(false),
   termsAccepted: z.boolean().default(false),
