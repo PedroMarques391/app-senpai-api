@@ -17,8 +17,20 @@ export function renderOtpEmailTemplate({
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Seu código de verificação - Senpai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;800;900&display=swap');
+  body, table, td, p, a, div, span {
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  }
+  .otp-code {
+    font-family: 'Courier New', Courier, monospace !important;
+  }
+</style>
 </head>
-<body style="margin:0; padding:0; background-color:#FFF0F5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+<body style="margin:0; padding:0; background-color:#FFF0F5; font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;">
 
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FFF0F5; padding: 40px 0;">
     <tr>
@@ -53,7 +65,7 @@ export function renderOtpEmailTemplate({
               <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; background-color:#FAFAFA; border: 1px solid #F0E4E8; border-radius: 14px;">
                 <tr>
                   <td align="center" style="padding: 22px 16px;">
-                    <div style="font-size: 34px; font-weight: 700; letter-spacing: 10px; color:#FF3D82; font-family: 'Courier New', Courier, monospace;">
+                    <div class="otp-code" style="font-size: 34px; font-weight: 700; letter-spacing: 10px; color:#FF3D82; font-family: 'Courier New', Courier, monospace;">
                       ${otp}
                     </div>
                   </td>
