@@ -24,13 +24,12 @@ export class MailService {
       };
     }
 
-    if (!user || !user.premium) {
+    if (!user) {
       return {
         success: false,
-        userExists: !!user,
-        message: !!user
-          ? "Parece que você ainda não é um usuário premium, cria sua conta ou faça login para continuar."
-          : "Você ainda não é um usuário da Senpai, por favor crie sua conta.",
+        userExists: false,
+        message:
+          "Você ainda não é um usuário da Senpai, por favor crie sua conta.",
       };
     }
 
