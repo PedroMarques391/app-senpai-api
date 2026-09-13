@@ -19,7 +19,6 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
 
       return reply.status(200).send({
         message: "Código de verificação enviado com sucesso.",
-        otp: result.data?.otp,
         expiresIn: 300,
         retryAfter: 60,
       });
