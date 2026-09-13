@@ -1,5 +1,16 @@
-import { CloudinaryInitializer, MongoInitializer, BullMQInitializer, MailerInitializer } from "@/init";
-import { authPlugin, errorPlugin, redisPlugin, quotaPlugin, mailerPlugin } from "@/plugin";
+import {
+  BullMQInitializer,
+  CloudinaryInitializer,
+  MailerInitializer,
+  MongoInitializer,
+} from "@/init";
+import {
+  authPlugin,
+  errorPlugin,
+  mailerPlugin,
+  quotaPlugin,
+  redisPlugin,
+} from "@/plugin";
 import {
   adminRouter,
   authRoutes,
@@ -13,7 +24,7 @@ import {
   termsRoutes,
   uploadRoutes,
 } from "@/routes";
-import { WhatsAppWorker, EmailWorker } from "@/workers";
+import { EmailWorker, WhatsAppWorker } from "@/workers";
 import fastifyMultipart from "@fastify/multipart";
 import fastify from "fastify";
 import {
@@ -29,15 +40,15 @@ const server = fastify({
     process.env.NODE_ENV === "production"
       ? true
       : {
-        transport: {
-          target: "pino-pretty",
-          options: {
-            colorize: true,
-            translateTime: "HH:MM:ss Z",
-            ignore: "pid,hostname",
+          transport: {
+            target: "pino-pretty",
+            options: {
+              colorize: true,
+              translateTime: "HH:MM:ss Z",
+              ignore: "pid,hostname",
+            },
           },
         },
-      },
 }).withTypeProvider<ZodTypeProvider>();
 
 server.register(fastifyCors, {
@@ -59,6 +70,7 @@ server.register(mailerPlugin);
 server.register(authRoutes, { prefix: "/auth" });
 server.register(packRoutes, { prefix: "/pack" });
 server.register(adminRouter, { prefix: "/admin" });
+
 server.get("/health", (request, reply) => {
   return reply.status(200).send({
     message: "Server is running",
