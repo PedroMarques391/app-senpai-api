@@ -5,13 +5,15 @@ import type {
   StickerRepository,
   UserRepository,
 } from "@/repositories";
-import { MongoUtils, PermissionUtils, CloudinaryUtils } from "@/utils";
+import type { UploadService } from "./upload.service";
+import { CloudinaryUtils, MongoUtils, PermissionUtils } from "@/utils";
 
 export class StickerService {
   constructor(
     private readonly stickerRepository: StickerRepository,
     private readonly packRepository: PackRepository,
     private readonly userRepository: UserRepository,
+    private readonly uploadService: UploadService,
   ) {}
 
   async createSticker(
@@ -38,7 +40,9 @@ export class StickerService {
       user_id: userObjectId,
     });
     if (!sticker) {
-      throw new Error("Não foi possível criar a figurinha agora. Tente novamente em instantes.");
+      throw new Error(
+        "Não foi possível criar a figurinha agora. Tente novamente em instantes.",
+      );
     }
 
     await this.userRepository.incrementStickersCount(
@@ -46,6 +50,14 @@ export class StickerService {
       sticker.type,
       1,
     );
+
+    const sizeBytes = stickerData.size_bytes ?? 0;
+    if (sizeBytes > 0) {
+      await this.userRepository.incrementStorageUsedBytes(
+        userObjectId,
+        sizeBytes,
+      );
+    }
 
     if (!pack.icon_url && sticker.sticker_url) {
       const transformedUrl = CloudinaryUtils.transformUrlForPackIcon(
@@ -141,7 +153,9 @@ export class StickerService {
       updateData,
     );
     if (!sticker) {
-      throw new Error("Não foi possível atualizar a figurinha. Tente novamente em instantes.");
+      throw new Error(
+        "Não foi possível atualizar a figurinha. Tente novamente em instantes.",
+      );
     }
 
     return sticker;
@@ -174,7 +188,9 @@ export class StickerService {
       userObjectId,
     );
     if (!result) {
-      throw new Error("Não foi possível excluir a figurinha. Tente novamente em instantes.");
+      throw new Error(
+        "Não foi possível excluir a figurinha. Tente novamente em instantes.",
+      );
     }
 
     await this.userRepository.incrementStickersCount(
@@ -182,6 +198,18 @@ export class StickerService {
       existingSticker.type,
       -1,
     );
+
+    const sizeBytes = existingSticker.size_bytes ?? 0;
+    if (sizeBytes > 0) {
+      await this.userRepository.incrementStorageUsedBytes(
+        userObjectId,
+        -sizeBytes,
+      );
+    }
+
+    if (existingSticker.cloudinary_id) {
+      await this.uploadService.deleteQuietly(existingSticker.cloudinary_id);
+    }
 
     return result;
   }
