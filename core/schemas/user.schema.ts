@@ -52,4 +52,5 @@ export const userSchema = z.object({
       dynamic: z.number().default(0),
     })
     .default({ static: 0, dynamic: 0 }),
+  storage_used_bytes: z.number().nonnegative().default(0),
 });

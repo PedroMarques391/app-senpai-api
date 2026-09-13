@@ -12,4 +12,5 @@ export const stickerSchema = z.object({
   emojis: z.array(z.string()).max(3).default([]),
   created_at: z.coerce.date().default(() => new Date()),
   type: z.enum(["dynamic", "static"]),
+  size_bytes: z.number().nonnegative().default(0),
 });

@@ -25,6 +25,10 @@ declare module "fastify" {
       req: FastifyRequest,
       reply: FastifyReply,
     ) => Promise<void>;
+    checkStorageQuota: (
+      req: FastifyRequest,
+      reply: FastifyReply,
+    ) => Promise<void>;
   }
 }
 

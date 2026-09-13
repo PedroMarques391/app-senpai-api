@@ -14,6 +14,7 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
           folder: z.string().optional(),
         }),
       },
+      preHandler: [app.checkStorageQuota],
     },
     async (request, reply) => {
       const data = await request.file();
@@ -52,6 +53,7 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
         public_id: result.public_id,
         url: result.url,
         type: result.format,
+        bytes: result.bytes,
       });
     },
   );

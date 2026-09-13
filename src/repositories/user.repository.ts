@@ -122,4 +122,14 @@ export class UserRepository implements IUserRepository {
 
     return result?.petals_balance ?? null;
   }
+
+  async incrementStorageUsedBytes(
+    userId: ObjectId,
+    bytes: number,
+  ): Promise<void> {
+    await this.collection.updateOne(
+      { _id: userId },
+      { $inc: { storage_used_bytes: bytes } },
+    );
+  }
 }

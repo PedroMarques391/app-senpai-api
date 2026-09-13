@@ -9,6 +9,7 @@ export const createStickerDtoSchema = stickerSchema
     sticker_url: true,
     emojis: true,
     type: true,
+    size_bytes: true,
   })
   .strict();
 
