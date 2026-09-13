@@ -1,5 +1,8 @@
 import type { UserRepository } from "@/repositories";
-import { renderResetPasswordEmailTemplate } from "@/templates";
+import {
+  renderResetPasswordEmailTemplate,
+  renderSuccessEmailTemplate,
+} from "@/templates";
 import { AuthUtils, UserUtils } from "@/utils";
 import crypto from "crypto";
 import type { CacheService } from "./cache.service";
@@ -73,10 +76,40 @@ export class RecoveryService {
         : Promise.resolve(),
     ]);
 
+    await this.sendSuccessResetPassword(cleanEmail);
+
     return {
       success: true,
       message: "Senha redefinida com sucesso.",
     };
   }
-}
 
+  private async sendSuccessResetPassword(email: string) {
+    const cleanEmail = UserUtils.normalizeIdentifier(email);
+
+    const user = await this.userRepository.find({ email: cleanEmail });
+
+    if (!user || user.status === "inactive") {
+      throw new Error("Conta não encontrada ou inativa.");
+    }
+
+    const html = renderSuccessEmailTemplate({
+      title: "Senha alterada com sucesso",
+      message: "Sua senha foi alterada com sucesso.",
+      details: [
+        {
+          label: "Email",
+          value: cleanEmail,
+        },
+      ],
+      noticeText:
+        "Se você não reconhece esta ação, entre em contato com o suporte.",
+    });
+
+    await this.mailService.sendMail({
+      to: cleanEmail,
+      subject: "Senha alterada com sucesso",
+      html,
+    });
+  }
+}
