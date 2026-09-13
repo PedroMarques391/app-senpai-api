@@ -16,7 +16,8 @@ export class UploadService {
         (error, uploadResult) => {
           if (error || !uploadResult) {
             return reject(
-              error || new Error("Não foi possível enviar a imagem. Tente novamente."),
+              error ||
+                new Error("Não foi possível enviar a imagem. Tente novamente."),
             );
           }
           return resolve({
@@ -42,4 +43,19 @@ export class UploadService {
     }
     return result;
   }
-} 
+
+  async deleteQuietly(publicId: string): Promise<boolean> {
+    const result = await cloudinary.uploader.destroy(publicId);
+    if (result) {
+      return result.result === "ok" || result.result === "not found";
+    }
+    return false;
+  }
+
+  async deleteManyQuietly(publicIds: string[]): Promise<void> {
+    if (publicIds.length === 0) return;
+    await Promise.allSettled(
+      publicIds.map((publicId) => this.deleteQuietly(publicId)),
+    );
+  }
+}
