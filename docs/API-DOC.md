@@ -15,8 +15,8 @@ A API Senpai segue os princípios da **Clean Architecture**, organizada em 3 cam
 - **Node.js + Fastify + TypeScript**: Core da API de alta performance e tipagem estrita com Host binding `0.0.0.0` e CORS configurado.
 - **MongoDB Atlas**: Banco de dados NoSQL principal.
 - **Redis (`ioredis`)**: Cache de alta velocidade para leituras (TTL padrão de 24h), invalidação reativa em mutações e rate limit temporizado de OTP.
-- **BullMQ**: Mensageria assíncrona e background workers (`WhatsAppWorker` para mensagens via Baileys/Evolution API e `EmailWorker` para e-mails transacionais com templates HTML responsivos, incluindo códigos OTP e links de recuperação de senha).
-- **Nodemailer / SMTP (`MailerInitializer`)**: Inicialização centralizada com pool de conexão SMTP compartilhado entre plugins Fastify e o `EmailWorker` para envio de códigos de verificação OTP, e-mails de recuperação de senha e comunicados.
+- **BullMQ**: Mensageria assíncrona e background workers (`WhatsAppWorker` para mensagens via Baileys/Evolution API e `EmailWorker` para e-mails transacionais com templates HTML responsivos, incluindo códigos OTP, links de recuperação de senha e e-mails de confirmação de segurança com dados de auditoria).
+- **Nodemailer / SMTP (`MailerInitializer`)**: Inicialização centralizada com pool de conexão SMTP compartilhado entre plugins Fastify e o `EmailWorker` para envio de códigos de verificação OTP, e-mails de recuperação de senha, alertas de segurança e comunicados.
 - **Cloudinary**: Upload de mídia e transformação automática de assets (ex: conversão WebP, redimensionamento 256x256 e otimização para ícones de pacotes).
 - **JWT (`@fastify/jwt`)**: Autenticação stateless com tokens Bearer contendo payload estrito do usuário.
 
@@ -179,7 +179,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
   1. **Normalização e Validação do E-mail:** O payload recebe `email`, que passa por validação com Zod (`z.string().trim().toLowerCase().email()`) e sanitização via `UserUtils.normalizeIdentifier`.
   2. **Verificação de Existência e Status:** O backend localiza o usuário no MongoDB. Se o usuário não existir, estiver com `status: "inactive"` ou não possuir e-mail cadastrado, retorna erro genérico amigável (`"Erro ao tentar redefinir a senha. Tente novamente."`) para evitar enumeração de contas por terceiros.
   3. **Token Criptográfico & TTL:** Gera um token seguro de 40 caracteres hexadecimais (`crypto.randomBytes(20).toString("hex")`) e grava no Redis sob a chave `reset:<token>` associado ao e-mail com tempo de expiração de **10 minutos** (600 segundos).
-  4. **Envio Assíncrono via BullMQ & Nodemailer:** Adiciona um job na fila `email` com o tipo `reset`. O `EmailWorker` consome a fila e dispara o template HTML responsivo contendo o link de recuperação: `${PRODUCTION_URL}/pt/reset-password?token=${token}`.
+  4. **Envio Assíncrono via BullMQ & Nodemailer:** Enfileira o e-mail na fila `email`. O `EmailWorker` consome a fila e dispara o template HTML responsivo contendo o link de recuperação: `${PRODUCTION_URL}/pt/reset-password?token=${token}`.
 - **Request Body:**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
   | :--- | :--- | :--- | :--- | :--- |
@@ -210,12 +210,13 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
     ```
 
 #### `POST /auth/reset-password`
-- **Descrição e Regra de Negócio:** Redefine a senha da conta utilizando o token criptográfico recebido por e-mail.
+- **Descrição e Regra de Negócio:** Redefine a senha da conta utilizando o token criptográfico recebido por e-mail e dispara alerta de segurança.
   1. **Validação do Token no Redis:** Consulta a chave `reset:<token>`. Se o token for inexistente ou estiver expirado (após 10 minutos), rejeita a requisição com erro `"Token inválido ou expirado."`.
   2. **Verificação da Conta:** Localiza a conta vinculada ao e-mail retornado pelo token no Redis e valida se a conta não possui status `inactive`.
   3. **Hash Criptográfico:** Gera novo hash seguro via Bcrypt (`AuthUtils.hashPassword`) com salt rounds adequados antes de salvar no banco de dados.
   4. **Atualização Atômica no MongoDB:** Atualiza o campo `password` do documento do usuário de forma atômica no banco de dados.
   5. **Invalidação Completa de Cache:** Remove a chave temporária `reset:<token>` do Redis e limpa o cache de perfil do usuário (`profile:<userId>` e `profile:username:<userName>`), garantindo que consultas subsequentes não retornem dados desatualizados.
+  6. **E-mail de Notificação de Segurança com Auditoria:** Dispara assincronamente um e-mail de alerta (`success-email-template`) confirmando a alteração da senha, contendo detalhes de auditoria: data e horário formatados no Horário de Brasília, endereço IP de origem (com resolução de proxies/CDN), localização geográfica aproximada e dispositivo/navegador identificado pelo `User-Agent`.
 - **Request Body:**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
   | :--- | :--- | :--- | :--- | :--- |
@@ -855,3 +856,4 @@ export interface QuotaSnapshotDto {
    - **Disparo da Recuperação:** Na tela "Esqueci minha senha", faça um `POST /auth/password/recovery` passando `{ "email": "usuario@email.com" }`. O backend normaliza o e-mail (lowercase/trim), valida a vigência da conta e enfileira um e-mail com link de redefinição.
    - **Deep Link / Abertura Web:** O link recebido no e-mail aponta para `${PRODUCTION_URL}/pt/reset-password?token=<token>`. O aplicativo Flutter pode interceptar este domínio via App Links/Deep Links para abrir a tela de redefinição in-app capturando o query parameter `token`, ou permitir que o usuário realize o reset pelo navegador e retorne ao app para fazer o login.
    - **Submissão da Nova Senha:** Na tela de criação da nova senha, envie `POST /auth/reset-password` contendo `{ "token": "<token>", "password": "<novaSenha>" }` (mínimo de 8 caracteres). Com o retorno `200 OK`, direcione o usuário diretamente para a tela de login (`POST /auth/login/loginWithIdentifier`).
+   - **Confirmação e Auditoria:** O backend dispara automaticamente um e-mail transacional de segurança informando a alteração da senha, com dados de auditoria (data e hora de Brasília, IP, localização aproximada e dispositivo).
