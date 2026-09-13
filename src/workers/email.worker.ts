@@ -1,9 +1,5 @@
 import { BullMQInitializer } from "@/init";
 import type { EmailJobData } from "@/queues";
-import {
-  renderOtpEmailTemplate,
-  renderResetPasswordEmailTemplate,
-} from "@/templates";
 import { Worker, type Job } from "bullmq";
 import type { FastifyBaseLogger } from "fastify";
 import type { Mail, SMTPSentMessageInfo } from "nodemailer";
@@ -31,19 +27,7 @@ export class EmailWorker {
   }
 
   private async process(job: Job<EmailJobData>): Promise<void> {
-    const { to, subject, userName, body, type } = job.data;
-
-    const html =
-      type === "reset"
-        ? renderResetPasswordEmailTemplate({
-            resetPasswordUrl: body,
-            userName,
-            expiresInMinutes: 10,
-          })
-        : renderOtpEmailTemplate({
-            otp: body,
-            userName,
-          });
+    const { to, subject, html } = job.data;
 
     await this.transporter.sendMail({
       from: this.FROM,
@@ -77,3 +61,4 @@ export class EmailWorker {
     await this.worker.close();
   }
 }
+

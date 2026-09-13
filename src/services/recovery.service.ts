@@ -1,4 +1,5 @@
 import type { UserRepository } from "@/repositories";
+import { renderResetPasswordEmailTemplate } from "@/templates";
 import { AuthUtils, UserUtils } from "@/utils";
 import crypto from "crypto";
 import type { CacheService } from "./cache.service";
@@ -30,11 +31,17 @@ export class RecoveryService {
 
     await this.cacheService.set(`reset:${token}`, cleanEmail, 60 * 10);
 
-    await this.mailService.sendResetPasswordEmail(
-      currentUser.email,
-      currentUser.name || "User",
-      `${url}/pt/reset-password?token=${token}`,
-    );
+    const html = renderResetPasswordEmailTemplate({
+      resetPasswordUrl: `${url}/pt/reset-password?token=${token}`,
+      userName: currentUser.name || "User",
+      expiresInMinutes: 10,
+    });
+
+    await this.mailService.sendMail({
+      to: currentUser.email,
+      subject: "Eii, parece que você esqueceu sua senha",
+      html,
+    });
   }
 
   async resetPassword(token: string, newPassword: string) {
@@ -72,3 +79,4 @@ export class RecoveryService {
     };
   }
 }
+

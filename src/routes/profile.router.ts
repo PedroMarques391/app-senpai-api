@@ -6,7 +6,7 @@ import z from "zod";
 export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
   const profileService = ServiceFactory.getProfileService();
   const cacheService = ServiceFactory.getCacheService(app.redis);
-  const emailService = ServiceFactory.getEmailService(app.redis);
+  const otpService = ServiceFactory.getOtpService(app.redis);
 
   app.get("/", async (request, reply) => {
     const cacheKey = `profile:${request.user._id}`;
@@ -141,7 +141,7 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (request, reply) => {
       const { email } = request.body;
-      const result = await emailService.sendOTP(email);
+      const result = await otpService.generateAndSendEmailOtp(email);
 
       if (!result.success) {
         return reply.status(403).send(result);
@@ -168,7 +168,7 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (request, reply) => {
       const { email, code } = request.body;
-      const result = await emailService.verifyOtp(email, code);
+      const result = await otpService.verifyEmailOtp(email, code);
 
       await Promise.all([
         cacheService.del(`profile:${request.user._id}`),

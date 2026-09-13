@@ -169,22 +169,24 @@ export class ServiceFactory {
     return this.creationQuotaService;
   }
 
-  static getOtpService(redisInstance: RedisClientType): OtpService {
-    if (!this.otpService) {
-      this.otpService = new OtpService(this.getCacheService(redisInstance));
-    }
-    return this.otpService;
-  }
-
-  static getEmailService(redisInstance: RedisClientType): MailService {
+  static getEmailService(): MailService {
     if (!this.mailService) {
       this.mailService = new MailService(
-        this.getOtpService(redisInstance),
-        new UserRepository(),
         QueueFactory.getEmailQueue(),
       );
     }
     return this.mailService;
+  }
+
+  static getOtpService(redisInstance: RedisClientType): OtpService {
+    if (!this.otpService) {
+      this.otpService = new OtpService(
+        this.getCacheService(redisInstance),
+        this.getEmailService(),
+        new UserRepository(),
+      );
+    }
+    return this.otpService;
   }
 
   static getRecoveryService(redisInstance: RedisClientType): RecoveryService {
@@ -192,7 +194,7 @@ export class ServiceFactory {
       this.recoveryService = new RecoveryService(
         new UserRepository(),
         this.getCacheService(redisInstance),
-        this.getEmailService(redisInstance),
+        this.getEmailService(),
       );
     }
     return this.recoveryService;
