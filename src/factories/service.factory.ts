@@ -63,6 +63,7 @@ export class ServiceFactory {
         new PackRepository(),
         new StickerRepository(),
         new UserRepository(),
+        this.getUploadService(),
       );
     }
     return this.packService;
@@ -84,6 +85,7 @@ export class ServiceFactory {
         new StickerRepository(),
         new PackRepository(),
         new UserRepository(),
+        this.getUploadService(),
       );
     }
     return this.stickerService;
@@ -171,9 +173,7 @@ export class ServiceFactory {
 
   static getEmailService(): MailService {
     if (!this.mailService) {
-      this.mailService = new MailService(
-        QueueFactory.getEmailQueue(),
-      );
+      this.mailService = new MailService(QueueFactory.getEmailQueue());
     }
     return this.mailService;
   }
