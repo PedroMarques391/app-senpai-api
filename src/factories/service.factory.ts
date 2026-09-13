@@ -1,39 +1,40 @@
 import {
   ContentRepository,
+  CreationQuotaRepository,
   InventoryRepository,
-  PackRepository,
   PackFavoriteRepository,
+  PackRepository,
   StickerRepository,
   StoreRepository,
   UserRepository,
-  CreationQuotaRepository,
 } from "@/repositories";
 import {
   AuthService,
   CacheService,
   ContentService,
-  EmailService,
+  CreationQuotaService,
   InventoryService,
-  PackService,
+  MailService,
+  OtpService,
   PackFavoriteService,
+  PackService,
   ProfileService,
   PurchaseService,
+  RecoveryService,
   StickerService,
   StoreService,
+  TermsService,
   UploadService,
   UserService,
-  TermsService,
-  CreationQuotaService,
-  OtpService,
 } from "@/services";
 
-import { QueueFactory } from "./queue.factory";
 import type { JWT as FastifyJWT } from "@fastify/jwt";
 import type { RedisClientType } from "redis";
+import { QueueFactory } from "./queue.factory";
 
 export class ServiceFactory {
   private static cacheService: CacheService;
-  private static emailService: EmailService;
+  private static mailService: MailService;
   private static inventoryService: InventoryService;
   private static packService: PackService;
   private static profileService: ProfileService;
@@ -47,6 +48,7 @@ export class ServiceFactory {
   private static packFavoriteService: PackFavoriteService;
   private static creationQuotaService: CreationQuotaService;
   private static otpService: OtpService;
+  private static recoveryService: RecoveryService;
 
   static getInventoryService(): InventoryService {
     if (!this.inventoryService) {
@@ -174,14 +176,25 @@ export class ServiceFactory {
     return this.otpService;
   }
 
-  static getEmailService(redisInstance: RedisClientType): EmailService {
-    if (!this.emailService) {
-      this.emailService = new EmailService(
+  static getEmailService(redisInstance: RedisClientType): MailService {
+    if (!this.mailService) {
+      this.mailService = new MailService(
         this.getOtpService(redisInstance),
         new UserRepository(),
         QueueFactory.getEmailQueue(),
       );
     }
-    return this.emailService;
+    return this.mailService;
+  }
+
+  static getRecoveryService(redisInstance: RedisClientType): RecoveryService {
+    if (!this.recoveryService) {
+      this.recoveryService = new RecoveryService(
+        new UserRepository(),
+        this.getCacheService(redisInstance),
+        this.getEmailService(redisInstance),
+      );
+    }
+    return this.recoveryService;
   }
 }
