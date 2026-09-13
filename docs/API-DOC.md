@@ -15,8 +15,8 @@ A API Senpai segue os princípios da **Clean Architecture**, organizada em 3 cam
 - **Node.js + Fastify + TypeScript**: Core da API de alta performance e tipagem estrita com Host binding `0.0.0.0` e CORS configurado.
 - **MongoDB Atlas**: Banco de dados NoSQL principal.
 - **Redis (`ioredis`)**: Cache de alta velocidade para leituras (TTL padrão de 24h), invalidação reativa em mutações e rate limit temporizado de OTP.
-- **BullMQ**: Mensageria assíncrona e background workers (`WhatsAppWorker` para mensagens via Baileys/Evolution API e `EmailWorker` para e-mails transacionais com templates HTML).
-- **Nodemailer / SMTP (`MailerInitializer`)**: Inicialização centralizada com pool de conexão SMTP compartilhado entre plugins Fastify e o `EmailWorker` para envio de códigos de verificação OTP e comunicados.
+- **BullMQ**: Mensageria assíncrona e background workers (`WhatsAppWorker` para mensagens via Baileys/Evolution API e `EmailWorker` para e-mails transacionais com templates HTML responsivos, incluindo códigos OTP e links de recuperação de senha).
+- **Nodemailer / SMTP (`MailerInitializer`)**: Inicialização centralizada com pool de conexão SMTP compartilhado entre plugins Fastify e o `EmailWorker` para envio de códigos de verificação OTP, e-mails de recuperação de senha e comunicados.
 - **Cloudinary**: Upload de mídia e transformação automática de assets (ex: conversão WebP, redimensionamento 256x256 e otimização para ícones de pacotes).
 - **JWT (`@fastify/jwt`)**: Autenticação stateless com tokens Bearer contendo payload estrito do usuário.
 
@@ -44,7 +44,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
 | :--- | :--- | :--- |
 | **400 Bad Request** | Erro de validação Zod nos campos. | `{"success": false, "message": "Dados de requisição inválidos", "errors": {"pack_name": ["Required"]}}` |
 | **400 Bad Request** | Erro de regra de negócio ou formato de ID. | `{"success": false, "message": "ID do pacote inválido"}` |
-| **401 Unauthorized** | Token ausente, inválido ou expirado. | `{"success": false, "message": "Operation not permitted"}` |
+| **401 Unauthorized** | Token ausente, inválido ou expirado. | `{"success": false, "message": "Sua sessão expirou ou é inválida. Por favor, faça login novamente."}` |
 | **403 Forbidden** | Cota diária excedida (Plano Free). | `{"success": false, "code": "QUOTA_EXCEEDED", "message": "Você já usou sua criação grátis de hoje. Volte amanhã ou assine o VIP para criar sem limites!"}` |
 | **403 Forbidden** | Rate limit do OTP (espera necessária). | `{"success": false, "userExists": true, "retryAfter": 45, "message": "Por favor, aguarde 45 segundos antes de solicitar um novo código."}` |
 | **403 Forbidden** | Falha de permissão / RBAC ou propriedade. | `{"success": false, "message": "Operação não permitida: você não pode excluir arquivos de outro usuário"}` |
@@ -94,8 +94,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
   - `200 OK`:
     ```json
     {
-      "message": "OTP sent successfully",
-      "otp": "123456",
+      "message": "Código de verificação enviado com sucesso.",
       "expiresIn": 300,
       "retryAfter": 60
     }
@@ -133,7 +132,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
     ```json
     {
       "success": true,
-      "message": "OTP verified successfully",
+      "message": "Código validado com sucesso.",
       "user": {
         "_id": "66dec987a123b456c7890123",
         "wa_id": "5511988887777",
@@ -152,29 +151,112 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
       }
     }
     ```
-  - `400 Bad Request`: `{"success": false, "message": "Invalid or expired OTP"}`
+  - `400 Bad Request` / `500 Internal Error`:
+    ```json
+    {
+      "message": "Código de verificação inválido ou expirado. Solicite um novo código."
+    }
+    ```
 
 #### `POST /auth/login/loginWithIdentifier`
-- **Descrição:** Login clássico com identificador (email ou userName) e senha com verificação via Bcrypt. Emite JWT no header `Authorization`.
+- **Descrição:** Login clássico com identificador (e-mail ou nome de usuário) e senha com verificação via Bcrypt. O campo `identifier` é normalizado automaticamente (`trim().toLowerCase()`). Emite JWT no header `Authorization`.
 - **Request Body:**
-  | Campo | Tipo Zod | Tipo Dart | Obrigatório? |
-  | :--- | :--- | :--- | :--- |
-  | `identifier` | `z.string()` | `String` | Sim |
-  | `password` | `z.string()` | `String` | Sim |
+  | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `identifier` | `z.string().trim().toLowerCase()` | `String` | Sim | E-mail ou username cadastrado. |
+  | `password` | `z.string()` | `String` | Sim | Senha da conta. |
 - **Respostas:**
-  - `200 OK`: `{"success": true, "message": "Password verified successfully", "user": { ...User }}` + `Authorization` Header.
+  - `200 OK`: `{"success": true, "message": "Login realizado com sucesso.", "user": { ...User }}` + `Authorization` Header.
 
 #### `POST /auth/register`
 - **Descrição:** Cadastro completo inicial de usuário. Realiza hash da senha e validação de unicidade de `wa_id`, `userName` e `email`.
 - **Request Body (`CreateUserDto`):** `wa_id`, `name`, `userName`, `email`, `password`.
 - **Respostas:**
-  - `200 OK`: `{"message": "User created successfully", "user": { ...User }}`
+  - `200 OK`: `{"message": "Usuário cadastrado com sucesso.", "user": { ...User }}`
+
+#### `POST /auth/password/recovery`
+- **Descrição e Regra de Negócio:** Dispara o fluxo de recuperação de senha por e-mail para usuários cadastrados.
+  1. **Normalização e Validação do E-mail:** O payload recebe `email`, que passa por validação com Zod (`z.string().trim().toLowerCase().email()`) e sanitização via `UserUtils.normalizeIdentifier`.
+  2. **Verificação de Existência e Status:** O backend localiza o usuário no MongoDB. Se o usuário não existir, estiver com `status: "inactive"` ou não possuir e-mail cadastrado, retorna erro genérico amigável (`"Erro ao tentar redefinir a senha. Tente novamente."`) para evitar enumeração de contas por terceiros.
+  3. **Token Criptográfico & TTL:** Gera um token seguro de 40 caracteres hexadecimais (`crypto.randomBytes(20).toString("hex")`) e grava no Redis sob a chave `reset:<token>` associado ao e-mail com tempo de expiração de **10 minutos** (600 segundos).
+  4. **Envio Assíncrono via BullMQ & Nodemailer:** Adiciona um job na fila `email` com o tipo `reset`. O `EmailWorker` consome a fila e dispara o template HTML responsivo contendo o link de recuperação: `${PRODUCTION_URL}/pt/reset-password?token=${token}`.
+- **Request Body:**
+  | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `email` | `z.string().trim().toLowerCase().email()` | `String` | Sim | E-mail da conta a ser recuperada. |
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "message": "E-mail de recuperação enviado com sucesso."
+    }
+    ```
+  - `400 Bad Request` (Validação Zod de e-mail inválido):
+    ```json
+    {
+      "success": false,
+      "message": "Dados de requisição inválidos",
+      "errors": {
+        "email": ["Invalid email"]
+      }
+    }
+    ```
+  - `500 Internal / Erro de Regra` (Conta inativa ou não encontrada):
+    ```json
+    {
+      "message": "Erro ao tentar redefinir a senha. Tente novamente."
+    }
+    ```
+
+#### `POST /auth/reset-password`
+- **Descrição e Regra de Negócio:** Redefine a senha da conta utilizando o token criptográfico recebido por e-mail.
+  1. **Validação do Token no Redis:** Consulta a chave `reset:<token>`. Se o token for inexistente ou estiver expirado (após 10 minutos), rejeita a requisição com erro `"Token inválido ou expirado."`.
+  2. **Verificação da Conta:** Localiza a conta vinculada ao e-mail retornado pelo token no Redis e valida se a conta não possui status `inactive`.
+  3. **Hash Criptográfico:** Gera novo hash seguro via Bcrypt (`AuthUtils.hashPassword`) com salt rounds adequados antes de salvar no banco de dados.
+  4. **Atualização Atômica no MongoDB:** Atualiza o campo `password` do documento do usuário de forma atômica no banco de dados.
+  5. **Invalidação Completa de Cache:** Remove a chave temporária `reset:<token>` do Redis e limpa o cache de perfil do usuário (`profile:<userId>` e `profile:username:<userName>`), garantindo que consultas subsequentes não retornem dados desatualizados.
+- **Request Body:**
+  | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `token` | `z.string()` | `String` | Sim | Token de recuperação recebido via link do e-mail. |
+  | `password` | `z.string().min(8, "A senha deve ter no mínimo 8 caracteres.")` | `String` | Sim | Nova senha da conta (mínimo 8 caracteres). |
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "message": "Senha redefinida com sucesso."
+    }
+    ```
+  - `400 Bad Request` (Falha na validação Zod da senha):
+    ```json
+    {
+      "success": false,
+      "message": "Dados de requisição inválidos",
+      "errors": {
+        "password": ["A senha deve ter no mínimo 8 caracteres."]
+      }
+    }
+    ```
+  - `500 Internal / Erro de Regra` (Token expirado/inválido ou conta inativa):
+    ```json
+    {
+      "message": "Token inválido ou expirado."
+    }
+    ```
+    ou
+    ```json
+    {
+      "message": "Conta não encontrada ou inativa."
+    }
+    ```
 
 #### `GET /me`
 - **Descrição:** Retorna a identidade e claims do usuário autenticado diretamente a partir da validação do JWT.
 - **Headers:** `Authorization: Bearer <token>`
 - **Respostas:**
-  - `200 OK`: `{"success": true, "message": "User fetched successfully", "user": { ...JwtPayload }}`
+  - `200 OK`: `{"success": true, "message": "Dados do usuário carregados com sucesso.", "user": { ...JwtPayload }}`
 
 ---
 
@@ -586,16 +668,16 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 - **Descrição:** Desativa o perfil do usuário autenticado (soft-delete: `status = "inactive"`, define `deletedAt`).
 
 #### `POST /profile/email/code/send`
-- **Descrição e Regra de Negócio:** Dispara o envio de um código de verificação OTP de 6 dígitos para o endereço de e-mail informado.
+- **Descrição e Regra de Negócio:** Dispara o envio de um código de verificação OTP de 6 dígitos para o endereço de e-mail informado. Disponível para **qualquer usuário autenticado** (não requer plano Premium).
   1. **Enfileiramento Assíncrono:** O envio é processado via fila `email` no **BullMQ**, consumida pelo `EmailWorker` com template HTML responsivo estilizado.
-  2. **Verificação de Conta Ativa:** Bloqueia solicitações de usuários com status `inactive`.
-  3. **Validação de Assinatura Premium:** O envio é restrito a usuários com assinatura ativa (`user.premium === true`). Usuários não-premium recebem mensagem orientando o upgrade.
+  2. **Verificação de Conta Ativa:** Identifica o usuário logado (`request.user._id`) e bloqueia solicitações caso a conta possua status `inactive`.
+  3. **Disponibilidade Geral:** Não há restrição de assinatura (plano Free e VIP têm acesso igual à verificação de identidade por e-mail).
   4. **Rate Limit:** Aplica intervalo mínimo de 60 segundos entre disparos para o mesmo e-mail. Se chamado antes do tempo, retorna `403 Forbidden` com `retryAfter` indicando os segundos restantes para reenvio.
   5. **TTL:** O código OTP expira em 5 minutos (300 segundos).
 - **Request Body:**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
   | :--- | :--- | :--- | :--- | :--- |
-  | `email` | `z.string().email()` | `String` | Sim | E-mail do usuário a receber o código OTP. |
+  | `email` | `z.string().trim().toLowerCase().email()` | `String` | Sim | E-mail do usuário a receber o código OTP. |
 - **Respostas:**
   - `200 OK`:
     ```json
@@ -606,7 +688,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
       "retryAfter": 60
     }
     ```
-  - `403 Forbidden` (Rate limit ou não-premium):
+  - `403 Forbidden` (Rate Limit):
     ```json
     {
       "success": false,
@@ -617,27 +699,27 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
     ```
 
 #### `POST /profile/email/code/verify`
-- **Descrição e Regra de Negócio:** Valida o código OTP de 6 dígitos e confirma o e-mail do usuário autenticado.
-  1. **Validação do Código:** Compara o código informado com o token armazenado no Redis. Lança erro caso o código seja inválido ou já tenha expirado.
+- **Descrição e Regra de Negócio:** Valida o código OTP de 6 dígitos e confirma o e-mail da conta do usuário autenticado.
+  1. **Validação do Código:** Compara o código informado com o token armazenado no Redis via `OtpService.verifyOtp`. Lança erro caso o código seja inválido ou já tenha expirado.
   2. **Atualização no Banco de Dados:** Atualiza o usuário com `isEmailVerified: true` de forma atômica no MongoDB.
-  3. **Invalidação de Cache Automática:** Remove imediatamente as chaves de cache de perfil no Redis (`profile:<userId>` e `profile:username:<userName>`), garantindo que o próximo `GET /profile/` retorne o status atualizado sem inconsistências de cache.
+  3. **Invalidação de Cache Automática:** Remove imediatamente as chaves de cache de perfil no Redis (`profile:<userId>` e `profile:username:<userName>`), garantindo que a próxima consulta a `GET /profile/` retorne o status atualizado sem inconsistências de cache.
 - **Request Body:**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
   | :--- | :--- | :--- | :--- | :--- |
-  | `email` | `z.string().email()` | `String` | Sim | E-mail validado. |
-  | `code` | `z.string().length(6)` | `String` | Sim | Código de 6 dígitos recebido por e-mail. |
+  | `email` | `z.string().trim().toLowerCase().email()` | `String` | Sim | E-mail validado. |
+  | `code` | `z.string().length(6)` | `String` | Sim | Código numérico de 6 dígitos recebido por e-mail. |
 - **Respostas:**
   - `200 OK`:
     ```json
     {
       "success": true,
-      "message": "Email verified successfully"
+      "message": "E-mail verificado com sucesso!"
     }
     ```
   - `400 Bad Request` / `500 Internal Error`:
     ```json
     {
-      "message": "Invalid or expired OTP"
+      "message": "Código de verificação inválido ou expirado. Solicite um novo código."
     }
     ```
 
@@ -769,3 +851,7 @@ export interface QuotaSnapshotDto {
 6. **Fluxo de Verificação de E-mail via OTP:**
    - Na tela de perfil ou configurações, use `POST /profile/email/code/send` e mapeie o campo `retryAfter` para acionar a contagem regressiva no botão de reenvio.
    - Após o sucesso em `POST /profile/email/code/verify`, a próxima requisição a `GET /profile/` refletirá `isEmailVerified: true` automaticamente devido à invalidação de cache pelo backend.
+7. **Fluxo de Recuperação e Redefinição de Senha:**
+   - **Disparo da Recuperação:** Na tela "Esqueci minha senha", faça um `POST /auth/password/recovery` passando `{ "email": "usuario@email.com" }`. O backend normaliza o e-mail (lowercase/trim), valida a vigência da conta e enfileira um e-mail com link de redefinição.
+   - **Deep Link / Abertura Web:** O link recebido no e-mail aponta para `${PRODUCTION_URL}/pt/reset-password?token=<token>`. O aplicativo Flutter pode interceptar este domínio via App Links/Deep Links para abrir a tela de redefinição in-app capturando o query parameter `token`, ou permitir que o usuário realize o reset pelo navegador e retorne ao app para fazer o login.
+   - **Submissão da Nova Senha:** Na tela de criação da nova senha, envie `POST /auth/reset-password` contendo `{ "token": "<token>", "password": "<novaSenha>" }` (mínimo de 8 caracteres). Com o retorno `200 OK`, direcione o usuário diretamente para a tela de login (`POST /auth/login/loginWithIdentifier`).

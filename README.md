@@ -95,4 +95,4 @@ A base de código está dividida em duas raízes: `core` (definições de dados,
 ### Integrações Externas
 * **Cloudinary**: Upload, processamento e entrega de ativos de imagem (avatares, banners, figurinhas estáticas e dinâmicas).
 * **Meta Graph API (WhatsApp)**: Envio automatizado de códigos de autenticação (OTP) via mensagens de template.
-* **Nodemailer**: Transporte SMTP para disparo de e-mails transacionais e de verificação.
+* **Nodemailer**: Transporte SMTP para disparo de e-mails transacionais, verificação de conta e recuperação de senha.
