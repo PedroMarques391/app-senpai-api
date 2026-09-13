@@ -41,7 +41,7 @@ O projeto adota uma **Arquitetura em Camadas** (*Layered Architecture*), orienta
 * **Serviços (`src/services`)**: Isolam as regras de negócio puras da aplicação (ex.: cálculo de expiração de cotas, validação de transações na loja, controle de ciclo de vida de OTP). Não conhecem o Fastify e recebem dependências injetadas pelo construtor.
 * **Repositórios (`src/repositories`)**: Camada de persistência exclusiva. Operam diretamente sobre o driver oficial do MongoDB (`MongoClient`/`Db`), sem dependência de ORMs intermediários.
 * **Filas e Workers (`src/queues`, `src/workers`)**: Processamento assíncrono em segundo plano via BullMQ e Redis para envio de mensagens via WhatsApp (Meta API) e e-mails transacionais (Nodemailer: verificação OTP, recuperação e alertas de segurança com dados de auditoria).
-* **Plugins Fastify (`src/plugin`)**: Decoradores globais de autenticação JWT, validação de cotas de criação de pacotes/figurinhas, cliente Redis, cliente SMTP e tratamento centralizado de erros.
+* **Plugins Fastify (`src/plugin`)**: Decoradores globais de autenticação JWT, validação de cotas diárias de criação de pacotes/figurinhas e cotas de armazenamento em disco/nuvem (1GB Free / 10GB VIP), cliente Redis, cliente SMTP e tratamento centralizado de erros.
 
 ---
 
@@ -93,6 +93,6 @@ A base de código está dividida em duas raízes: `core` (definições de dados,
 * **Fastify Logger (Pino)**: Logs estruturados em formato JSON para produção e saída formatada com `pino-pretty` em desenvolvimento.
 
 ### Integrações Externas
-* **Cloudinary**: Upload, processamento e entrega de ativos de imagem (avatares, banners, figurinhas estáticas e dinâmicas).
+* **Cloudinary**: Upload, processamento e entrega de ativos de imagem (avatares, banners, figurinhas estáticas e dinâmicas), além de exclusão resiliente, idempotente e em lote com integridade transacional garantida no banco de dados antes da remoção dos ativos na CDN.
 * **Meta Graph API (WhatsApp)**: Envio automatizado de códigos de autenticação (OTP) via mensagens de template.
 * **Nodemailer**: Transporte SMTP para disparo de e-mails transacionais, verificação de conta, recuperação de senha e alertas de segurança.

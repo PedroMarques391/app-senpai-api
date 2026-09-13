@@ -272,6 +272,15 @@ O sistema de cotas diárias controla a criação de pacotes e figurinhas para us
 3. **Bloqueio de Pacote Ativo:** Ao criar ou reservar o primeiro pacote do dia, todas as criações subsequentes daquele dia devem pertencer ao mesmo pacote até que a cota de 3 figurinhas se esgote.
 4. **Usuários VIP (`premium: true`):** Possuem cota ilimitada (`isUnlimited: true`), sem restrição de pacote ou limite diário.
 
+#### Regras de Cota de Armazenamento (`Storage Quota`):
+Além das cotas diárias de criação, a plataforma monitora e limita o consumo total de armazenamento de mídias (`storage_used_bytes`) de cada usuário:
+1. **Limite Plano Free:** **1 GB** (`1.073.741.824` bytes).
+2. **Limite Plano VIP (`premium: true`):** **10 GB** (`10.737.418.240` bytes).
+3. **PreHandler `checkStorageQuota`:** Intercepta envios de mídia no endpoint `POST /upload`. Se `storage_used_bytes + content_length > limit`, a requisição é barrada antes do stream para o Cloudinary com HTTP `403 Forbidden` (`code: "STORAGE_LIMIT_EXCEEDED"`).
+4. **Ciclo de Vida e Sincronização:**
+   - O tamanho em bytes da figurinha (`size_bytes`) é persistido e incrementado em `storage_used_bytes` na criação de figurinhas ou pacotes com itens.
+   - Ao excluir figurinhas (`DELETE /sticker/:id`) ou pacotes (`DELETE /pack/:id`), o espaço ocupado é decrementado automaticamente da cota do usuário.
+
 #### `GET /creation/quota/`
 - **Descrição:** Consulta o status atual da cota diária do usuário.
 - **Respostas:**
@@ -449,7 +458,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 *(Requer Header `Authorization`)*
 - **Descrição & Regras de Negócio:**
   1. **PreHandler de Cota Diária:** Executa `checkPackCreationQuota`. Se o usuário for Free e exceder o limite de 1 pacote/dia ou o total de 3 figurinhas/dia, a requisição é barrada com HTTP `403 QUOTA_EXCEEDED`.
-  2. **Criação de Figurinhas em Lote Embutidas:** O body aceita a propriedade `stickers?: CreateStickerDto[]`. Todas as figurinhas enviadas são criadas e vinculadas ao pacote na mesma operação atômica, incrementando o `stickers_count` do usuário (`static` ou `dynamic`).
+  2. **Criação de Figurinhas em Lote Embutidas:** O body aceita a propriedade `stickers?: CreateStickerDto[]`. Todas as figurinhas enviadas são criadas e vinculadas ao pacote na mesma operação atômica, incrementando o `stickers_count` do usuário (`static` ou `dynamic`) e acumulando `storage_used_bytes` com base na soma dos `size_bytes` de cada figurinha.
   3. **Geração Automática do `icon_url`:** Se o campo `icon_url` não for informado no payload, mas o array `stickers` contiver ao menos uma figurinha com URL válida do Cloudinary, o backend gera automaticamente o `icon_url` aplicando a transformação de otimização `c_fill,w_256,h_256,f_webp,q_auto`.
   4. **Campos Opcionais com Defaults:** `description` é opcional (default `"Sem descrição"`), e `tags` é opcional (default `[]`).
   5. **Registro de Cota:** Grava o consumo da cota em `creation_quotas` para usuários Free.
@@ -488,7 +497,11 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 
 #### `DELETE /pack/:id`
 *(Requer Header `Authorization`)*
-- **Descrição:** Deleta o pacote e todas as figurinhas associadas a ele. Requer propriedade do pacote.
+- **Descrição & Regras de Negócio:**
+  1. **Validação de Propriedade:** Requer que o usuário seja o proprietário do pacote.
+  2. **Exclusão Transacional no Banco:** Deleta o pacote e todas as suas figurinhas associadas no MongoDB (`packRepository.delete`).
+  3. **Ajuste de Cotas do Usuário:** Decrementa os contadores de figurinhas (`stickers_count.static` e `stickers_count.dynamic`) e decrementa o armazenamento ocupado (`storage_used_bytes`).
+  4. **Limpeza Segura de Mídias:** Aciona a deleção em lote dos assets correspondentes no Cloudinary via `deleteManyQuietly` no `UploadService`, sem blocos `try/catch` silenciosos e sem risco de derrubar a requisição com erros externos de rede.
 - **Respostas:**
   - `200 OK`: `{"success": true, "message": "Pacote deletado com sucesso"}`
 
@@ -543,7 +556,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   1. **Validação de Cota:** Executa `checkStickerCreationQuota`. Se o usuário Free já tiver criado 3 figurinhas no ciclo diário, retorna `403 QUOTA_EXCEEDED`.
   2. **Validação de Propriedade:** Verifica se o usuário autenticado é o proprietário do pacote.
   3. **Auto-preenchimento do Ícone do Pacote:** Se o pacote estiver sem `icon_url`, a criação da primeira figurinha gera e salva automaticamente o `icon_url` do pacote aplicando a transformação Cloudinary `c_fill,w_256,h_256,f_webp,q_auto` na URL desta figurinha.
-  4. **Contador do Usuário:** Incrementa atômica e persistentemente o contador `stickers_count.static` ou `stickers_count.dynamic` do perfil do usuário.
+  4. **Contador do Usuário e Armazenamento:** Incrementa atômica e persistentemente o contador `stickers_count.static` ou `stickers_count.dynamic` do perfil do usuário e incrementa `storage_used_bytes` caso `size_bytes` seja informado.
   5. **Registro de Cota:** Registra o uso da cota para usuários Free em `creation_quotas`.
 - **Request Body (`CreateStickerDto`):**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Constraints | Descrição |
@@ -554,6 +567,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   | `sticker_url` | `z.url()` | `String` | Sim | URL válida | URL final da imagem/animação. |
   | `emojis` | `z.array(z.string())` | `List<String>?` | Não | Max 3 emojis / default `[]` | Emojis associados. |
   | `type` | `z.enum(["dynamic", "static"])` | `String` | Sim | `"dynamic"` ou `"static"` | Tipo da figurinha. |
+  | `size_bytes` | `z.number().nonnegative()` | `int?` | Não | `>= 0` / default `0` | Tamanho do arquivo em bytes. |
 - **Respostas:**
   - `201 Created`: `{"success": true, "message": "Figurinha criada com sucesso", "sticker": { ...Sticker }}`
   - `403 Forbidden` (Cota excedida): `{"success": false, "code": "QUOTA_EXCEEDED", "message": "..."}`
@@ -574,7 +588,11 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 
 #### `DELETE /sticker/:id`
 *(Requer Header `Authorization`)*
-- **Descrição:** Remove a figurinha, valida posse do usuário e decrementa o contador `stickers_count` (estático ou dinâmico) do perfil de forma atômica.
+- **Descrição & Regras de Negócio:**
+  1. **Validação de Propriedade:** Requer que o usuário autenticado seja o proprietário da figurinha.
+  2. **Exclusão no Banco de Dados:** Remove o registro da figurinha no MongoDB via `stickerRepository.delete`.
+  3. **Ajuste de Cotas do Usuário:** Decrementa de forma atômica o contador `stickers_count` (estático ou dinâmico) e o armazenamento ocupado `storage_used_bytes`.
+  4. **Limpeza Segura no Cloudinary:** Executa a deleção segura do asset via `uploadService.deleteQuietly`, garantindo que a base de dados permaneça íntegra antes da exclusão física na CDN.
 - **Respostas:**
   - `200 OK`: `{"success": true, "message": "Figurinha deletada com sucesso"}`
 
@@ -731,6 +749,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 
 #### `POST /upload/?folder=...`
 - **Descrição:** Envia arquivos de imagem/sticker via Multipart Stream diretamente ao Cloudinary, organizando o path em pastas segregadas por usuário (`folder/userName/filename`).
+- **Validação de Cota:** Possui o preHandler `app.checkStorageQuota`. Bloqueia o upload antes de iniciar a transmissão se o tamanho indicado no header `Content-Length` somado ao `storage_used_bytes` do usuário ultrapassar o limite do plano (1GB Free / 10GB VIP).
 - **Respostas:**
   - `201 Created`:
     ```json
@@ -741,12 +760,26 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
       "sticker_url": "https://res.cloudinary.com/.../pedro_1725888000_abc123.png",
       "public_id": "stickers/pedro/pedro_1725888000_abc123",
       "url": "http://res.cloudinary.com/...",
-      "type": "png"
+      "type": "png",
+      "bytes": 45120
+    }
+    ```
+  - `403 Forbidden` (Cota de Armazenamento Excedida):
+    ```json
+    {
+      "success": false,
+      "code": "STORAGE_LIMIT_EXCEEDED",
+      "message": "Limite de armazenamento atingido (1 GB para plano Free). Faça upgrade para VIP e desbloqueie 10 GB!",
+      "storage": {
+        "used_bytes": 1073741824,
+        "limit_bytes": 1073741824,
+        "is_vip": false
+      }
     }
     ```
 
 #### `DELETE /upload/?public_id=...`
-- **Descrição:** Exclui um asset do Cloudinary. Valida com rigor se o `public_id` contém o `userName` do usuário requisitante para prevenir deleção de arquivos de outros usuários.
+- **Descrição:** Exclui um asset do Cloudinary. Valida com rigor se o `public_id` contém o `userName` do usuário requisitante para prevenir deleção de arquivos de outros usuários. Utiliza a camada resiliente do `UploadService`.
 
 ---
 
