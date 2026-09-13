@@ -11,13 +11,15 @@ import type {
   UserRepository,
 } from "@/repositories";
 import type { PaginatedResult, PaginationOptions } from "@/types";
-import { MongoUtils, PermissionUtils, CloudinaryUtils } from "@/utils";
+import { CloudinaryUtils, MongoUtils, PermissionUtils } from "@/utils";
+import type { UploadService } from "./upload.service";
 
 export class PackService {
   constructor(
     private readonly packRepository: PackRepository,
-    private readonly stickerRepository?: StickerRepository,
-    private readonly userRepository?: UserRepository,
+    private readonly stickerRepository: StickerRepository,
+    private readonly userRepository: UserRepository,
+    private readonly uploadService: UploadService,
   ) {}
 
   async createPack(
@@ -38,8 +40,15 @@ export class PackService {
     const { stickers, ...packFields } = packData;
 
     let iconUrlToSave = packFields.icon_url;
-    if (!iconUrlToSave && stickers && stickers.length > 0 && stickers[0]?.sticker_url) {
-      iconUrlToSave = CloudinaryUtils.transformUrlForPackIcon(stickers[0].sticker_url);
+    if (
+      !iconUrlToSave &&
+      stickers &&
+      stickers.length > 0 &&
+      stickers[0]?.sticker_url
+    ) {
+      iconUrlToSave = CloudinaryUtils.transformUrlForPackIcon(
+        stickers[0].sticker_url,
+      );
     }
 
     const pack = await this.packRepository.create({
@@ -50,7 +59,9 @@ export class PackService {
       publisher,
     });
     if (!pack) {
-      throw new Error("Não foi possível criar o pacote de figurinhas agora. Tente novamente em instantes.");
+      throw new Error(
+        "Não foi possível criar o pacote de figurinhas agora. Tente novamente em instantes.",
+      );
     }
 
     if (
@@ -88,6 +99,17 @@ export class PackService {
           userObjectId,
           "dynamic",
           animatedCount,
+        );
+      }
+
+      const totalBytes = stickers.reduce(
+        (sum: number, s: CreateStickerDto) => sum + (s.size_bytes ?? 0),
+        0,
+      );
+      if (totalBytes > 0) {
+        await this.userRepository.incrementStorageUsedBytes(
+          userObjectId,
+          totalBytes,
         );
       }
     }
@@ -187,7 +209,9 @@ export class PackService {
       updateData,
     );
     if (!pack) {
-      throw new Error("Não foi possível atualizar o pacote de figurinhas. Tente novamente em instantes.");
+      throw new Error(
+        "Não foi possível atualizar o pacote de figurinhas. Tente novamente em instantes.",
+      );
     }
 
     return pack;
@@ -211,9 +235,57 @@ export class PackService {
       "pacote",
     );
 
+    const packStickers = this.stickerRepository
+      ? await this.stickerRepository.findByPackId(packObjectId)
+      : [];
+
     const result = await this.packRepository.delete(packObjectId, userObjectId);
     if (!result) {
-      throw new Error("Não foi possível excluir o pacote de figurinhas. Tente novamente em instantes.");
+      throw new Error(
+        "Não foi possível excluir o pacote de figurinhas. Tente novamente em instantes.",
+      );
+    }
+
+    if (packStickers.length > 0) {
+      const staticCount = packStickers.filter(
+        (sticker) => sticker.type === "static",
+      ).length;
+      const animatedCount = packStickers.filter(
+        (sticker) => sticker.type === "dynamic",
+      ).length;
+      const totalBytesFreed = packStickers.reduce(
+        (sum, sticker) => sum + (sticker.size_bytes ?? 0),
+        0,
+      );
+
+      if (staticCount > 0) {
+        await this.userRepository.incrementStickersCount(
+          userObjectId,
+          "static",
+          -staticCount,
+        );
+      }
+      if (animatedCount > 0) {
+        await this.userRepository.incrementStickersCount(
+          userObjectId,
+          "dynamic",
+          -animatedCount,
+        );
+      }
+      if (totalBytesFreed > 0) {
+        await this.userRepository.incrementStorageUsedBytes(
+          userObjectId,
+          -totalBytesFreed,
+        );
+      }
+
+      const cloudinaryIds = packStickers
+        .map((sticker) => sticker.cloudinary_id)
+        .filter(Boolean);
+
+      if (cloudinaryIds.length > 0) {
+        await this.uploadService.deleteManyQuietly(cloudinaryIds);
+      }
     }
 
     return result;
