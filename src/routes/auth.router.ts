@@ -1,5 +1,6 @@
 import { createUserDtoSchema } from "@/dtos";
 import { ServiceFactory } from "@/factories";
+import { NetworkUtils } from "@/utils";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
 
@@ -122,7 +123,14 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (request, reply) => {
       const { token, password } = request.body;
-      await recoveryService.resetPassword(token, password);
+      const clientIp = NetworkUtils.getClientIp(request.headers, request.ip);
+      const userAgent = request.headers["user-agent"];
+
+      await recoveryService.resetPassword(token, password, {
+        ip: clientIp,
+        userAgent: typeof userAgent === "string" ? userAgent : undefined,
+        headers: request.headers,
+      });
 
       return reply.status(200).send({
         success: true,

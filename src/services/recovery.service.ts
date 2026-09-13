@@ -3,10 +3,22 @@ import {
   renderResetPasswordEmailTemplate,
   renderSuccessEmailTemplate,
 } from "@/templates";
-import { AuthUtils, UserUtils } from "@/utils";
+import {
+  AuthUtils,
+  DateUtils,
+  GeoUtils,
+  NetworkUtils,
+  UserUtils,
+} from "@/utils";
 import crypto from "crypto";
 import type { CacheService } from "./cache.service";
 import type { MailService } from "./mail.service";
+
+export interface ResetPasswordClientInfo {
+  ip?: string;
+  userAgent?: string;
+  headers?: Record<string, string | string[] | undefined>;
+}
 
 export class RecoveryService {
   constructor(
@@ -47,7 +59,11 @@ export class RecoveryService {
     });
   }
 
-  async resetPassword(token: string, newPassword: string) {
+  async resetPassword(
+    token: string,
+    newPassword: string,
+    clientInfo?: ResetPasswordClientInfo,
+  ) {
     const userEmail = await this.cacheService.get<string>(`reset:${token}`);
 
     if (!userEmail) {
@@ -76,7 +92,7 @@ export class RecoveryService {
         : Promise.resolve(),
     ]);
 
-    await this.sendSuccessResetPassword(cleanEmail);
+    await this.sendSuccessResetPassword(cleanEmail, clientInfo);
 
     return {
       success: true,
@@ -84,7 +100,10 @@ export class RecoveryService {
     };
   }
 
-  private async sendSuccessResetPassword(email: string) {
+  private async sendSuccessResetPassword(
+    email: string,
+    clientInfo?: ResetPasswordClientInfo,
+  ) {
     const cleanEmail = UserUtils.normalizeIdentifier(email);
 
     const user = await this.userRepository.find({ email: cleanEmail });
@@ -93,22 +112,46 @@ export class RecoveryService {
       throw new Error("Conta não encontrada ou inativa.");
     }
 
+    const ip = clientInfo?.ip || "Desconhecido";
+    const dateTime = DateUtils.formatDateTime(new Date());
+    const location = await GeoUtils.lookupLocation(ip, clientInfo?.headers);
+    const device = NetworkUtils.parseDevice(clientInfo?.userAgent);
+
+    const details = [
+      {
+        label: "Conta",
+        value: cleanEmail,
+      },
+      {
+        label: "Data e Horário",
+        value: dateTime,
+      },
+      {
+        label: "Endereço IP",
+        value: ip,
+      },
+      {
+        label: "Localização aproximada",
+        value: location,
+      },
+      {
+        label: "Dispositivo",
+        value: device,
+      },
+    ];
+
     const html = renderSuccessEmailTemplate({
       title: "Senha alterada com sucesso",
-      message: "Sua senha foi alterada com sucesso.",
-      details: [
-        {
-          label: "Email",
-          value: cleanEmail,
-        },
-      ],
+      message:
+        "Sua senha foi alterada com sucesso. Se foi você quem realizou essa alteração, nenhuma ação adicional é necessária.",
+      details,
       noticeText:
-        "Se você não reconhece esta ação, entre em contato com o suporte.",
+        "Se você não reconhece esta alteração, entre em contato imediatamente com o suporte para proteger sua conta.",
     });
 
     await this.mailService.sendMail({
       to: cleanEmail,
-      subject: "Senha alterada com sucesso",
+      subject: "Segurança: sua senha foi alterada com sucesso",
       html,
     });
   }
