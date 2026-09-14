@@ -18,6 +18,7 @@ export const userSchema = z.object({
   name: z.string(),
   userName: z.string().trim().toLowerCase(),
   password: z.string(),
+  bio: z.string().max(120).optional(),
   premium: z.boolean().default(false),
   role: userRoleEnum.default("user"),
   createdAt: z.coerce.date().default(() => new Date()),

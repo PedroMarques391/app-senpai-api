@@ -35,6 +35,7 @@ export class ProfileService {
       createdAt: user.createdAt,
       avatar_url: user.avatar_url,
       banner_url: user.banner_url,
+      bio: user.bio,
       isVerifiedCreator: user.isVerifiedCreator,
     };
   }

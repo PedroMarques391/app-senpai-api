@@ -6,6 +6,7 @@ export const publicProfileDtoSchema = userSchema.pick({
   userName: true,
   avatar_url: true,
   banner_url: true,
+  bio: true,
   isVerifiedCreator: true,
   createdAt: true,
 });
