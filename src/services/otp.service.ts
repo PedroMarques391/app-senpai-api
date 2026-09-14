@@ -1,5 +1,8 @@
 import type { UserRepository } from "@/repositories";
-import { renderOtpEmailTemplate } from "@/templates";
+import {
+  renderOtpEmailTemplate,
+  renderSuccessEmailTemplate,
+} from "@/templates";
 import type {
   GenerateOtpOptions,
   GenerateOtpResult,
@@ -184,6 +187,20 @@ export class OtpService {
     if (!updated) {
       throw new Error("Não foi possível confirmar o e-mail. Tente novamente.");
     }
+
+    const html = renderSuccessEmailTemplate({
+      title: "E-mail verificado com sucesso!",
+      message:
+        "Seu e-mail foi verificado com sucesso. Agora você tem acesso completo a todas as funcionalidades da sua conta Senpai!",
+      noticeText:
+        "Se você não realizou essa confirmação, entre em contato imediatamente com a nossa equipe de suporte.",
+    });
+
+    await this.mailService.sendMail({
+      to: cleanEmail,
+      subject: "E-mail verificado com sucesso - Senpai",
+      html,
+    });
 
     return { success: true, message: "E-mail verificado com sucesso!" };
   }
