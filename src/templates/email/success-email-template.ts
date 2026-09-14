@@ -1,3 +1,10 @@
+import path from "node:path";
+
+const DEFAULT_BANNER_IMAGE = path.resolve(
+  process.cwd(),
+  "assets/senpai_banner_email.webp",
+);
+
 export interface SuccessEmailDetail {
   label: string;
   value: string;
@@ -8,6 +15,7 @@ export interface SuccessEmailTemplateProps {
   message: string;
   details?: SuccessEmailDetail[];
   noticeText?: string;
+  imageUrl?: string;
 }
 
 export function renderSuccessEmailTemplate({
@@ -15,6 +23,7 @@ export function renderSuccessEmailTemplate({
   message,
   details,
   noticeText,
+  imageUrl = DEFAULT_BANNER_IMAGE,
 }: SuccessEmailTemplateProps): string {
   const detailsHtml =
     details && details.length > 0
@@ -92,10 +101,9 @@ export function renderSuccessEmailTemplate({
             </td>
           </tr>
 
-          <!-- Imagem ilustrativa -->
           <tr>
-            <td align="center" style="padding: 28px 32px 0 32px;">
-              <img src="https://botdosenpai.com.br/_next/static/media/hero.0h.m393hh735_.png" alt="" width="120" style="display:block; max-width:120px; height:auto;" />
+            <td align="center" style="padding: 24px 32px 0 32px;">
+              <img src="${imageUrl}" alt="Senpai" width="100%" style="display:block; width:100%; max-width:416px; height:auto; border-radius:12px;" />
             </td>
           </tr>
 
