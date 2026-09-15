@@ -14,6 +14,7 @@ import {
 import {
   adminRouter,
   authRoutes,
+  billingRoutes,
   contentRoutes,
   creationQuotaRoutes,
   inventoryRoutes,
@@ -97,6 +98,7 @@ server.register(async (app) => {
   app.register(uploadRoutes, { prefix: "/upload" });
   app.register(termsRoutes, { prefix: "/terms" });
   app.register(creationQuotaRoutes, { prefix: "/creation/quota" });
+  app.register(billingRoutes, { prefix: "/webhooks/revenuecat" });
 });
 
 const bootstrap = async () => {

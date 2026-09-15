@@ -28,6 +28,7 @@ import {
   UserService,
 } from "@/services";
 
+import { BillingService } from "@/services/billing.service";
 import type { JWT as FastifyJWT } from "@fastify/jwt";
 import type { RedisClientType } from "redis";
 import { QueueFactory } from "./queue.factory";
@@ -49,6 +50,7 @@ export class ServiceFactory {
   private static creationQuotaService: CreationQuotaService;
   private static otpService: OtpService;
   private static recoveryService: RecoveryService;
+  private static billingService: BillingService;
 
   static getInventoryService(): InventoryService {
     if (!this.inventoryService) {
@@ -198,5 +200,12 @@ export class ServiceFactory {
       );
     }
     return this.recoveryService;
+  }
+
+  static getBillingService(): BillingService {
+    if (!this.billingService) {
+      this.billingService = new BillingService(new UserRepository());
+    }
+    return this.billingService;
   }
 }
