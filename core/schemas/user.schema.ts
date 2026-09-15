@@ -11,6 +11,9 @@ export type UserStatus = z.infer<typeof userStatusEnum>;
 export const vipTypeEnum = z.enum(["PRO", "MESTRE"]);
 export type VipType = z.infer<typeof vipTypeEnum>;
 
+export const vipPlanEnum = z.enum(["VIP_PRO", "VIP_MESTRE"]);
+export type VipPlan = z.infer<typeof vipPlanEnum>;
+
 export const userSchema = z.object({
   _id: z.instanceof(ObjectId),
   wa_id: z.string(),
@@ -34,6 +37,7 @@ export const userSchema = z.object({
       start: z.coerce.date(),
       end: z.coerce.date(),
       type: vipTypeEnum,
+      plan: vipPlanEnum,
     })
     .optional(),
   email: z.string().trim().toLowerCase().email(),
