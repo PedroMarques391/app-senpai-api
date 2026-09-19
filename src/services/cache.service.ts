@@ -1,11 +1,5 @@
+import type { ICacheService } from "@/types";
 import type { RedisClientType } from "redis";
-
-export interface ICacheService {
-  set<T>(key: string, value: T, ttl?: number): Promise<void>;
-  get<T>(key: string): Promise<T | null>;
-  del(key: string): Promise<void>;
-  delPattern(pattern: string): Promise<void>;
-}
 
 export class CacheService implements ICacheService {
   constructor(private readonly redis: RedisClientType) {}

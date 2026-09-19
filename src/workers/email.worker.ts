@@ -1,5 +1,5 @@
 import { BullMQInitializer } from "@/init";
-import type { EmailJobData } from "@/queues";
+import type { EmailJobData } from "@/types";
 import { Worker, type Job } from "bullmq";
 import type { FastifyBaseLogger } from "fastify";
 import type { Mail, SMTPSentMessageInfo } from "nodemailer";

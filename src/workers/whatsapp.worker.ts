@@ -1,5 +1,5 @@
 import { BullMQInitializer } from "@/init";
-import type { WhatsAppJobData } from "@/queues";
+import type { WhatsAppJobData } from "@/types";
 import type { FastifyBaseLogger } from "fastify";
 import { Worker, type Job } from "bullmq";
 

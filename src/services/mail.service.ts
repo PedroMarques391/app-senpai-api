@@ -1,4 +1,5 @@
-import type { EmailJobData, EmailQueue } from "@/queues";
+import type { EmailQueue } from "@/queues";
+import type { EmailJobData } from "@/types";
 
 export class MailService {
   constructor(private readonly emailQueue: EmailQueue) {}

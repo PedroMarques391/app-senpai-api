@@ -1,8 +1,4 @@
-export interface ResetPasswordEmailTemplateProps {
-  resetPasswordUrl: string;
-  userName?: string;
-  expiresInMinutes?: number;
-}
+import type { ResetPasswordEmailTemplateProps } from "@/types";
 
 export function renderResetPasswordEmailTemplate({
   resetPasswordUrl,

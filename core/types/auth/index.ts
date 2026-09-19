@@ -29,3 +29,9 @@ export type ServiceResponse<T> =
     message: string;
     retryAfter?: number;
   };
+
+export interface ResetPasswordClientInfo {
+  ip?: string;
+  userAgent?: string;
+  headers?: Record<string, string | string[] | undefined>;
+}

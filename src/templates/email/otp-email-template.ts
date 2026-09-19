@@ -1,8 +1,4 @@
-export interface OtpEmailTemplateProps {
-  otp: string;
-  userName?: string;
-  expiresInMinutes?: number;
-}
+import type { OtpEmailTemplateProps } from "@/types";
 
 export function renderOtpEmailTemplate({
   otp,

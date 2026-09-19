@@ -1,14 +1,11 @@
 import type {
   InventoryItem,
   InventoryRepository,
+  PurchaseResult,
   StoreRepository,
   UserRepository,
 } from "@/models";
 import { MongoUtils } from "@/utils";
-export interface PurchaseResult {
-  item: InventoryItem;
-  newBalance: number;
-}
 
 export class PurchaseService {
   constructor(

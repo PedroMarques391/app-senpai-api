@@ -1,17 +1,6 @@
 import { BullMQInitializer } from "@/init";
+import type { EmailJobData, EmailJobResponse } from "@/types";
 import { Queue, type JobsOptions } from "bullmq";
-
-export interface EmailJobData {
-  to: string;
-  subject: string;
-  html: string;
-}
-
-export interface EmailJobResponse {
-  id?: string;
-  name: string;
-  data: EmailJobData;
-}
 
 export class EmailQueue {
   private readonly queue: Queue<EmailJobData>;

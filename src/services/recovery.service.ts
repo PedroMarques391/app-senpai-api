@@ -10,15 +10,10 @@ import {
   NetworkUtils,
   UserUtils,
 } from "@/utils";
+import type { ResetPasswordClientInfo } from "@/types";
 import crypto from "crypto";
 import type { CacheService } from "./cache.service";
 import type { MailService } from "./mail.service";
-
-export interface ResetPasswordClientInfo {
-  ip?: string;
-  userAgent?: string;
-  headers?: Record<string, string | string[] | undefined>;
-}
 
 export class RecoveryService {
   constructor(

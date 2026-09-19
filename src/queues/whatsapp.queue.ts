@@ -1,16 +1,6 @@
 import { BullMQInitializer } from "@/init";
+import type { WhatsAppJobData, WhatsAppJobResponse } from "@/types";
 import { Queue, type JobsOptions } from "bullmq";
-
-export interface WhatsAppJobData {
-  number: string;
-  message: string;
-}
-
-export interface WhatsAppJobResponse {
-  id?: string;
-  name: string;
-  data: WhatsAppJobData;
-}
 
 export class WhatsAppQueue {
   private readonly queue: Queue<WhatsAppJobData>;

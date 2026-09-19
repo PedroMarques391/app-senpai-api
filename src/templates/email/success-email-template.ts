@@ -5,18 +5,10 @@ const DEFAULT_BANNER_IMAGE = path.resolve(
   "assets/senpai_banner_email.webp",
 );
 
-export interface SuccessEmailDetail {
-  label: string;
-  value: string;
-}
-
-export interface SuccessEmailTemplateProps {
-  title: string;
-  message: string;
-  details?: SuccessEmailDetail[];
-  noticeText?: string;
-  imageUrl?: string;
-}
+import type {
+  SuccessEmailDetail,
+  SuccessEmailTemplateProps,
+} from "@/types";
 
 export function renderSuccessEmailTemplate({
   title,

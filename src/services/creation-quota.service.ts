@@ -1,12 +1,5 @@
 import { MongoUtils, QuotaUtils } from "@/utils";
-import type { CreationQuotaRepository } from "@/models";
-
-export interface QuotaSnapshotDto {
-  cycleStart: string;
-  packName: string | null;
-  createdStickerCount: number;
-  isUnlimited: boolean;
-}
+import type { CreationQuotaRepository, QuotaSnapshotDto } from "@/models";
 
 export class CreationQuotaService {
   constructor(

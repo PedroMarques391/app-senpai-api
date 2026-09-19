@@ -1,8 +1,5 @@
 import type { UserRepository } from "@/models";
-
-export interface IBillingService {
-  handleRevenueCatWebhook(payload: any): Promise<void>;
-}
+import type { IBillingService } from "@/types";
 
 export class BillingService implements IBillingService {
   constructor(private readonly userRepository: UserRepository) {}
