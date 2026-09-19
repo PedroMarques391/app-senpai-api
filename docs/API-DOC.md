@@ -811,6 +811,149 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 
 ---
 
+### 3.12 Missões Diárias, Níveis & Atividade (`/missions`)
+*(Requer Header `Authorization`)*
+
+O módulo de gamificação do Senpai estimula a retenção e o engajamento diário dos usuários através de missões com objetivos práticos, acúmulo de experiência (**XP**), progressão de **Nível (1 ao 100)**, ofensivas (**Streaks**) e bonificação em **Pétalas**.
+
+#### Regras de Negócio e Mecânicas de Gamificação:
+1. **Ciclo Diário Sincronizado:** O ciclo diário de missões é rigorosamente alinhado ao fuso de Brasília (`QuotaUtils.getCycleInfo()`), com virada todos os dias às **06:00 BRT** (09:00 UTC), gerando a chave de ciclo `YYYY-MM-DD` (ex: `"2026-09-18"`).
+2. **Ciclo Semanal ISO & Dias Ativos:** Acompanha os dias em que o usuário esteve ativo na semana corrente (`DateUtils.getIsoWeekIdentifier`, ex: `"2026-W38"`). Ao virar a semana ISO, o array `weekly_active_days` é reiniciado com o novo dia.
+3. **Ofensiva Diária (Streak):**
+   - Se o usuário acessar o app no mesmo ciclo diário: o streak é mantido.
+   - Se o último ciclo ativo foi o dia anterior (`yesterday`): o streak é incrementado em `+1`.
+   - Se houver quebra de 1 ou mais dias: a ofensiva é resetada para `1`.
+4. **Sistema Progressivo de Níveis & XP (`LevelUtils`):**
+   - **Nível Máximo:** `100`.
+   - **Fórmula de XP Necessário:** `xpForLevel(level) = 1000 + (level - 1) * 80`.
+     - *Nível 1:* 1.000 XP
+     - *Nível 2:* 1.080 XP
+     - *Nível 3:* 1.160 XP ...
+   - O cálculo decompõe o `total_xp` acumulado, calculando o nível atual, o progresso percentual (`progress` de `0.0` a `1.0`), o XP no nível (`xpInLevel`) e o XP faltante para o próximo nível (`xpNeeded`).
+5. **Missões Estáticas Diárias:**
+   - `daily_checkin` ("Presença Diária"): Abrir o app no dia. Concluída automaticamente ao consultar o overview diário. Recompensa: `+40 XP`, `+5 Pétalas`.
+   - `create_sticker` ("Criar Figurinha"): Criar pelo menos 1 figurinha no editor no ciclo atual. Recompensa: `+120 XP`, `+20 Pétalas`.
+   - `favorite_pack` ("Apoiar a Comunidade"): Adicionar pelo menos 1 pacote público aos favoritos no ciclo atual. Recompensa: `+80 XP`, `+10 Pétalas`.
+6. **Resgate Atômico de Recompensas (`claim`):**
+   - O resgate é transacionado atomicamente no MongoDB com `findOneAndUpdate` e predicado `$ne: missionId`.
+   - Não permite resgate duplo no mesmo ciclo diário.
+   - As recompensas em pétalas e XP são creditadas instantaneamente no documento do usuário.
+
+---
+
+#### `GET /missions/daily`
+- **Descrição:** Retorna o panorama completo de missões do dia, progresso do usuário, nível, XP, streak e histórico semanal de presença. Ao chamar este endpoint, a presença diária (`daily_checkin`) é automaticamente completada e a atividade é atualizada.
+- **Headers:** `Authorization: Bearer <token>`
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "cycle_date": "2026-09-18",
+      "level_info": {
+        "level": 3,
+        "xpInLevel": 420,
+        "xpNeeded": 1160,
+        "progress": 0.3621
+      },
+      "activity": {
+        "current_streak": 5,
+        "weekly_active_days": [
+          "2026-09-15",
+          "2026-09-16",
+          "2026-09-17",
+          "2026-09-18"
+        ],
+        "week_cycle": "2026-W38"
+      },
+      "missions": [
+        {
+          "id": "daily_checkin",
+          "title": "Presença Diária",
+          "description": "Abra o Senpai e confira suas novidades do dia.",
+          "goal": 1,
+          "metric": "app_checkin",
+          "reward": {
+            "xp": 40,
+            "petals": 5
+          },
+          "active": true,
+          "current_progress": 1,
+          "completed": true,
+          "claimed": false
+        },
+        {
+          "id": "create_sticker",
+          "title": "Criar Figurinha",
+          "description": "Crie pelo menos 1 figurinha no editor hoje.",
+          "goal": 1,
+          "metric": "stickers_created",
+          "reward": {
+            "xp": 120,
+            "petals": 20
+          },
+          "active": true,
+          "current_progress": 1,
+          "completed": true,
+          "claimed": false
+        },
+        {
+          "id": "favorite_pack",
+          "title": "Apoiar a Comunidade",
+          "description": "Adicione 1 pacote público aos seus favoritos.",
+          "goal": 1,
+          "metric": "packs_favorited",
+          "reward": {
+            "xp": 80,
+            "petals": 10
+          },
+          "active": true,
+          "current_progress": 0,
+          "completed": false,
+          "claimed": false
+        }
+      ]
+    }
+    ```
+
+---
+
+#### `POST /missions/:id/claim`
+- **Descrição:** Reivindica as recompensas (XP e Pétalas) de uma missão diária concluída.
+- **Headers:** `Authorization: Bearer <token>`
+- **URL Params:**
+  - `id`: Identificador da missão (ex: `"daily_checkin"`, `"create_sticker"`, `"favorite_pack"`).
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "message": "Recompensa resgatada com sucesso!",
+      "petals_balance": 125,
+      "total_xp": 2660,
+      "level_info": {
+        "level": 3,
+        "xpInLevel": 500,
+        "xpNeeded": 1160,
+        "progress": 0.4310
+      }
+    }
+    ```
+  - `500 Internal / Regra de Negócio` (Missão incompleta ou já resgatada):
+    ```json
+    {
+      "message": "Missão ainda não foi concluída."
+    }
+    ```
+    ou
+    ```json
+    {
+      "message": "Recompensa já foi resgatada ou ciclo expirou."
+    }
+    ```
+
+---
+
 ## 4. Modelos e Enums do Domínio
 
 ### Enums
@@ -855,6 +998,60 @@ export type StoreItemType =
 // Conteúdos e Plataformas
 export type ContentType = "banner" | "notification" | "announcement";
 export type ContentPlatform = "ios" | "android" | "both" | "all";
+
+// Métricas de Missões Diárias
+export type MissionMetric =
+  | "app_checkin"
+  | "stickers_created"
+  | "packs_favorited";
+```
+
+### Modelos de Gamificação & Missões
+```typescript
+export interface MissionReward {
+  xp: number;
+  petals: number;
+}
+
+export interface Mission {
+  id: string;
+  title: string;
+  description: string;
+  goal: number;
+  metric: MissionMetric;
+  reward: MissionReward;
+  active: boolean;
+}
+
+export interface UserMissionProgressDto extends Mission {
+  current_progress: number;
+  completed: boolean;
+  claimed: boolean;
+}
+
+export interface LevelInfo {
+  level: number;
+  xpInLevel: number;
+  xpNeeded: number;
+  progress: number; // 0.0 a 1.0 (percentual de progresso na barra)
+}
+
+export interface DailyMissionOverview {
+  cycle_date: string;
+  level_info: LevelInfo;
+  activity: {
+    current_streak: number;
+    weekly_active_days: string[];
+    week_cycle: string;
+  };
+  missions: UserMissionProgressDto[];
+}
+
+export interface ClaimMissionResult {
+  petals_balance: number;
+  total_xp: number;
+  level_info: LevelInfo;
+}
 ```
 
 ### Snapshot de Cota (`QuotaSnapshotDto`)
@@ -890,3 +1087,11 @@ export interface QuotaSnapshotDto {
    - **Deep Link / Abertura Web:** O link recebido no e-mail aponta para `${PRODUCTION_URL}/pt/reset-password?token=<token>`. O aplicativo Flutter pode interceptar este domínio via App Links/Deep Links para abrir a tela de redefinição in-app capturando o query parameter `token`, ou permitir que o usuário realize o reset pelo navegador e retorne ao app para fazer o login.
    - **Submissão da Nova Senha:** Na tela de criação da nova senha, envie `POST /auth/reset-password` contendo `{ "token": "<token>", "password": "<novaSenha>" }` (mínimo de 8 caracteres). Com o retorno `200 OK`, direcione o usuário diretamente para a tela de login (`POST /auth/login/loginWithIdentifier`).
    - **Confirmação e Auditoria:** O backend dispara automaticamente um e-mail transacional de segurança informando a alteração da senha, com dados de auditoria (data e hora de Brasília, IP, localização aproximada e dispositivo).
+8. **Integração do Módulo de Gamificação (Missões, Streaks e Níveis):**
+   - **Inicialização da Tela de Recompensas:** Chame `GET /missions/daily` para carregar a lista de missões, a ofensiva atual (`current_streak`), os dias ativos da semana (`weekly_active_days`) e os dados de nível (`level_info`).
+   - **Barra de Progresso de XP:** Utilize `level_info.progress` (valor de `0.0` a `1.0`) para preencher diretamente a barra de progresso linear no Flutter (`LinearProgressIndicator(value: levelInfo.progress)`), exibindo `${levelInfo.xpInLevel} / ${levelInfo.xpNeeded} XP`.
+   - **Feedback Imediato de Resgate:** Ao tocar no botão "Resgatar" em uma missão concluída (`completed: true` e `claimed: false`), envie `POST /missions/:id/claim`. Atualize os estados locais do usuário com o retorno:
+     - Substitua o saldo de pétalas por `result.petals_balance`.
+     - Atualize o XP e o `level_info` do usuário.
+     - Se `result.level_info.level > levelAnterior`, dispare uma animação festiva de **Level Up!** na UI.
+     - Marque a missão localmente como `claimed: true`.
