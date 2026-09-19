@@ -1,6 +1,7 @@
 export * from "./admin";
 export * from "./auth.router";
 export * from "./billing.router";
+export * from "./daily-mission.router";
 export * from "./content.router";
 export * from "./creation-quota.router";
 export * from "./inventory.router";

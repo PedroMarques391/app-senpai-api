@@ -13,6 +13,7 @@ import {
   CacheService,
   ContentService,
   CreationQuotaService,
+  DailyMissionService,
   InventoryService,
   MailService,
   OtpService,
@@ -35,6 +36,7 @@ import { QueueFactory } from "./queue.factory";
 
 export class ServiceFactory {
   private static cacheService: CacheService;
+  private static dailyMissionService: DailyMissionService;
   private static mailService: MailService;
   private static inventoryService: InventoryService;
   private static packService: PackService;
@@ -207,5 +209,16 @@ export class ServiceFactory {
       this.billingService = new BillingService(new UserRepository());
     }
     return this.billingService;
+  }
+
+  static getDailyMissionService(): DailyMissionService {
+    if (!this.dailyMissionService) {
+      this.dailyMissionService = new DailyMissionService(
+        new UserRepository(),
+        new StickerRepository(),
+        new PackFavoriteRepository(),
+      );
+    }
+    return this.dailyMissionService;
   }
 }

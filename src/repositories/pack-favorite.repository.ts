@@ -48,4 +48,11 @@ export class PackFavoriteRepository implements IPackFavoriteRepository {
     });
     return result.deletedCount > 0;
   }
+
+  async countByUserSince(userId: ObjectId, since: Date): Promise<number> {
+    return this.collection.countDocuments({
+      user_id: userId,
+      created_at: { $gte: since },
+    });
+  }
 }

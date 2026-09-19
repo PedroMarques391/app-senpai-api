@@ -1,5 +1,7 @@
 export * from "./auth.service";
 export * from "./cache.service";
+export * from "./daily-mission.service";
+export * from "./mission.service";
 export * from "./content.service";
 export * from "./creation-quota.service";
 export * from "./inventory.service";

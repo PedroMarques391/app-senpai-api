@@ -17,6 +17,7 @@ import {
   billingRoutes,
   contentRoutes,
   creationQuotaRoutes,
+  dailyMissionRoutes,
   inventoryRoutes,
   packRoutes,
   profileRoutes,
@@ -99,6 +100,7 @@ server.register(async (app) => {
   app.register(termsRoutes, { prefix: "/terms" });
   app.register(creationQuotaRoutes, { prefix: "/creation/quota" });
   app.register(billingRoutes, { prefix: "/webhooks/revenuecat" });
+  app.register(dailyMissionRoutes, { prefix: "/missions" });
 });
 
 const bootstrap = async () => {

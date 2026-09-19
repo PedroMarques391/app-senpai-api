@@ -1,4 +1,5 @@
 export * from "./content.model";
+export * from "./mission.model";
 export * from "./content.repository.model";
 export * from "./daily-mission.model";
 export * from "./inventory-item.model";

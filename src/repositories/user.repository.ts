@@ -132,4 +132,79 @@ export class UserRepository implements IUserRepository {
       { $inc: { storage_used_bytes: bytes } },
     );
   }
+
+
+  async claimDailyMission(
+    userId: ObjectId,
+    cycleDate: string,
+    missionId: string,
+    xpReward: number,
+    petalsReward: number,
+  ): Promise<User | null> {
+    return this.collection.findOneAndUpdate(
+      {
+        _id: userId,
+        "daily_missions.cycle_date": cycleDate,
+        "daily_missions.claimed_keys": { $ne: missionId },
+      },
+      {
+        $addToSet: { "daily_missions.claimed_keys": missionId },
+        $inc: {
+          petals_balance: petalsReward,
+          total_xp: xpReward,
+        },
+        $set: { updatedAt: new Date() },
+      },
+      { returnDocument: "after" },
+    );
+  }
+
+  async updateActivity(
+    userId: ObjectId,
+    cycleDate: string,
+    currentStreak: number,
+    weekCycle: string,
+    weeklyActiveDays: string[],
+  ): Promise<void> {
+    await this.collection.updateOne(
+      { _id: userId },
+      {
+        $set: {
+          "activity.current_streak": currentStreak,
+          "activity.last_active_date": cycleDate,
+          "activity.week_cycle": weekCycle,
+          "activity.weekly_active_days": weeklyActiveDays,
+          updatedAt: new Date(),
+        },
+      },
+    );
+  }
+
+
+  async unlockAchievement(
+    userId: ObjectId,
+    id: string,
+    title: string,
+  ): Promise<void> {
+    await this.collection.updateOne(
+      { _id: userId, "achievements.id": { $ne: id } },
+      { $addToSet: { achievements: { id, title } } },
+    );
+  }
+
+
+  async ensureDailyCycle(
+    userId: ObjectId,
+    cycleDate: string,
+  ): Promise<void> {
+    await this.collection.updateOne(
+      { _id: userId, "daily_missions.cycle_date": { $ne: cycleDate } },
+      {
+        $set: {
+          daily_missions: { cycle_date: cycleDate, claimed_keys: [] },
+          updatedAt: new Date(),
+        },
+      },
+    );
+  }
 }
