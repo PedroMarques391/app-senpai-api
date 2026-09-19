@@ -1,3 +1,5 @@
+import { DateUtils } from "./DateUtils";
+
 export class QuotaUtils {
   static readonly FREE_DAILY_STICKER_LIMIT = 3;
 
@@ -5,8 +7,7 @@ export class QuotaUtils {
     cycleDate: string;
     cycleStart: Date;
   } {
-    const brasilianOffset = -3 * 60 * 60 * 1000;
-    const brasiliaDate = new Date(referenceDate.getTime() + brasilianOffset);
+    const brasiliaDate = DateUtils.toBrasiliaDate(referenceDate);
 
     const year = brasiliaDate.getUTCFullYear();
     const month = brasiliaDate.getUTCMonth();
