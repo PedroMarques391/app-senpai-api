@@ -11,6 +11,7 @@ export const updateUserDtoSchema = userSchema
     role: true,
     status: true,
     password: true,
+    premium: true,
     isVerifiedCreator: true,
     isEmailVerified: true,
     isNumberVerified: true,
