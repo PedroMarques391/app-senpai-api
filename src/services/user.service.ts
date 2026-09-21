@@ -15,8 +15,8 @@ export class UserService {
   constructor(private readonly userRepository: UserRepository) {}
 
   async findUserByWAId(rawWaId: string): Promise<User | null> {
-    const waId = AuthUtils.normalizeWaId(rawWaId);
-    const user = await this.userRepository.find({ wa_id: waId });
+    const variants = AuthUtils.getWaIdVariants(rawWaId);
+    const user = await this.userRepository.find({ wa_id: { $in: variants } });
     if (!user) {
       throw new Error("Usuário não encontrado.");
     }
@@ -24,15 +24,15 @@ export class UserService {
   }
 
   async createUser(userData: CreateUserDto): Promise<User | null> {
-    const waId = AuthUtils.normalizeWaId(userData.wa_id);
-    const user = await this.userRepository.find({ wa_id: waId });
+    const variants = AuthUtils.getWaIdVariants(userData.wa_id);
+    const user = await this.userRepository.find({ wa_id: { $in: variants } });
     if (user) {
       throw new Error("Já existe uma conta cadastrada com este número.");
     }
 
     return this.userRepository.create({
       ...userData,
-      wa_id: waId,
+      wa_id: variants[0],
     });
   }
 

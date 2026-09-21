@@ -30,12 +30,25 @@ export class AuthUtils {
   static normalizeWaId(waId: string): string {
     if (!waId) return waId;
     let clean = waId.replace(/\D/g, "");
-    if (
-      (clean.length === 10 || clean.length === 11) &&
-      !clean.startsWith("55")
-    ) {
+
+    if (clean.length === 10 || clean.length === 11) {
       clean = `55${clean}`;
     }
-    return clean.replace(/^55(\d{2})9(\d{8})$/, "55$1$2");
+
+    return clean;
+  }
+
+  static getWaIdVariants(rawWaId: string): string[] {
+    const base = AuthUtils.normalizeWaId(rawWaId);
+    if (!base) return [base];
+    if (/^55\d{2}9\d{8}$/.test(base)) {
+      const withoutNine = base.replace(/^(55\d{2})9(\d{8})$/, "$1$2");
+      return [base, withoutNine];
+    }
+    if (/^55\d{2}\d{8}$/.test(base)) {
+      const withNine = base.slice(0, 4) + "9" + base.slice(4);
+      return [base, withNine];
+    }
+    return [base];
   }
 }

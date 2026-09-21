@@ -22,8 +22,8 @@ export class AuthService {
   ) { }
 
   async sendOTP(rawWaId: string): Promise<ServiceResponse<SendOtpResult>> {
-    const waId = AuthUtils.normalizeWaId(rawWaId);
-    const user = await this.userRepository.find({ wa_id: waId });
+    const variants = AuthUtils.getWaIdVariants(rawWaId);
+    const user = await this.userRepository.find({ wa_id: { $in: variants } });
 
     if (user?.status === "inactive") {
       return {
@@ -44,7 +44,7 @@ export class AuthService {
       };
     }
 
-    const otpResult = await this.otpService.generateOtp(waId);
+    const otpResult = await this.otpService.generateOtp(user.wa_id);
 
     if (otpResult.success === false) {
       return {
@@ -79,8 +79,8 @@ export class AuthService {
     rawWaId: string,
     otpCode: string,
   ): Promise<AuthResult> {
-    const waId = AuthUtils.normalizeWaId(rawWaId);
-    const user = await this.userRepository.find({ wa_id: waId });
+    const variants = AuthUtils.getWaIdVariants(rawWaId);
+    const user = await this.userRepository.find({ wa_id: { $in: variants } });
     if (!user) {
       throw new Error("Conta não encontrada. Verifique seu número de WhatsApp.");
     }
@@ -89,7 +89,7 @@ export class AuthService {
       throw new Error("Credenciais inválidas");
     }
 
-    const isValid = await this.otpService.verifyOtp(waId, otpCode);
+    const isValid = await this.otpService.verifyOtp(user.wa_id, otpCode);
 
     if (!isValid) {
       throw new Error("Código de verificação inválido ou expirado. Solicite um novo código.");
@@ -101,7 +101,7 @@ export class AuthService {
       last_login: new Date(),
     });
 
-    await this.userRepository.update({ wa_id: waId }, fullUser);
+    await this.userRepository.update({ _id: user._id }, fullUser);
 
     const payload = {
       _id: fullUser._id.toString(),
@@ -172,14 +172,15 @@ export class AuthService {
     rawWaId: string,
     userData: CreateUserDto,
   ): Promise<User | null> {
-    const waId = AuthUtils.normalizeWaId(rawWaId || userData.wa_id);
+    const variants = AuthUtils.getWaIdVariants(rawWaId || userData.wa_id);
+
     const data = createUserDtoSchema.parse({
       ...userData,
-      wa_id: waId,
+      wa_id: variants[0],
     });
 
     const [waUser, emailUser, usernameUser] = await Promise.all([
-      this.userRepository.find({ wa_id: data.wa_id }),
+      this.userRepository.find({ wa_id: { $in: variants } }),
       this.userRepository.find({ email: data.email }),
       this.userRepository.find({ userName: data.userName }),
     ]);
