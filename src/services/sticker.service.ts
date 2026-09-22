@@ -161,7 +161,7 @@ export class StickerService {
     return sticker;
   }
 
-  async deleteSticker(id: string, userId: string): Promise<boolean> {
+  async deleteSticker(id: string, userId: string): Promise<Sticker> {
     const stickerObjectId = MongoUtils.toObjectId(
       id,
       "ID da figurinha inválido",
@@ -211,6 +211,6 @@ export class StickerService {
       await this.uploadService.deleteQuietly(existingSticker.cloudinary_id);
     }
 
-    return result;
+    return existingSticker;
   }
 }

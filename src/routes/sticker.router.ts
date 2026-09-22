@@ -78,7 +78,13 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
         }
       }
 
-      await cacheService.del(`stickers:pack:${request.params.packId}`);
+      await Promise.all([
+        cacheService.del(`stickers:pack:${request.params.packId}`),
+        cacheService.del(`pack:${request.params.packId}`),
+        cacheService.delPattern("pack:list:*"),
+        cacheService.del(`pack:user:${request.user._id}`),
+        cacheService.del(`profile:${request.user._id}`),
+      ]);
       return reply.status(201).send({
         success: true,
         message: "Figurinha criada com sucesso",
@@ -143,11 +149,18 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
     "/:id",
     { schema: { params: z.object({ id: z.string() }) } },
     async (request, reply) => {
-      await stickerService.deleteSticker(request.params.id, request.user._id);
+      const deletedSticker = await stickerService.deleteSticker(
+        request.params.id,
+        request.user._id,
+      );
 
       await Promise.all([
         cacheService.del(`sticker:${request.params.id}`),
         cacheService.delPattern("stickers:pack:*"),
+        cacheService.del(`pack:${deletedSticker.pack_id}`),
+        cacheService.delPattern("pack:list:*"),
+        cacheService.del(`pack:user:${request.user._id}`),
+        cacheService.del(`profile:${request.user._id}`),
       ]);
 
       return reply.status(200).send({
