@@ -116,6 +116,7 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
       await Promise.all([
         cacheService.delPattern("pack:list:*"),
         cacheService.del(`pack:user:${request.user._id}`),
+        cacheService.del(`profile:${request.user._id}`),
       ]);
 
       return reply.status(201).send({
@@ -194,6 +195,7 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
         cacheService.delPattern("pack:list:*"),
         cacheService.del(`pack:user:${request.user._id}`),
         cacheService.delPattern("stickers:pack:*"),
+        cacheService.del(`profile:${request.user._id}`),
       ]);
 
       return reply.status(200).send({
