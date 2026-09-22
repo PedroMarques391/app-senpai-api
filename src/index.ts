@@ -42,15 +42,15 @@ const server = fastify({
     process.env.NODE_ENV === "production"
       ? true
       : {
-          transport: {
-            target: "pino-pretty",
-            options: {
-              colorize: true,
-              translateTime: "HH:MM:ss Z",
-              ignore: "pid,hostname",
-            },
+        transport: {
+          target: "pino-pretty",
+          options: {
+            colorize: true,
+            translateTime: "HH:MM:ss Z",
+            ignore: "pid,hostname",
           },
         },
+      },
 }).withTypeProvider<ZodTypeProvider>();
 
 server.register(fastifyCors, {
@@ -60,7 +60,11 @@ server.register(fastifyCors, {
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
 });
 
-server.register(fastifyMultipart);
+server.register(fastifyMultipart, {
+  limits: {
+    fileSize: 25 * 1024 * 1024,
+  },
+});
 server.setValidatorCompiler(validatorCompiler);
 server.setSerializerCompiler(serializerCompiler);
 

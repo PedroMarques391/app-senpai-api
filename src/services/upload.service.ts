@@ -17,9 +17,10 @@ export class UploadService {
           if (error || !uploadResult) {
             return reject(
               error ||
-                new Error("Não foi possível enviar a imagem. Tente novamente."),
+              new Error("Não foi possível enviar o arquivo. Tente novamente."),
             );
           }
+
           return resolve({
             public_id: uploadResult.public_id,
             secure_url: uploadResult.secure_url,
@@ -32,24 +33,52 @@ export class UploadService {
         },
       );
 
+      fileStream.on("error", (err) => {
+        uploadedFile.destroy(err);
+        reject(err);
+      });
+
+      fileStream.on("limit", () => {
+        const err = new Error("O arquivo excedeu o limite máximo permitido.");
+        uploadedFile.destroy(err);
+        reject(err);
+      });
+
       fileStream.pipe(uploadedFile);
     });
   }
 
   async delete(publicId: string): Promise<unknown> {
-    const result = await cloudinary.uploader.destroy(publicId);
+    let result = await cloudinary.uploader.destroy(publicId, {
+      resource_type: "image",
+    });
+
+    if (result.result === "not found") {
+      result = await cloudinary.uploader.destroy(publicId, {
+        resource_type: "video",
+      });
+    }
+
     if (result.result !== "ok") {
-      throw new Error("Não foi possível excluir a imagem. Tente novamente.");
+      throw new Error("Não foi possível excluir o arquivo. Tente novamente.");
     }
     return result;
   }
 
   async deleteQuietly(publicId: string): Promise<boolean> {
-    const result = await cloudinary.uploader.destroy(publicId);
-    if (result) {
+    try {
+      let result = await cloudinary.uploader.destroy(publicId, {
+        resource_type: "image",
+      });
+      if (result.result === "not found") {
+        result = await cloudinary.uploader.destroy(publicId, {
+          resource_type: "video",
+        });
+      }
       return result.result === "ok" || result.result === "not found";
+    } catch {
+      return false;
     }
-    return false;
   }
 
   async deleteManyQuietly(publicIds: string[]): Promise<void> {

@@ -25,6 +25,13 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
         });
       }
 
+      if (data.file.truncated) {
+        return reply.status(413).send({
+          success: false,
+          message: "O arquivo excede o limite máximo permitido de 25 MB.",
+        });
+      }
+
       const { userName } = request.user;
       if (!userName) {
         return reply.status(401).send({
