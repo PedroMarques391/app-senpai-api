@@ -28,8 +28,10 @@ export class MailerInitializer {
       await this.transporter.verify();
       this.logger?.info("Mailer is ready to send messages");
     } catch (err) {
-      this.logger?.error(err, "Mailer failed to connect to SMTP server");
-      throw err;
+      this.logger?.warn(
+        { err },
+        "Mailer failed to verify SMTP connection. Proceeding without crashing startup...",
+      );
     }
   }
 
