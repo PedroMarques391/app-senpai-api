@@ -28,7 +28,7 @@ A API Senpai segue os princípios da **Clean Architecture**, organizada em 3 cam
 - **Header Obrigatório (Rotas Protegidas):** `Authorization: Bearer <jwt_token>`
 - **Payload do Token JWT (`request.user`):**
   - `_id`: `String` (Hex de 24 caracteres do ObjectId)
-  - `wa_id`: `String` (Número normalizado no padrão E.164 sem o 9º dígito brasileiro)
+  - `wa_id`: `String` (Número normalizado no formato internacional com código de país `55`)
   - `name`: `String`
   - `userName`: `String`
   - `email`: `String`
@@ -49,13 +49,14 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
 | **403 Forbidden** | Rate limit do OTP (espera necessária). | `{"success": false, "userExists": true, "retryAfter": 45, "message": "Por favor, aguarde 45 segundos antes de solicitar um novo código."}` |
 | **403 Forbidden** | Falha de permissão / RBAC ou propriedade. | `{"success": false, "message": "Operação não permitida: você não pode excluir arquivos de outro usuário"}` |
 | **404 Not Found** | Recurso não localizado no banco de dados. | `{"success": false, "message": "Pacote não encontrado"}` |
+| **413 Payload Too Large** | Arquivo enviado no upload excede o limite máximo. | `{"success": false, "message": "O arquivo excede o limite máximo permitido de 25 MB."}` |
 | **500 Internal** | Exceção não tratada no servidor. | `{"success": false, "message": "Erro interno do servidor"}` |
 
 ### 2.3 Guia de Integração para Flutter (Dart)
 - **MongoDB ObjectId (`_id`, `user_id`, `pack_id`):** Retornados como `String` (hex de 24 chars). No Dart, mapear como `String`.
 - **Datas (`createdAt`, `cycle_start`, `created_at`):** Serializadas como strings ISO 8601 UTC. No Dart, fazer o parse via `DateTime.parse(json['createdAt']).toLocal()` para exibição correta no fuso local.
 - **Campos Opcionais e Nullable:** Tratar campos que podem vir ausentes ou como `null` usando tipos anuláveis (`String?`, `int?`).
-- **Normalização de Telefone:** Números de telefone WhatsApp brasileiros são normalizados pelo backend no formato `55DDXXXXXXXX` (sem o nono dígito `9`). O app Flutter pode enviar com ou sem o `9`, mas deve estar ciente de que o `wa_id` retornado estará sem o 9º dígito.
+- **Normalização e Variantes de WhatsApp (`wa_id`):** O backend garante a presença do prefixo de país `55` e oferece compatibilidade transparente com números brasileiros cadastrados com ou sem o 9º dígito (12 e 13 dígitos, ex: `551188887777` ou `5511988887777`). As consultas internas utilizam `AuthUtils.getWaIdVariants`, permitindo login, envio de OTP e busca independentemente da variante utilizada.
 
 ---
 
@@ -81,7 +82,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
 
 #### `POST /auth/login/otp`
 - **Descrição e Regra de Negócio:** Envia código OTP de 6 dígitos via WhatsApp.
-  1. **Normalização do Número:** O backend normaliza o número via `AuthUtils.normalizeWaId`, removendo pontuação, garantindo o prefixo `55` e removendo o nono dígito para números de celular brasileiros (`55 + DDD + 8 dígitos`).
+  1. **Normalização e Busca por Variantes:** O backend normaliza o número via `AuthUtils.normalizeWaId` (adicionando prefixo `55` se ausente) e localiza a conta utilizando variantes com e sem o 9º dígito (`AuthUtils.getWaIdVariants`), garantindo que tanto números de 12 quanto de 13 dígitos encontrem o cadastro correto. O OTP é registrado sob o `wa_id` exato armazenado no perfil do usuário.
   2. **Proteção de Usuário Inativo:** Se a conta estiver com `status: "inactive"`, a API retorna mensagem genérica com `userExists: true` para evitar enumeração de status por terceiros.
   3. **Verificação Premium:** Valida se o usuário é `premium`. Usuários não-premium recebem aviso específico.
   4. **Rate Limit:** Aplica intervalo mínimo de 60 segundos entre envios. Se chamado antes do tempo, retorna `403` com `retryAfter` indicando os segundos restantes.
@@ -462,6 +463,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   3. **Geração Automática do `icon_url`:** Se o campo `icon_url` não for informado no payload, mas o array `stickers` contiver ao menos uma figurinha com URL válida do Cloudinary, o backend gera automaticamente o `icon_url` aplicando a transformação de otimização `c_fill,w_256,h_256,f_webp,q_auto`.
   4. **Campos Opcionais com Defaults:** `description` é opcional (default `"Sem descrição"`), e `tags` é opcional (default `[]`).
   5. **Registro de Cota:** Grava o consumo da cota em `creation_quotas` para usuários Free.
+  6. **Invalidação Reativa de Cache:** Limpa as listagens cacheadas (`pack:list:*`), os pacotes do usuário (`pack:user:<userId>`) e o cache de perfil (`profile:<userId>`).
 - **Request Body (`CreatePackDto`):**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Default / Constraints | Descrição |
   | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -502,6 +504,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   2. **Exclusão Transacional no Banco:** Deleta o pacote e todas as suas figurinhas associadas no MongoDB (`packRepository.delete`).
   3. **Ajuste de Cotas do Usuário:** Decrementa os contadores de figurinhas (`stickers_count.static` e `stickers_count.dynamic`) e decrementa o armazenamento ocupado (`storage_used_bytes`).
   4. **Limpeza Segura de Mídias:** Aciona a deleção em lote dos assets correspondentes no Cloudinary via `deleteManyQuietly` no `UploadService`, sem blocos `try/catch` silenciosos e sem risco de derrubar a requisição com erros externos de rede.
+  5. **Invalidação Reativa de Cache:** Invalida o cache do pacote (`pack:<id>`), listagens (`pack:list:*`), pacotes do usuário (`pack:user:<userId>`), figurinhas do pacote (`stickers:pack:*`) e o cache de perfil do usuário (`profile:<userId>`).
 - **Respostas:**
   - `200 OK`: `{"success": true, "message": "Pacote deletado com sucesso"}`
 
@@ -558,6 +561,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   3. **Auto-preenchimento do Ícone do Pacote:** Se o pacote estiver sem `icon_url`, a criação da primeira figurinha gera e salva automaticamente o `icon_url` do pacote aplicando a transformação Cloudinary `c_fill,w_256,h_256,f_webp,q_auto` na URL desta figurinha.
   4. **Contador do Usuário e Armazenamento:** Incrementa atômica e persistentemente o contador `stickers_count.static` ou `stickers_count.dynamic` do perfil do usuário e incrementa `storage_used_bytes` caso `size_bytes` seja informado.
   5. **Registro de Cota:** Registra o uso da cota para usuários Free em `creation_quotas`.
+  6. **Invalidação Reativa de Cache:** Limpa os caches de figurinhas (`stickers:pack:<packId>`), do pacote (`pack:<packId>`), listagens (`pack:list:*`), pacotes do usuário (`pack:user:<userId>`) e do perfil do usuário (`profile:<userId>`), garantindo sincronização instantânea dos contadores na interface do app.
 - **Request Body (`CreateStickerDto`):**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Constraints | Descrição |
   | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -593,6 +597,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   2. **Exclusão no Banco de Dados:** Remove o registro da figurinha no MongoDB via `stickerRepository.delete`.
   3. **Ajuste de Cotas do Usuário:** Decrementa de forma atômica o contador `stickers_count` (estático ou dinâmico) e o armazenamento ocupado `storage_used_bytes`.
   4. **Limpeza Segura no Cloudinary:** Executa a deleção segura do asset via `uploadService.deleteQuietly`, garantindo que a base de dados permaneça íntegra antes da exclusão física na CDN.
+  5. **Invalidação Reativa de Cache:** Invalida a figurinha (`sticker:<id>`), as figurinhas do pacote (`stickers:pack:*`), o pacote (`pack:<packId>`), listagens (`pack:list:*`), pacotes do usuário (`pack:user:<userId>`) e o cache de perfil (`profile:<userId>`).
 - **Respostas:**
   - `200 OK`: `{"success": true, "message": "Figurinha deletada com sucesso"}`
 
@@ -670,6 +675,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
         "userName": "pedromarques",
         "avatar_url": "https://...",
         "banner_url": "https://...",
+        "bio": "Criador de figurinhas e fã de animes",
         "isVerifiedCreator": true,
         "createdAt": "2026-09-01T12:00:00.000Z"
       }
@@ -681,7 +687,21 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 - **Request Body (`CompleteRegistrationDto`):** `name`, `userName`, `email`, `password`.
 
 #### `PUT /profile/`
-- **Descrição:** Atualiza campos do perfil do próprio usuário autenticado (`UpdateUserDto`).
+- **Descrição:** Atualiza dados cadastrais e preferências do perfil do próprio usuário autenticado (`UpdateUserDto`).
+- **Campos Aceitos (`UpdateUserDto` - Parciais e estritos):**
+  | Campo | Tipo Zod | Tipo Dart | Constraints / Descrição |
+  | :--- | :--- | :--- | :--- |
+  | `name` | `z.string()` | `String?` | Nome do usuário. |
+  | `userName` | `z.string()` | `String?` | Nome de usuário único (letras minúsculas/sem espaços). |
+  | `email` | `z.string().email()` | `String?` | E-mail do usuário (único no sistema). |
+  | `bio` | `z.string()` | `String?` | Biografia do usuário (máximo 120 caracteres). |
+  | `avatar_url` | `z.url()` | `String?` | URL do avatar hospedado. |
+  | `banner_url` | `z.url()` | `String?` | URL do banner do perfil. |
+  | `preferred_payment` | `z.string()` | `String?` | Identificador de pagamento preferencial. |
+- **Campos Protegidos do Sistema:** O schema omite intencionalmente campos como `premium`, `petals_balance`, `role`, `status`, `subscriptions`, `stickers_count`, `daily_missions`, etc., garantindo que alterações no perfil nunca afetem a assinatura VIP ou o saldo do usuário.
+- **Invalidação de Cache:** Invalida automaticamente `profile:<userId>` e `profile:username:<userName>`.
+- **Respostas:**
+  - `200 OK`: `{"success": true, "message": "Perfil atualizado com sucesso", "profile": { ...User }}`
 
 #### `DELETE /profile/`
 - **Descrição:** Desativa o perfil do usuário autenticado (soft-delete: `status = "inactive"`, define `deletedAt`).
@@ -750,6 +770,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 #### `POST /upload/?folder=...`
 - **Descrição:** Envia arquivos de imagem/sticker via Multipart Stream diretamente ao Cloudinary, organizando o path em pastas segregadas por usuário (`folder/userName/filename`).
 - **Validação de Cota:** Possui o preHandler `app.checkStorageQuota`. Bloqueia o upload antes de iniciar a transmissão se o tamanho indicado no header `Content-Length` somado ao `storage_used_bytes` do usuário ultrapassar o limite do plano (1GB Free / 10GB VIP).
+- **Limite Máximo por Arquivo (25 MB):** O servidor rejeita imediatamente uploads truncados ou que excedam 25 MB com HTTP `413 Payload Too Large`.
 - **Respostas:**
   - `201 Created`:
     ```json
@@ -777,9 +798,16 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
       }
     }
     ```
+  - `413 Payload Too Large`:
+    ```json
+    {
+      "success": false,
+      "message": "O arquivo excede o limite máximo permitido de 25 MB."
+    }
+    ```
 
 #### `DELETE /upload/?public_id=...`
-- **Descrição:** Exclui um asset do Cloudinary. Valida com rigor se o `public_id` contém o `userName` do usuário requisitante para prevenir deleção de arquivos de outros usuários. Utiliza a camada resiliente do `UploadService`.
+- **Descrição:** Exclui um asset do Cloudinary. Valida com rigor se o `public_id` contém o `userName` do usuário requisitante para prevenir deleção de arquivos de outros usuários. Suporta exclusão transparente tanto de imagens quanto de vídeos com fallback automático de tipo de recurso (`image` / `video`) na camada resiliente do `UploadService`.
 
 ---
 
@@ -954,6 +982,60 @@ O módulo de gamificação do Senpai estimula a retenção e o engajamento diár
 
 ---
 
+### 3.13 Faturamento & Webhooks RevenueCat (`/webhooks/revenuecat`)
+
+Módulo responsável pelo processamento de eventos de compras in-app e assinaturas de planos VIP (VIP Pro e VIP Mestre) através da integração com **RevenueCat**.
+
+#### `GET /webhooks/revenuecat/`
+- **Descrição:** Endpoint de verificação de liveness e status da rota de faturamento.
+- **Headers:** Nenhum (Aberto).
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "message": "Billing route is up"
+    }
+    ```
+
+#### `POST /webhooks/revenuecat/revenuecat-webhook`
+- **Descrição & Regras de Negócio:**
+  1. **Autenticação por Secret:** Requer header `Authorization: Bearer <REVENUECAT_WEBHOOK_SECRET>`. Requisições com token inválido ou ausente são rejeitadas com HTTP `401 Unauthorized`.
+  2. **Identificação do Usuário:** O RevenueCat envia o campo `event.app_user_id`, que deve corresponder ao `_id` do usuário no MongoDB (Hex de 24 caracteres).
+  3. **Tratamento de Eventos:**
+     - `INITIAL_PURCHASE` / `RENEWAL`: Ativa o status `premium: true` no usuário e popula o objeto `subscriptions` com:
+       - `start`: Data atual.
+       - `end`: Data de expiração (`event.expiration_at_ms`).
+       - `plan`: `"VIP_MESTRE"` (se `event.product_id === "vip_mestre"`) ou `"VIP_PRO"`.
+       - `type`: `"MESTRE"` (se `event.product_id === "vip_mestre"`) ou `"PRO"`.
+     - `CANCELLATION` / `EXPIRATION`: Atualiza `premium: false` no perfil do usuário.
+- **Request Body (RevenueCat Webhook Payload):**
+  ```json
+  {
+    "event": {
+      "type": "INITIAL_PURCHASE",
+      "app_user_id": "66dec987a123b456c7890123",
+      "product_id": "vip_mestre",
+      "expiration_at_ms": 1735689600000
+    }
+  }
+  ```
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true
+    }
+    ```
+  - `401 Unauthorized`:
+    ```json
+    {
+      "error": "Unauthorized"
+    }
+    ```
+
+---
+
 ## 4. Modelos e Enums do Domínio
 
 ### Enums
@@ -966,6 +1048,7 @@ export type UserStatus = "active" | "inactive";
 
 // Tipos de Assinatura VIP
 export type VipType = "PRO" | "MESTRE";
+export type VipPlan = "VIP_PRO" | "VIP_MESTRE";
 
 // Categorias de Pacotes
 export type PackCategory =
@@ -1054,6 +1137,29 @@ export interface ClaimMissionResult {
 }
 ```
 
+### Assinatura VIP do Usuário (`UserSubscription`)
+```typescript
+export interface UserSubscription {
+  start: Date | string;
+  end: Date | string;
+  type: VipType;
+  plan: VipPlan;
+}
+```
+
+### Perfil Público do Usuário (`PublicProfileDto`)
+```typescript
+export interface PublicProfileDto {
+  name: string;
+  userName: string;
+  createdAt: Date | string;
+  avatar_url?: string;
+  banner_url?: string;
+  bio?: string;
+  isVerifiedCreator: boolean;
+}
+```
+
 ### Snapshot de Cota (`QuotaSnapshotDto`)
 ```typescript
 export interface QuotaSnapshotDto {
@@ -1095,3 +1201,8 @@ export interface QuotaSnapshotDto {
      - Atualize o XP e o `level_info` do usuário.
      - Se `result.level_info.level > levelAnterior`, dispare uma animação festiva de **Level Up!** na UI.
      - Marque a missão localmente como `claimed: true`.
+9. **Integração de Assinaturas com RevenueCat:**
+   - No cliente Flutter, configure o SDK do Purchases / RevenueCat informando o `_id` do MongoDB retornado no login (`request.user._id`) como `app_user_id`:
+     `await Purchases.logIn(user.id);`
+   - O backend processa o webhook oficial do RevenueCat (`POST /webhooks/revenuecat/revenuecat-webhook`) para conceder o status VIP (`premium: true`) e salvar o plano contratado (`VIP_PRO` ou `VIP_MESTRE`).
+   - Após a conclusão da compra na App Store / Play Store pelo Flutter, recarregue os dados via `GET /profile/` para refletir imediatamente as novas cotas ilimitadas e o selo VIP no aplicativo.
