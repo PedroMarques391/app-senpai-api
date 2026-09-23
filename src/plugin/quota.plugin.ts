@@ -100,7 +100,13 @@ async function quotaPlugin(fastify: FastifyInstance) {
         });
       }
 
-      const isVip = request.user.premium === true;
+      const subscriptionType =
+        request.user.subscription?.type ??
+        (request.user.premium ? "PRO" : "FREE");
+
+      const limitBytes = StorageQuotaUtils.getLimit(subscriptionType);
+      const planTier = StorageQuotaUtils.toPlanTier(subscriptionType);
+
       const dbUser = await userService.findUserById(request.user._id);
       if (!dbUser) {
         return reply.status(401).send({
@@ -110,23 +116,34 @@ async function quotaPlugin(fastify: FastifyInstance) {
       }
 
       const usedBytes = dbUser.storage_used_bytes ?? 0;
-      const limitBytes = StorageQuotaUtils.getLimitForUser(isVip);
-
       const contentLength = Number(request.headers["content-length"] ?? 0);
 
-      if (
-        !StorageQuotaUtils.hasAvailableStorage(usedBytes, contentLength, isVip)
-      ) {
+      const hasAvailableStorage = StorageQuotaUtils.hasAvailableStorage(usedBytes, contentLength, subscriptionType);
+
+      if (!hasAvailableStorage) {
+        let message: string;
+        switch (subscriptionType) {
+          case "MESTRE":
+            message = `Limite de armazenamento atingido (${StorageQuotaUtils.formatBytes(limitBytes)} para plano VIP Mestre). Libere espaço excluindo figurinhas ou mídias antigas.`;
+            break;
+          case "PRO":
+            message = `Limite de armazenamento atingido (${StorageQuotaUtils.formatBytes(limitBytes)} para plano VIP Pro). Faça upgrade para VIP Mestre e desbloqueie ${StorageQuotaUtils.formatBytes(StorageQuotaUtils.VIP_MASTER_LIMIT_BYTES)}!`;
+            break;
+          case "FREE":
+          default:
+            message = `Limite de armazenamento atingido (${StorageQuotaUtils.formatBytes(limitBytes)} para plano Free). Faça upgrade para VIP e desbloqueie até ${StorageQuotaUtils.formatBytes(StorageQuotaUtils.VIP_MASTER_LIMIT_BYTES)}!`;
+            break;
+        }
+
         return reply.status(403).send({
           success: false,
           code: "STORAGE_LIMIT_EXCEEDED",
-          message: isVip
-            ? `Limite de armazenamento atingido (${StorageQuotaUtils.formatBytes(limitBytes)} para plano VIP).`
-            : `Limite de armazenamento atingido (${StorageQuotaUtils.formatBytes(limitBytes)} para plano Free). Faça upgrade para VIP e desbloqueie ${StorageQuotaUtils.formatBytes(StorageQuotaUtils.VIP_LIMIT_BYTES)}!`,
+          message,
           storage: {
             used_bytes: usedBytes,
             limit_bytes: limitBytes,
-            is_vip: isVip,
+            plan_tier: planTier,
+            is_vip: subscriptionType !== "FREE",
           },
         });
       }
