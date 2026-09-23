@@ -2,7 +2,7 @@ import type { UserRepository } from "@/models";
 import type { IBillingService } from "@/types";
 
 export class BillingService implements IBillingService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(private readonly userRepository: UserRepository) { }
 
   async handleRevenueCatWebhook(payload: any): Promise<void> {
     const event = payload.event;
@@ -43,6 +43,9 @@ export class BillingService implements IBillingService {
       case "EXPIRATION":
         await this.userRepository.update(userId, {
           premium: false,
+          subscriptions: {
+            type: "FREE",
+          },
         });
         break;
 

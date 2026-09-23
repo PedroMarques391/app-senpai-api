@@ -112,6 +112,9 @@ export class AuthService {
       email: fullUser.email,
       isNumberVerified: fullUser.isNumberVerified,
       role: fullUser.role,
+      subscription: {
+        type: fullUser.subscriptions?.type ?? (fullUser.premium ? "PRO" : "FREE"),
+      },
     };
 
     const token = AuthUtils.generateJWT(this.jwtInstance, payload);
@@ -160,6 +163,9 @@ export class AuthService {
       email: user.email,
       isNumberVerified: user.isNumberVerified,
       role: user.role,
+      subscription: {
+        type: user.subscriptions?.type ?? (user.premium ? "PRO" : "FREE"),
+      },
     };
     const token = AuthUtils.generateJWT(this.jwtInstance, payload);
 
