@@ -36,6 +36,7 @@ A API Senpai segue os princípios da **Clean Architecture**, organizada em 3 cam
   - `premium`: `boolean` (Define acesso a cotas ilimitadas e recursos VIP)
   - `isNumberVerified`: `boolean`
   - `isEmailVerified`: `boolean` (Indica se o e-mail cadastrado foi autenticado via OTP)
+  - `subscription`: `object` contendo `type: "FREE" | "PRO" | "MESTRE"` (Permite validação de plano e cota diretamente em memória sem chamada ao banco de dados)
 
 ### 2.2 Estrutura Padronizada de Respostas de Erro
 A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins). O cliente Flutter deve tratar os seguintes status HTTP e formatos:
@@ -46,6 +47,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
 | **400 Bad Request** | Erro de regra de negócio ou formato de ID. | `{"success": false, "message": "ID do pacote inválido"}` |
 | **401 Unauthorized** | Token ausente, inválido ou expirado. | `{"success": false, "message": "Sua sessão expirou ou é inválida. Por favor, faça login novamente."}` |
 | **403 Forbidden** | Cota diária excedida (Plano Free). | `{"success": false, "code": "QUOTA_EXCEEDED", "message": "Você já usou sua criação grátis de hoje. Volte amanhã ou assine o VIP para criar sem limites!"}` |
+| **403 Forbidden** | Cota de armazenamento excedida (`plan_tier: "free" \| "vip_pro" \| "vip_master"`). | `{"success": false, "code": "STORAGE_LIMIT_EXCEEDED", "message": "Limite de armazenamento atingido (500 MB para plano Free)...", "storage": {"used_bytes": 536870912, "limit_bytes": 536870912, "plan_tier": "free", "is_vip": false}}` |
 | **403 Forbidden** | Rate limit do OTP (espera necessária). | `{"success": false, "userExists": true, "retryAfter": 45, "message": "Por favor, aguarde 45 segundos antes de solicitar um novo código."}` |
 | **403 Forbidden** | Falha de permissão / RBAC ou propriedade. | `{"success": false, "message": "Operação não permitida: você não pode excluir arquivos de outro usuário"}` |
 | **404 Not Found** | Recurso não localizado no banco de dados. | `{"success": false, "message": "Pacote não encontrado"}` |
@@ -274,11 +276,16 @@ O sistema de cotas diárias controla a criação de pacotes e figurinhas para us
 4. **Usuários VIP (`premium: true`):** Possuem cota ilimitada (`isUnlimited: true`), sem restrição de pacote ou limite diário.
 
 #### Regras de Cota de Armazenamento (`Storage Quota`):
-Além das cotas diárias de criação, a plataforma monitora e limita o consumo total de armazenamento de mídias (`storage_used_bytes`) de cada usuário:
-1. **Limite Plano Free:** **1 GB** (`1.073.741.824` bytes).
-2. **Limite Plano VIP (`premium: true`):** **10 GB** (`10.737.418.240` bytes).
-3. **PreHandler `checkStorageQuota`:** Intercepta envios de mídia no endpoint `POST /upload`. Se `storage_used_bytes + content_length > limit`, a requisição é barrada antes do stream para o Cloudinary com HTTP `403 Forbidden` (`code: "STORAGE_LIMIT_EXCEEDED"`).
-4. **Ciclo de Vida e Sincronização:**
+
+> [!NOTE]
+> **Atualizado em 23/09/2026:** Limites de armazenamento revisados para suportar 3 tiers de plano (Free: 500 MB, VIP Pro: 10 GB e VIP Mestre: 20 GB). O contrato da resposta de erro `STORAGE_LIMIT_EXCEEDED` passa a adotar a propriedade canônica `plan_tier`.
+
+Além das cotas diárias de criação, a plataforma monitora e limita o consumo total de armazenamento de mídias (`storage_used_bytes`) de cada usuário conforme o tier de plano:
+1. **Limite Plano Free:** **500 MB** (`536.870.912` bytes).
+2. **Limite Plano VIP Pro (`plan_tier: "vip_pro"`):** **10 GB** (`10.737.418.240` bytes).
+3. **Limite Plano VIP Mestre (`plan_tier: "vip_master"`):** **20 GB** (`21.474.836.480` bytes).
+4. **PreHandler `checkStorageQuota`:** Intercepta envios de mídia no endpoint `POST /upload`. A resolução do limite é executada em tempo $O(1)$ lendo `request.user.subscription.type` (`"FREE" | "PRO" | "MESTRE"`) diretamente do token JWT decodificado em memória (zero consultas ao banco para identificar plano). Apenas o consumo atual (`storage_used_bytes`) é lido do MongoDB. Se `storage_used_bytes + content_length > limit`, a requisição é barrada antes do stream para o Cloudinary com HTTP `403 Forbidden` (`code: "STORAGE_LIMIT_EXCEEDED"`).
+5. **Ciclo de Vida e Sincronização:**
    - O tamanho em bytes da figurinha (`size_bytes`) é persistido e incrementado em `storage_used_bytes` na criação de figurinhas ou pacotes com itens.
    - Ao excluir figurinhas (`DELETE /sticker/:id`) ou pacotes (`DELETE /pack/:id`), o espaço ocupado é decrementado automaticamente da cota do usuário.
 
@@ -769,7 +776,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 
 #### `POST /upload/?folder=...`
 - **Descrição:** Envia arquivos de imagem/sticker via Multipart Stream diretamente ao Cloudinary, organizando o path em pastas segregadas por usuário (`folder/userName/filename`).
-- **Validação de Cota:** Possui o preHandler `app.checkStorageQuota`. Bloqueia o upload antes de iniciar a transmissão se o tamanho indicado no header `Content-Length` somado ao `storage_used_bytes` do usuário ultrapassar o limite do plano (1GB Free / 10GB VIP).
+- **Validação de Cota:** Possui o preHandler `app.checkStorageQuota`. Bloqueia o upload antes de iniciar a transmissão se o tamanho indicado no header `Content-Length` somado ao `storage_used_bytes` do usuário ultrapassar o limite do plano (500 MB Free / 10 GB VIP Pro / 20 GB VIP Mestre).
 - **Limite Máximo por Arquivo (25 MB):** O servidor rejeita imediatamente uploads truncados ou que excedam 25 MB com HTTP `413 Payload Too Large`.
 - **Respostas:**
   - `201 Created`:
@@ -790,14 +797,19 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
     {
       "success": false,
       "code": "STORAGE_LIMIT_EXCEEDED",
-      "message": "Limite de armazenamento atingido (1 GB para plano Free). Faça upgrade para VIP e desbloqueie 10 GB!",
+      "message": "Limite de armazenamento atingido (500 MB para plano Free). Faça upgrade para VIP e desbloqueie até 20 GB!",
       "storage": {
-        "used_bytes": 1073741824,
-        "limit_bytes": 1073741824,
+        "used_bytes": 536870912,
+        "limit_bytes": 536870912,
+        "plan_tier": "free",
         "is_vip": false
       }
     }
     ```
+    > **Variações de Mensagem por Tier:**
+    > - **Free (`plan_tier: "free"`):** `"Limite de armazenamento atingido (500 MB para plano Free). Faça upgrade para VIP e desbloqueie até 20 GB!"`
+    > - **VIP Pro (`plan_tier: "vip_pro"`):** `"Limite de armazenamento atingido (10 GB para plano VIP Pro). Faça upgrade para VIP Mestre e desbloqueie 20 GB!"`
+    > - **VIP Mestre (`plan_tier: "vip_master"`):** `"Limite de armazenamento atingido (20 GB para plano VIP Mestre). Libere espaço excluindo figurinhas ou mídias antigas."`
   - `413 Payload Too Large`:
     ```json
     {
@@ -1008,7 +1020,7 @@ Módulo responsável pelo processamento de eventos de compras in-app e assinatur
        - `end`: Data de expiração (`event.expiration_at_ms`).
        - `plan`: `"VIP_MESTRE"` (se `event.product_id === "vip_mestre"`) ou `"VIP_PRO"`.
        - `type`: `"MESTRE"` (se `event.product_id === "vip_mestre"`) ou `"PRO"`.
-     - `CANCELLATION` / `EXPIRATION`: Atualiza `premium: false` no perfil do usuário.
+     - `CANCELLATION` / `EXPIRATION`: Atualiza `premium: false` e redefine `subscriptions: { type: "FREE" }` no perfil do usuário.
 - **Request Body (RevenueCat Webhook Payload):**
   ```json
   {
@@ -1046,9 +1058,12 @@ export type UserRole = "user" | "admin" | "moderator" | "company";
 // Status da Conta
 export type UserStatus = "active" | "inactive";
 
-// Tipos de Assinatura VIP
-export type VipType = "PRO" | "MESTRE";
+// Tipos de Assinatura VIP / Planos
+export type VipType = "FREE" | "PRO" | "MESTRE";
 export type VipPlan = "VIP_PRO" | "VIP_MESTRE";
+
+// Tiers Canônicos de Armazenamento
+export type PlanTier = "free" | "vip_pro" | "vip_master";
 
 // Categorias de Pacotes
 export type PackCategory =
@@ -1140,10 +1155,10 @@ export interface ClaimMissionResult {
 ### Assinatura VIP do Usuário (`UserSubscription`)
 ```typescript
 export interface UserSubscription {
-  start: Date | string;
-  end: Date | string;
+  start?: Date | string;
+  end?: Date | string;
   type: VipType;
-  plan: VipPlan;
+  plan?: VipPlan;
 }
 ```
 
@@ -1206,3 +1221,10 @@ export interface QuotaSnapshotDto {
      `await Purchases.logIn(user.id);`
    - O backend processa o webhook oficial do RevenueCat (`POST /webhooks/revenuecat/revenuecat-webhook`) para conceder o status VIP (`premium: true`) e salvar o plano contratado (`VIP_PRO` ou `VIP_MESTRE`).
    - Após a conclusão da compra na App Store / Play Store pelo Flutter, recarregue os dados via `GET /profile/` para refletir imediatamente as novas cotas ilimitadas e o selo VIP no aplicativo.
+10. **Tratamento de Cotas de Armazenamento no Flutter (`STORAGE_LIMIT_EXCEEDED`):**
+    - Ao interceptar HTTP `403 Forbidden` com `code: "STORAGE_LIMIT_EXCEEDED"` no upload de mídias:
+      - Leia o campo canônico `storage.plan_tier` (`"free" | "vip_pro" | "vip_master"`).
+      - **Se `free`:** Apresente modal ou paywall oferecendo planos **VIP Pro (10 GB)** e **VIP Mestre (20 GB)**.
+      - **Se `vip_pro`:** Apresente modal de upsell direcionado ao **VIP Mestre (20 GB)** destacando os 10 GB adicionais.
+      - **Se `vip_master`:** Exiba alerta informando cota máxima e forneça atalho para a biblioteca de pacotes/figurinhas para liberar espaço.
+    - O token JWT decodificado no login ou refresh (`request.user.subscription.type`) permite alternar a interface e exibir o selo de plano instantaneamente sem requisições adicionais de rede.
