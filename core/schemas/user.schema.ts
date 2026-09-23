@@ -7,7 +7,7 @@ export type UserRole = z.infer<typeof userRoleEnum>;
 export const userStatusEnum = z.enum(["active", "inactive"]);
 export type UserStatus = z.infer<typeof userStatusEnum>;
 
-export const vipTypeEnum = z.enum(["PRO", "MESTRE"]);
+export const vipTypeEnum = z.enum(["FREE", "PRO", "MESTRE"]);
 export type VipType = z.infer<typeof vipTypeEnum>;
 
 export const vipPlanEnum = z.enum(["VIP_PRO", "VIP_MESTRE"]);
@@ -50,13 +50,13 @@ export const userSchema = z.object({
   banner_url: z.url().optional(),
   subscriptions: z
     .object({
-      start: z.coerce.date(),
-      end: z.coerce.date(),
-      type: vipTypeEnum,
-      plan: vipPlanEnum,
+      start: z.coerce.date().optional(),
+      end: z.coerce.date().optional(),
+      type: vipTypeEnum.default("FREE"),
+      plan: vipPlanEnum.optional(),
     })
-    .optional(),
-  email: z.string().trim().toLowerCase().email(),
+    .default({ type: "FREE" }),
+  email: z.email().trim().toLowerCase(),
   isEmailVerified: z.boolean().default(false),
   isNumberVerified: z.boolean().default(false),
   termsAccepted: z.boolean().default(false),

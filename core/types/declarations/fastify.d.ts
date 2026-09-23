@@ -1,4 +1,4 @@
-import type { UserRole } from "@/schemas";
+import type { UserRole, VipType } from "@/schemas";
 import type { StickerPack } from "@/models";
 import "@fastify/jwt";
 import "fastify";
@@ -43,6 +43,9 @@ declare module "@fastify/jwt" {
       isNumberVerified: boolean;
       role: UserRole;
       premium: boolean;
+      subscription?: {
+        type: VipType;
+      };
     };
   }
 }

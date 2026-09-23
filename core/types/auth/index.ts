@@ -1,4 +1,4 @@
-import type { User } from "@/models";
+import type { User, VipType } from "@/models";
 
 export interface SendOtpResult {
   otp: string;
@@ -19,6 +19,9 @@ export interface JwtPayload {
   role?: string;
   premium?: boolean;
   isNumberVerified?: boolean;
+  subscription?: {
+    type: VipType;
+  };
 }
 
 export type ServiceResponse<T> =

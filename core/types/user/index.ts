@@ -8,3 +8,5 @@ export type UserIdentifier =
   | UserId
   | { email: string }
   | { userName: string };
+
+export type PlanTier = "free" | "vip_pro" | "vip_master";
