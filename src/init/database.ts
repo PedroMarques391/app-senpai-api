@@ -47,6 +47,12 @@ export class MongoInitializer {
       await this.db.collection("store_items").createIndex({ status: 1 });
 
       await this.db
+        .collection("follows")
+        .createIndex({ followerId: 1, followingId: 1 }, { unique: true });
+      await this.db.collection("follows").createIndex({ followingId: 1 });
+      await this.db.collection("follows").createIndex({ followerId: 1 });
+
+      await this.db
         .collection("user_items")
         .createIndex({ user_id: 1, item_id: 1 }, { unique: true });
       await this.db
