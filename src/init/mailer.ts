@@ -28,9 +28,11 @@ export class MailerInitializer {
       await this.transporter.verify();
       this.logger?.info("Mailer is ready to send messages");
     } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : JSON.stringify(err);
       this.logger?.warn(
         { err },
-        "Mailer failed to verify SMTP connection. Proceeding without crashing startup...",
+        `Mailer failed to verify SMTP connection: ${errorMessage}. Proceeding without crashing startup...`,
       );
     }
   }
