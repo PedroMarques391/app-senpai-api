@@ -874,10 +874,15 @@ O módulo de gamificação do Senpai estimula a retenção e o engajamento diár
    - `daily_checkin` ("Presença Diária"): Abrir o app no dia. Concluída automaticamente ao consultar o overview diário. Recompensa: `+40 XP`, `+5 Pétalas`.
    - `create_sticker` ("Criar Figurinha"): Criar pelo menos 1 figurinha no editor no ciclo atual. Recompensa: `+120 XP`, `+20 Pétalas`.
    - `favorite_pack` ("Apoiar a Comunidade"): Adicionar pelo menos 1 pacote público aos favoritos no ciclo atual. Recompensa: `+80 XP`, `+10 Pétalas`.
+   - `vip_daily_reward` ("Presente diário VIP"): benefício diário exclusivo de assinatura ativa. Para `subscription.type = "PRO"`, recompensa `+20 Pétalas`; para `subscription.type = "MESTRE"`, recompensa `+40 Pétalas`; não concede XP. A missão nasce `completed: true` e `claimed: false` assim que a assinatura VIP estiver ativa no ciclo atual, inclusive quando a ativação ocorrer depois das 06:00 BRT. Usuários `FREE` não recebem esta missão no overview. Em 30 resgates diários consecutivos, o total nominal é de `600 Pétalas` no PRO e `1.200 Pétalas` no MESTRE.
+   - `daily_checkin` e `vip_daily_reward` são recompensas independentes. Resgatar a presença diária não marca, consome nem bloqueia o presente VIP, e o inverso também é verdadeiro; cada missão possui seu próprio `claimed` no ciclo.
 6. **Resgate Atômico de Recompensas (`claim`):**
    - O resgate é transacionado atomicamente no MongoDB com `findOneAndUpdate` e predicado `$ne: missionId`.
    - Não permite resgate duplo no mesmo ciclo diário.
    - As recompensas em pétalas e XP são creditadas instantaneamente no documento do usuário.
+   - Para `vip_daily_reward`, o backend revalida `premium` e `subscription.type` no momento do overview e do claim e calcula a recompensa no servidor (`PRO = 20`, `MESTRE = 40`). O cliente nunca envia quantidade de pétalas no payload e nunca credita o saldo localmente.
+   - A revalidação de `vip_daily_reward` deve consultar o documento atual do usuário no MongoDB pelo `request.user._id`, em vez de depender somente do snapshot de assinatura gravado em um JWT emitido antes de um webhook do RevenueCat. O JWT continua identificando/autorizando a conta, enquanto o estado persistido atual decide a elegibilidade e o tier da recompensa.
+   - Se uma assinatura PRO/MESTRE for ativada durante o ciclo atual, `vip_daily_reward` fica imediatamente elegível naquele mesmo ciclo, desde que ainda não tenha sido resgatada. A próxima elegibilidade nasce somente na virada das 06:00 BRT.
 
 ---
 
@@ -951,6 +956,21 @@ O módulo de gamificação do Senpai estimula a retenção e o engajamento diár
           "current_progress": 0,
           "completed": false,
           "claimed": false
+        },
+        {
+          "id": "vip_daily_reward",
+          "title": "Presente diário VIP",
+          "description": "Seu presente diário da Senpai está pronto para resgate.",
+          "goal": 1,
+          "metric": "vip_daily_reward",
+          "reward": {
+            "xp": 0,
+            "petals": 40
+          },
+          "active": true,
+          "current_progress": 1,
+          "completed": true,
+          "claimed": false
         }
       ]
     }
@@ -962,7 +982,7 @@ O módulo de gamificação do Senpai estimula a retenção e o engajamento diár
 - **Descrição:** Reivindica as recompensas (XP e Pétalas) de uma missão diária concluída.
 - **Headers:** `Authorization: Bearer <token>`
 - **URL Params:**
-  - `id`: Identificador da missão (ex: `"daily_checkin"`, `"create_sticker"`, `"favorite_pack"`).
+  - `id`: Identificador da missão (ex: `"daily_checkin"`, `"create_sticker"`, `"favorite_pack"`, `"vip_daily_reward"`).
 - **Respostas:**
   - `200 OK`:
     ```json
@@ -1101,7 +1121,8 @@ export type ContentPlatform = "ios" | "android" | "both" | "all";
 export type MissionMetric =
   | "app_checkin"
   | "stickers_created"
-  | "packs_favorited";
+  | "packs_favorited"
+  | "vip_daily_reward";
 ```
 
 ### Modelos de Gamificação & Missões
@@ -1216,6 +1237,7 @@ export interface QuotaSnapshotDto {
      - Atualize o XP e o `level_info` do usuário.
      - Se `result.level_info.level > levelAnterior`, dispare uma animação festiva de **Level Up!** na UI.
      - Marque a missão localmente como `claimed: true`.
+   - **Presente diário VIP:** Não crie saldo local nem uma rota paralela. Para PRO/MESTRE, procure a missão `vip_daily_reward` dentro do próprio `GET /missions/daily` e resgate-a com `POST /missions/vip_daily_reward/claim`. O valor exibido deve vir de `mission.reward.petals`; o saldo final deve vir exclusivamente de `result.petals_balance`. Após a confirmação de uma nova assinatura VIP, recarregue `GET /missions/daily` para que o benefício fique disponível imediatamente no ciclo atual.
 9. **Integração de Assinaturas com RevenueCat:**
    - No cliente Flutter, configure o SDK do Purchases / RevenueCat informando o `_id` do MongoDB retornado no login (`request.user._id`) como `app_user_id`:
      `await Purchases.logIn(user.id);`
