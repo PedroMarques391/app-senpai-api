@@ -1,7 +1,8 @@
 export type MissionMetric =
   | "app_checkin"
   | "stickers_created"
-  | "packs_favorited";
+  | "packs_favorited"
+  | "vip_daily_reward";
 
 export interface MissionReward {
   xp: number;

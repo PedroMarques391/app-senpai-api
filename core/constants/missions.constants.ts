@@ -1,5 +1,9 @@
 import type { Mission } from "@/models";
 
+export const VIP_DAILY_REWARD_MISSION_ID = "vip_daily_reward";
+export const VIP_PRO_DAILY_PETALS = 20;
+export const VIP_MESTRE_DAILY_PETALS = 40;
+
 export const STATIC_MISSIONS: readonly Mission[] = [
   {
     id: "daily_checkin",

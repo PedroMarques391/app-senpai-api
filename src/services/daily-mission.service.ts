@@ -8,6 +8,11 @@ import type {
   DailyMissionOverview,
   UserMissionProgressDto,
 } from "@/models";
+import {
+  VIP_DAILY_REWARD_MISSION_ID,
+  VIP_MESTRE_DAILY_PETALS,
+  VIP_PRO_DAILY_PETALS,
+} from "@/constants";
 import { DateUtils, LevelUtils, QuotaUtils } from "@/utils";
 import { MissionService } from "./mission.service";
 import { ObjectId } from "mongodb";
@@ -102,6 +107,33 @@ export class DailyMissionService {
       },
     );
 
+    const isVip = freshUser?.premium === true;
+    const vipType = freshUser?.subscriptions?.type ?? (isVip ? "PRO" : "FREE");
+
+    if (isVip && (vipType === "PRO" || vipType === "MESTRE")) {
+      const petalsReward =
+        vipType === "MESTRE"
+          ? VIP_MESTRE_DAILY_PETALS
+          : VIP_PRO_DAILY_PETALS;
+      const claimed = claimedKeys.includes(VIP_DAILY_REWARD_MISSION_ID);
+
+      missionProgress.push({
+        id: VIP_DAILY_REWARD_MISSION_ID,
+        title: "Presente diário VIP",
+        description: "Seu presente diário da Senpai está pronto para resgate.",
+        goal: 1,
+        metric: "vip_daily_reward",
+        reward: {
+          xp: 0,
+          petals: petalsReward,
+        },
+        active: true,
+        current_progress: 1,
+        completed: true,
+        claimed,
+      });
+    }
+
     const totalXp = freshUser?.total_xp ?? 0;
     const levelInfo = LevelUtils.getLevelFromXp(totalXp);
 
@@ -123,6 +155,47 @@ export class DailyMissionService {
   ): Promise<ClaimMissionResult> {
     const userObjectId = new ObjectId(userId);
     const { cycleDate, cycleStart } = QuotaUtils.getCycleInfo();
+
+    await this.userRepository.ensureDailyCycle(userObjectId, cycleDate);
+
+    if (missionId === VIP_DAILY_REWARD_MISSION_ID) {
+      const user = await this.userRepository.find({ _id: userObjectId });
+      if (!user) throw new Error("Usuário não encontrado.");
+
+      const isVip = user.premium === true;
+      const vipType = user.subscriptions?.type ?? (isVip ? "PRO" : "FREE");
+
+      if (!isVip || (vipType !== "PRO" && vipType !== "MESTRE")) {
+        throw new Error(
+          "Esta recompensa é exclusiva para assinantes VIP ativos.",
+        );
+      }
+
+      const petalsReward =
+        vipType === "MESTRE"
+          ? VIP_MESTRE_DAILY_PETALS
+          : VIP_PRO_DAILY_PETALS;
+
+      const updatedUser = await this.userRepository.claimDailyMission(
+        userObjectId,
+        cycleDate,
+        missionId,
+        0,
+        petalsReward,
+      );
+
+      if (!updatedUser) {
+        throw new Error("Recompensa já foi resgatada ou ciclo expirou.");
+      }
+
+      const levelInfo = LevelUtils.getLevelFromXp(updatedUser.total_xp ?? 0);
+
+      return {
+        petals_balance: updatedUser.petals_balance,
+        total_xp: updatedUser.total_xp ?? 0,
+        level_info: levelInfo,
+      };
+    }
 
     const mission = MissionService.getMissionById(missionId);
     if (!mission) throw new Error("Missão não encontrada.");
