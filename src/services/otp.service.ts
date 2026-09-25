@@ -1,3 +1,4 @@
+import { EMAIL_REPLY_TO, EMAIL_SENDERS } from "@/constants";
 import type { UserRepository } from "@/repositories";
 import {
   renderOtpEmailTemplate,
@@ -142,6 +143,7 @@ export class OtpService {
     });
 
     await this.mailService.sendMail({
+      from: EMAIL_SENDERS.NOREPLY,
       to: user.email,
       subject: "Eii, seu código está aqui!",
       html,
@@ -197,6 +199,8 @@ export class OtpService {
     });
 
     await this.mailService.sendMail({
+      from: EMAIL_SENDERS.SUPPORT,
+      replyTo: EMAIL_REPLY_TO,
       to: cleanEmail,
       subject: "E-mail verificado com sucesso - Senpai",
       html,

@@ -1,3 +1,4 @@
+import { EMAIL_SENDERS } from "@/constants";
 import type { UserRepository } from "@/repositories";
 import {
   renderResetPasswordEmailTemplate,
@@ -48,6 +49,7 @@ export class RecoveryService {
     });
 
     await this.mailService.sendMail({
+      from: EMAIL_SENDERS.NOREPLY,
       to: currentUser.email,
       subject: "Eii, parece que você esqueceu sua senha",
       html,
@@ -145,6 +147,7 @@ export class RecoveryService {
     });
 
     await this.mailService.sendMail({
+      from: EMAIL_SENDERS.NOREPLY,
       to: cleanEmail,
       subject: "Segurança: sua senha foi alterada com sucesso",
       html,

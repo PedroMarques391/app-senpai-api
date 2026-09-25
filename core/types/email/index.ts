@@ -28,6 +28,7 @@ export interface SendEmailPayload {
   subject: string;
   html: string;
   from?: string;
+  replyTo?: string | string[];
 }
 
 export interface EmailProvider {

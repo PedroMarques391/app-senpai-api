@@ -7,14 +7,11 @@ export class ResendEmailProvider implements EmailProvider {
 
   constructor() {
     const apiKey = process.env.RESEND_API_KEY;
-    const from = process.env.RESEND_FROM;
+    const from =
+      process.env.RESEND_FROM ?? '"Senpai" <noreply@botdosenpai.com.br>';
 
     if (!apiKey) {
       throw new Error("RESEND_API_KEY não definida nas variáveis de ambiente");
-    }
-
-    if (!from) {
-      throw new Error("RESEND_FROM não definida nas variáveis de ambiente");
     }
 
     this.resend = new Resend(apiKey);
@@ -27,6 +24,7 @@ export class ResendEmailProvider implements EmailProvider {
       to: payload.to,
       subject: payload.subject,
       html: payload.html,
+      ...(payload.replyTo ? { replyTo: payload.replyTo } : {}),
     });
 
     if (error) {

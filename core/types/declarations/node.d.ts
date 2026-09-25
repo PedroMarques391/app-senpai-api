@@ -14,6 +14,7 @@ declare global {
       PRODUCTION_URL: string;
       RESEND_API_KEY: string;
       RESEND_FROM: string;
+      EMAIL_REPLY_TO?: string;
     }
   }
 }

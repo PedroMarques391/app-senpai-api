@@ -11,6 +11,8 @@ export class MailService {
         to: data.to,
         subject: data.subject,
         html: data.html,
+        from: data.from,
+        replyTo: data.replyTo,
       },
       { attempts: 2 },
     );
