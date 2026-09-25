@@ -7,7 +7,6 @@ import {
 import {
   authPlugin,
   errorPlugin,
-  mailerPlugin,
   quotaPlugin,
   redisPlugin,
 } from "@/plugin";
@@ -72,7 +71,6 @@ server.register(errorPlugin);
 server.register(authPlugin);
 server.register(redisPlugin);
 server.register(quotaPlugin);
-server.register(mailerPlugin);
 server.register(authRoutes, { prefix: "/auth" });
 server.register(packRoutes, { prefix: "/pack" });
 server.register(adminRouter, { prefix: "/admin" });
@@ -112,9 +110,9 @@ const bootstrap = async () => {
     CloudinaryInitializer.init();
     BullMQInitializer.setLogger(server.log);
     await MongoInitializer.init(server.log);
-    await MailerInitializer.init(server.log);
+    MailerInitializer.init(server.log);
     new WhatsAppWorker(server.log);
-    new EmailWorker(MailerInitializer.getTransporter(), server.log);
+    new EmailWorker(MailerInitializer.getProvider(), server.log);
     const address = await server.listen({
       port: Number(process.env.PORT) || 3000,
       host: "0.0.0.0",

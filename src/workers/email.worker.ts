@@ -1,17 +1,14 @@
 import { BullMQInitializer } from "@/init";
-import type { EmailJobData } from "@/types";
+import type { EmailJobData, EmailProvider } from "@/types";
 import { Worker, type Job } from "bullmq";
 import type { FastifyBaseLogger } from "fastify";
-import type { Mail, SMTPSentMessageInfo } from "nodemailer";
 
 export class EmailWorker {
   private worker: Worker<EmailJobData>;
   private readonly QUEUE_NAME = "email";
-  private readonly FROM =
-    process.env.SMTP_FROM ?? `"Senpai" <${process.env.SMTP_USER}>`;
 
   constructor(
-    private readonly transporter: Mail<SMTPSentMessageInfo>,
+    private readonly emailProvider: EmailProvider,
     private readonly logger?: FastifyBaseLogger,
   ) {
     this.worker = new Worker<EmailJobData>(
@@ -29,8 +26,7 @@ export class EmailWorker {
   private async process(job: Job<EmailJobData>): Promise<void> {
     const { to, subject, html } = job.data;
 
-    await this.transporter.sendMail({
-      from: this.FROM,
+    await this.emailProvider.send({
       to,
       subject,
       html,
@@ -61,4 +57,3 @@ export class EmailWorker {
     await this.worker.close();
   }
 }
-

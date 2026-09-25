@@ -10,14 +10,12 @@ declare global {
       CLOUDINARY_API_KEY: string;
       CLOUDINARY_API_SECRET: string;
       REDIS_URL: string;
-      SMTP_HOST: string;
-      SMTP_PORT: string;
-      SMTP_USER: string;
-      SMTP_PASS: string;
       LOCAL_URL: string;
       PRODUCTION_URL: string;
+      RESEND_API_KEY: string;
+      RESEND_FROM: string;
     }
   }
 }
 
-export {};
+export { };

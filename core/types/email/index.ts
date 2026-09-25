@@ -22,3 +22,14 @@ export interface SuccessEmailTemplateProps {
   noticeText?: string;
   imageUrl?: string;
 }
+
+export interface SendEmailPayload {
+  to: string | string[];
+  subject: string;
+  html: string;
+  from?: string;
+}
+
+export interface EmailProvider {
+  send(payload: SendEmailPayload): Promise<void>;
+}
