@@ -108,7 +108,7 @@ export class DailyMissionService {
     );
 
     const isVip = freshUser?.premium === true;
-    const vipType = freshUser?.subscriptions?.type ?? (isVip ? "PRO" : "FREE");
+    const vipType = freshUser?.subscription?.type ?? (isVip ? "PRO" : "FREE");
 
     if (isVip && (vipType === "PRO" || vipType === "MESTRE")) {
       const petalsReward =
@@ -163,7 +163,7 @@ export class DailyMissionService {
       if (!user) throw new Error("Usuário não encontrado.");
 
       const isVip = user.premium === true;
-      const vipType = user.subscriptions?.type ?? (isVip ? "PRO" : "FREE");
+      const vipType = user.subscription?.type ?? (isVip ? "PRO" : "FREE");
 
       if (!isVip || (vipType !== "PRO" && vipType !== "MESTRE")) {
         throw new Error(
