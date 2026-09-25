@@ -113,7 +113,7 @@ export class AuthService {
       isNumberVerified: fullUser.isNumberVerified,
       role: fullUser.role,
       subscription: {
-        type: fullUser.subscriptions?.type ?? (fullUser.premium ? "PRO" : "FREE"),
+        type: fullUser.subscription?.type ?? (fullUser.premium ? "PRO" : "FREE"),
       },
     };
 
@@ -154,6 +154,7 @@ export class AuthService {
     }
 
     user.last_login = new Date();
+
     const payload = {
       _id: user._id.toString(),
       wa_id: user.wa_id,
@@ -164,7 +165,7 @@ export class AuthService {
       isNumberVerified: user.isNumberVerified,
       role: user.role,
       subscription: {
-        type: user.subscriptions?.type ?? (user.premium ? "PRO" : "FREE"),
+        type: user.subscription?.type ?? (user.premium ? "PRO" : "FREE"),
       },
     };
     const token = AuthUtils.generateJWT(this.jwtInstance, payload);
