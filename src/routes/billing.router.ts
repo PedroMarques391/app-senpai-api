@@ -4,6 +4,7 @@ import { z } from "zod";
 
 export const billingRoutes: FastifyPluginAsyncZod = async (app) => {
   const billingService = ServiceFactory.getBillingService();
+  const cacheService = ServiceFactory.getCacheService(app.redis);
 
   app.get("/", {}, async (request, reply) => {
     return reply
@@ -37,7 +38,12 @@ export const billingRoutes: FastifyPluginAsyncZod = async (app) => {
         return reply.status(401).send({ error: "Unauthorized" });
       }
 
-      const result = await billingService.handleRevenueCatWebhook(request.body);
+      await billingService.handleRevenueCatWebhook(request.body);
+
+      const userId = request.body?.event?.app_user_id;
+      if (userId) {
+        await cacheService.del(`profile:${userId}`);
+      }
 
       return reply.status(200).send({ success: true });
     },
