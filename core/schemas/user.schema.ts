@@ -13,6 +13,13 @@ export type VipType = z.infer<typeof vipTypeEnum>;
 export const vipPlanEnum = z.enum(["VIP_PRO", "VIP_MESTRE"]);
 export type VipPlan = z.infer<typeof vipPlanEnum>;
 
+export const userSubscriptionSchema = z.object({
+  start: z.coerce.date().optional(),
+  end: z.coerce.date().optional(),
+  type: vipTypeEnum.default("FREE"),
+  plan: vipPlanEnum.optional(),
+});
+export type UserSubscription = z.infer<typeof userSubscriptionSchema>;
 
 export const userAchievementReferenceSchema = z.object({
   id: z.string(),
@@ -48,14 +55,7 @@ export const userSchema = z.object({
   preferred_payment: z.string().optional(),
   avatar_url: z.url().optional(),
   banner_url: z.url().optional(),
-  subscriptions: z
-    .object({
-      start: z.coerce.date().optional(),
-      end: z.coerce.date().optional(),
-      type: vipTypeEnum.default("FREE"),
-      plan: vipPlanEnum.optional(),
-    })
-    .default({ type: "FREE" }),
+  subscription: userSubscriptionSchema.default({ type: "FREE" }),
   email: z.email().trim().toLowerCase(),
   isEmailVerified: z.boolean().default(false),
   isNumberVerified: z.boolean().default(false),
