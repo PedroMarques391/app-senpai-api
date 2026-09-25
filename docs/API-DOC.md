@@ -666,7 +666,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 *(Todas as rotas exigem Header `Authorization`)*
 
 #### `GET /profile/`
-- **Descrição:** Retorna os dados completos do perfil autenticado, incluindo saldo de pétalas, contadores de stickers, status VIP (`premium`), datas de assinatura (`subscriptions`) e consentimento de termos (`termsAccepted`).
+- **Descrição:** Retorna os dados completos do perfil autenticado, incluindo saldo de pétalas, contadores de stickers, status VIP (`premium`), datas de assinatura (`subscription`) e consentimento de termos (`termsAccepted`).
 - **Respostas:**
   - `200 OK`: `{"success": true, "profile": { ...User }}`
 
@@ -705,7 +705,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   | `avatar_url` | `z.url()` | `String?` | URL do avatar hospedado. |
   | `banner_url` | `z.url()` | `String?` | URL do banner do perfil. |
   | `preferred_payment` | `z.string()` | `String?` | Identificador de pagamento preferencial. |
-- **Campos Protegidos do Sistema:** O schema omite intencionalmente campos como `premium`, `petals_balance`, `role`, `status`, `subscriptions`, `stickers_count`, `daily_missions`, etc., garantindo que alterações no perfil nunca afetem a assinatura VIP ou o saldo do usuário.
+- **Campos Protegidos do Sistema:** O schema omite intencionalmente campos como `premium`, `petals_balance`, `role`, `status`, `subscription`, `stickers_count`, `daily_missions`, etc., garantindo que alterações no perfil nunca afetem a assinatura VIP ou o saldo do usuário.
 - **Invalidação de Cache:** Invalida automaticamente `profile:<userId>` e `profile:username:<userName>`.
 - **Respostas:**
   - `200 OK`: `{"success": true, "message": "Perfil atualizado com sucesso", "profile": { ...User }}`
@@ -1035,12 +1035,12 @@ Módulo responsável pelo processamento de eventos de compras in-app e assinatur
   1. **Autenticação por Secret:** Requer header `Authorization: Bearer <REVENUECAT_WEBHOOK_SECRET>`. Requisições com token inválido ou ausente são rejeitadas com HTTP `401 Unauthorized`.
   2. **Identificação do Usuário:** O RevenueCat envia o campo `event.app_user_id`, que deve corresponder ao `_id` do usuário no MongoDB (Hex de 24 caracteres).
   3. **Tratamento de Eventos:**
-     - `INITIAL_PURCHASE` / `RENEWAL`: Ativa o status `premium: true` no usuário e popula o objeto `subscriptions` com:
+     - `INITIAL_PURCHASE` / `RENEWAL`: Ativa o status `premium: true` no usuário e popula o objeto `subscription` com:
        - `start`: Data atual.
        - `end`: Data de expiração (`event.expiration_at_ms`).
        - `plan`: `"VIP_MESTRE"` (se `event.product_id === "vip_mestre"`) ou `"VIP_PRO"`.
        - `type`: `"MESTRE"` (se `event.product_id === "vip_mestre"`) ou `"PRO"`.
-     - `CANCELLATION` / `EXPIRATION`: Atualiza `premium: false` e redefine `subscriptions: { type: "FREE" }` no perfil do usuário.
+     - `CANCELLATION` / `EXPIRATION`: Atualiza `premium: false` e redefine `subscription: { type: "FREE" }` no perfil do usuário.
 - **Request Body (RevenueCat Webhook Payload):**
   ```json
   {
