@@ -24,6 +24,7 @@ import {
   storeRoutes,
   termsRoutes,
   uploadRoutes,
+  groupRoutes,
 } from "@/routes";
 import { EmailWorker, WhatsAppWorker } from "@/workers";
 import fastifyMultipart from "@fastify/multipart";
@@ -103,7 +104,9 @@ server.register(async (app) => {
   app.register(creationQuotaRoutes, { prefix: "/creation/quota" });
   app.register(billingRoutes, { prefix: "/webhooks/revenuecat" });
   app.register(dailyMissionRoutes, { prefix: "/missions" });
+  app.register(groupRoutes, { prefix: "/group" });
 });
+
 
 const bootstrap = async () => {
   try {

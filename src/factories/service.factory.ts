@@ -7,6 +7,7 @@ import {
   StickerRepository,
   StoreRepository,
   UserRepository,
+  GroupRepository,
 } from "@/repositories";
 import {
   AuthService,
@@ -27,6 +28,7 @@ import {
   TermsService,
   UploadService,
   UserService,
+  GroupService,
 } from "@/services";
 
 import { BillingService } from "@/services/billing.service";
@@ -53,6 +55,7 @@ export class ServiceFactory {
   private static otpService: OtpService;
   private static recoveryService: RecoveryService;
   private static billingService: BillingService;
+  private static groupService: GroupService;
 
   static getInventoryService(): InventoryService {
     if (!this.inventoryService) {
@@ -220,5 +223,12 @@ export class ServiceFactory {
       );
     }
     return this.dailyMissionService;
+  }
+
+  static getGroupService(): GroupService {
+    if (!this.groupService) {
+      this.groupService = new GroupService(new GroupRepository());
+    }
+    return this.groupService;
   }
 }

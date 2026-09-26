@@ -3,8 +3,7 @@ import type { z } from "zod";
 
 export const createGroupDtoSchema = groupSchema
   .pick({
-    title: true,
-    link: true,
+    groups: true,
   })
   .strict();
 

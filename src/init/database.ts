@@ -72,6 +72,11 @@ export class MongoInitializer {
       await this.db.collection("contents").createIndex({ type: 1 });
       await this.db.collection("contents").createIndex({ platform: 1 });
 
+      await this.db
+        .collection("groups")
+        .createIndex({ user_id: 1 }, { unique: true });
+      await this.db.collection("groups").createIndex({ created_at: -1 });
+
       this.logger?.info("Successfully connected to MongoDB");
     } catch (error) {
       this.logger?.error(error, "Failed to connect to MongoDB");
