@@ -3,14 +3,12 @@ import {
   updateGroupDtoSchema,
   updateGroupItemDtoSchema,
 } from "@/dtos";
-import { GroupRepository } from "@/repositories";
-import { GroupService } from "@/services";
+import { ServiceFactory } from "@/factories";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
 
 export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
-  const repository = new GroupRepository();
-  const service = new GroupService(repository);
+  const service = ServiceFactory.getGroupService();
 
   app.get("/", async (request, reply) => {
     const groups = await service.findManyGroups(request.user._id);
@@ -47,7 +45,12 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
-      const group = await service.createGroup(request.user._id, request.body);
+      const group = await service.createGroup(
+        request.user._id,
+        request.user.email,
+        request.user.userName || request.user.name,
+        request.body
+      );
       return reply.status(201).send({
         success: true,
         message: "Grupo criado com sucesso",
@@ -89,6 +92,8 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
     async (request, reply) => {
       const group = await service.updateGroupItem(
         request.user._id,
+        request.user.email,
+        request.user.userName || request.user.name,
         request.params.itemId,
         request.body,
       );
@@ -113,6 +118,8 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
     async (request, reply) => {
       const group = await service.deleteGroupItem(
         request.user._id,
+        request.user.email,
+        request.user.userName || request.user.name,
         request.params.itemId,
       );
 

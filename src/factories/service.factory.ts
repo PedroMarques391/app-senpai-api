@@ -227,7 +227,10 @@ export class ServiceFactory {
 
   static getGroupService(): GroupService {
     if (!this.groupService) {
-      this.groupService = new GroupService(new GroupRepository());
+      this.groupService = new GroupService(
+        new GroupRepository(),
+        this.getEmailService()
+      );
     }
     return this.groupService;
   }

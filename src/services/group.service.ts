@@ -1,13 +1,14 @@
-import type {
-  CreateGroupDto,
-  UpdateGroupDto,
-  UpdateGroupItemDto,
-} from "@/dtos";
+import type { CreateGroupDto, UpdateGroupDto, UpdateGroupItemDto } from "@/dtos";
 import type { Group, GroupRepository } from "@/models";
 import { MongoUtils, PermissionUtils } from "@/utils";
+import { EMAIL_SENDERS } from "@/constants";
+import { renderModerationGroupEmailTemplate } from "@/templates/email";
+import type { MailService } from "./mail.service";
 
 export class GroupService {
-  constructor(private readonly groupRepository: GroupRepository) { }
+  constructor(private readonly groupRepository: GroupRepository,
+    private readonly mailService: MailService
+  ) { }
 
   async findManyGroups(userId: string): Promise<Group | null> {
     const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
@@ -29,7 +30,7 @@ export class GroupService {
     return group;
   }
 
-  async createGroup(userId: string, data: CreateGroupDto): Promise<Group> {
+  async createGroup(userId: string, email: string, userName: string, data: CreateGroupDto): Promise<Group> {
     const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
 
     const existingGroups = await this.groupRepository.find(userObjectId);
@@ -47,6 +48,8 @@ export class GroupService {
         throw new Error("Não foi possível adicionar o novo grupo");
       }
 
+      this.sendModerationEmail(email, userName, "Novo Grupo Cadastrado", "Um usuário cadastrou um novo grupo na plataforma. O link abaixo já está disponível.", data.groups);
+
       return updated;
     }
 
@@ -54,6 +57,9 @@ export class GroupService {
     if (!group) {
       throw new Error("Não foi possível criar o grupo");
     }
+
+    this.sendModerationEmail(email, userName, "Novo Grupo Cadastrado", "Um usuário cadastrou um novo grupo na plataforma. O link abaixo já está disponível.", data.groups);
+
     return group;
   }
 
@@ -81,6 +87,8 @@ export class GroupService {
 
   async updateGroupItem(
     userId: string,
+    email: string,
+    userName: string,
     itemId: string,
     data: UpdateGroupItemDto,
   ): Promise<Group> {
@@ -100,11 +108,24 @@ export class GroupService {
       throw new Error("Item do grupo não encontrado");
     }
 
+    const updatedItem = updatedGroup.groups.find((item) => item.id === itemId);
+    if (updatedItem) {
+      this.sendModerationEmail(email, userName, "Grupo Atualizado", "As informações de um grupo existente foram atualizadas. Verifique as alterações para garantir conformidade.", [updatedItem]);
+    }
+
     return updatedGroup;
   }
 
-  async deleteGroupItem(userId: string, itemId: string): Promise<Group> {
+  async deleteGroupItem(
+    userId: string,
+    email: string,
+    userName: string,
+    itemId: string
+  ): Promise<Group> {
     const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
+
+    const existingGroup = await this.groupRepository.find(userObjectId);
+    const itemToDelete = existingGroup?.groups.find((i) => i.id === itemId);
 
     const updatedGroup = await this.groupRepository.deleteGroupItem(
       userObjectId,
@@ -113,6 +134,10 @@ export class GroupService {
 
     if (!updatedGroup) {
       throw new Error("Item do grupo não encontrado");
+    }
+
+    if (itemToDelete) {
+      this.sendModerationEmail(email, userName, "Grupo Removido", "Um grupo foi removido da plataforma pelo usuário. O link abaixo é mantido apenas como registro e referência histórica de auditoria.", [itemToDelete]);
     }
 
     return updatedGroup;
@@ -135,5 +160,31 @@ export class GroupService {
       throw new Error("Falha ao remover grupo");
     }
     return deleted;
+  }
+
+  private sendModerationEmail(
+    userEmail: string,
+    userName: string,
+    eventTitle: string,
+    eventDescription: string,
+    items: { title: string; url: string }[]
+  ) {
+    for (const item of items) {
+      const html = renderModerationGroupEmailTemplate({
+        eventTitle,
+        eventDescription,
+        userName,
+        userEmail,
+        groupTitle: item.title,
+        groupUrl: item.url,
+      });
+
+      this.mailService.sendMail({
+        from: EMAIL_SENDERS.NOREPLY,
+        to: process.env.MODERATOR_EMAIL,
+        subject: `[Moderação] ${eventTitle}`,
+        html,
+      })
+    }
   }
 }
