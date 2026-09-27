@@ -23,8 +23,6 @@ export const resendWebhook: FastifyPluginAsync = async (app) => {
 
         const wh = new Webhook(secret);
 
-        // If you don't have fastify-raw-body, JSON.stringify might invalidate the signature
-        // Make sure to register fastify-raw-body and use request.rawBody here.
         const payloadString = (request as any).rawBody || JSON.stringify(request.body);
 
         const event = wh.verify(payloadString, {
@@ -32,6 +30,8 @@ export const resendWebhook: FastifyPluginAsync = async (app) => {
             'svix-timestamp': svix_timestamp,
             'svix-signature': svix_signature,
         }) as any;
+
+        console.log(event)
 
         if (event.type === 'email.clicked' || event.type === 'email.complained') {
             console.log(`[Resend Webhook] Event matches target: ${event.type}`);
