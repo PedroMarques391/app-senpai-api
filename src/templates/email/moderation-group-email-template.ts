@@ -104,10 +104,17 @@ export function renderModerationGroupEmailTemplate({
                     </p>
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                       <tr>
-                        <td>
+                        <td style="padding-bottom: 12px;">
                           <a href="${groupUrl}" style="display:inline-block; padding:12px 24px; background-color:#FF3D82; color:#FFFFFF; text-decoration:none; border-radius:8px; font-size:14px; font-weight:600; width:100%; text-align:center; box-sizing:border-box;">
                             Acessar / Analisar Grupo
                           </a>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <div style="background-color: #F4D5DF; padding: 12px; border-radius: 6px; word-break: break-all; font-family: monospace; font-size: 12px; color: #5C2A33; text-align: center;">
+                            ${groupUrl}
+                          </div>
                         </td>
                       </tr>
                     </table>
