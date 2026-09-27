@@ -2,7 +2,8 @@ import type { FastifyPluginAsync } from "fastify";
 import { Webhook } from "svix";
 
 export const resendWebhook: FastifyPluginAsync = async (app) => {
-    app.post('/', async (request, reply) => {
+    app.post('/', { config: { rawBody: true } }, async (request, reply) => {
+        console.log('[Resend Webhook] Request received');
         const secret = process.env.RESEND_WEBHOOK_SECRET;
 
         if (!secret) {
@@ -32,8 +33,13 @@ export const resendWebhook: FastifyPluginAsync = async (app) => {
             'svix-signature': svix_signature,
         }) as any;
 
-        console.log(`[Resend Webhook] Event received: ${event.type}`);
-        console.log('[Resend Webhook] Event data:', JSON.stringify(event.data, null, 2));
+        if (event.type === 'email.clicked' || event.type === 'email.complained') {
+            console.log(`[Resend Webhook] Event matches target: ${event.type}`);
+            console.log('[Resend Webhook] Event data:', JSON.stringify(event.data, null, 2));
+            // Add custom logic here for handling clicked or complained events
+        } else {
+            console.log(`[Resend Webhook] Ignored event type: ${event.type}`);
+        }
 
         return reply.status(200).send({
             success: true,

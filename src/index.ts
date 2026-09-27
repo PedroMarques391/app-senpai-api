@@ -37,8 +37,8 @@ import {
 } from "fastify-type-provider-zod";
 
 import fastifyCors from "@fastify/cors";
+import fastifyRawBody from "fastify-raw-body";
 import { resendWebhook } from "./webhook";
-
 const server = fastify({
   logger:
     process.env.NODE_ENV === "production"
@@ -60,6 +60,13 @@ server.register(fastifyCors, {
   credentials: true,
   exposedHeaders: ["Authorization"],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+});
+
+server.register(fastifyRawBody, {
+  field: 'rawBody',
+  global: false,
+  encoding: 'utf8',
+  runFirst: true,
 });
 
 server.register(fastifyMultipart, {
