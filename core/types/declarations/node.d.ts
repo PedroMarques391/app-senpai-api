@@ -16,6 +16,7 @@ declare global {
       RESEND_FROM: string;
       EMAIL_REPLY_TO?: string;
       MODERATOR_EMAIL: string
+      RESEND_WEBHOOK_SECRET: string;
     }
   }
 }

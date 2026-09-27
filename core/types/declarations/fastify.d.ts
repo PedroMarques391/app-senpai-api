@@ -1,5 +1,6 @@
 import type { UserRole, VipType } from "@/schemas";
 import type { StickerPack } from "@/models";
+import type { EmailProvider } from "@/types";
 import "@fastify/jwt";
 import "fastify";
 import type { RedisClientType } from "redis";
@@ -11,6 +12,7 @@ declare module "fastify" {
 
   export interface FastifyInstance {
     redis: RedisClientType;
+    mailer: EmailProvider;
     authenticate: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
     requireAdmin: (
       ...allowedRoles: UserRole[]

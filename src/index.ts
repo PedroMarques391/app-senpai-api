@@ -7,6 +7,7 @@ import {
 import {
   authPlugin,
   errorPlugin,
+  mailerPlugin,
   quotaPlugin,
   redisPlugin,
 } from "@/plugin";
@@ -36,6 +37,7 @@ import {
 } from "fastify-type-provider-zod";
 
 import fastifyCors from "@fastify/cors";
+import { resendWebhook } from "./webhook";
 
 const server = fastify({
   logger:
@@ -72,11 +74,15 @@ server.register(errorPlugin);
 server.register(authPlugin);
 server.register(redisPlugin);
 server.register(quotaPlugin);
+server.register(mailerPlugin);
 server.register(authRoutes, { prefix: "/auth" });
 server.register(packRoutes, { prefix: "/pack" });
 server.register(adminRouter, { prefix: "/admin" });
 server.register(storeRoutes, { prefix: "/store" });
 server.register(contentRoutes, { prefix: "/content" });
+server.register(async (app) => {
+  app.register(resendWebhook, { prefix: "/resend" });
+}, { prefix: "/webhooks" })
 
 server.get("/health", (request, reply) => {
   return reply.status(200).send({
@@ -86,6 +92,7 @@ server.get("/health", (request, reply) => {
 });
 
 server.register(async (app) => {
+
   app.addHook("onRequest", app.authenticate);
 
   app.get("/me", async (request, reply) => {
