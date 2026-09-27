@@ -1,5 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
-import { Webhook } from "svix";
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY || 're_fake');
 
 export const resendWebhook: FastifyPluginAsync = async (app) => {
     app.post('', { config: { rawBody: true } }, async (request, reply) => {
@@ -21,17 +23,17 @@ export const resendWebhook: FastifyPluginAsync = async (app) => {
             });
         }
 
-        const wh = new Webhook(secret);
+        const payloadString = request.rawBody as string;
 
-        const payloadString = (request as any).rawBody || JSON.stringify(request.body);
-
-        const event = wh.verify(payloadString, {
-            'svix-id': svix_id,
-            'svix-timestamp': svix_timestamp,
-            'svix-signature': svix_signature,
+        const event = resend.webhooks.verify({
+            payload: payloadString,
+            headers: {
+                id: svix_id,
+                timestamp: svix_timestamp,
+                signature: svix_signature,
+            },
+            webhookSecret: secret,
         }) as any;
-
-        console.log(event)
 
         if (event.type === 'email.clicked' || event.type === 'email.complained') {
             console.log(`[Resend Webhook] Event matches target: ${event.type}`);
