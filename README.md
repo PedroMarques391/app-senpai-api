@@ -40,8 +40,8 @@ O projeto adota uma **Arquitetura em Camadas** (*Layered Architecture*), orienta
 * **Fábricas (`src/factories`)**: Centralizam a instanciação de serviços, filas e repositórios (`ServiceFactory`, `QueueFactory`), gerenciando instâncias compartilhadas de cache, filas e conexões.
 * **Serviços (`src/services`)**: Isolam as regras de negócio puras da aplicação (ex.: cálculo de expiração de cotas, validação de transações na loja, controle de ciclo de vida de OTP). Não conhecem o Fastify e recebem dependências injetadas pelo construtor.
 * **Repositórios (`src/repositories`)**: Camada de persistência exclusiva. Operam diretamente sobre o driver oficial do MongoDB (`MongoClient`/`Db`), sem dependência de ORMs intermediários.
-* **Filas e Workers (`src/queues`, `src/workers`)**: Processamento assíncrono em segundo plano via BullMQ e Redis para envio de mensagens via WhatsApp (Meta API) e e-mails transacionais (Nodemailer: verificação OTP, recuperação e alertas de segurança com dados de auditoria).
-* **Plugins Fastify (`src/plugin`)**: Decoradores globais de autenticação JWT, validação de cotas diárias de criação de pacotes/figurinhas e cotas de armazenamento em disco/nuvem (500MB Free / 10GB VIP Pro / 20GB VIP Mestre), cliente Redis, cliente SMTP e tratamento centralizado de erros.
+* **Filas e Workers (`src/queues`, `src/workers`)**: Processamento assíncrono em segundo plano via BullMQ e Redis para envio de mensagens via WhatsApp (Meta API) e e-mails transacionais (Resend: verificação OTP, recuperação e alertas de segurança com dados de auditoria).
+* **Plugins Fastify (`src/plugin`)**: Decoradores globais de autenticação JWT, validação de cotas diárias de criação de pacotes/figurinhas e cotas de armazenamento em disco/nuvem (500MB Free / 10GB VIP Pro / 20GB VIP Mestre), cliente Redis e tratamento centralizado de erros.
 
 ---
 
@@ -63,7 +63,7 @@ A base de código está dividida em duas raízes: `core` (definições de dados,
 │   ├── plugin/         # Plugins do Fastify (JWT, autenticação, redis, quota, mailer, erros)
 │   ├── queues/         # Definição e despacho de filas BullMQ
 │   ├── repositories/   # Acesso direto a dados e coleções do MongoDB
-│   ├── routes/         # Endpoints agrupados por domínio (auth, profile, pack, store, etc.)
+│   ├── routes/         # Endpoints agrupados por domínio (auth, profile, pack, store, group, etc.)
 │   ├── services/       # Regras de negócio e fluxos de domínio
 │   ├── templates/      # Templates HTML de e-mails transacionais e comunicados
 │   ├── workers/        # Consumidores de filas em background (WhatsApp, E-mail)
@@ -95,4 +95,4 @@ A base de código está dividida em duas raízes: `core` (definições de dados,
 ### Integrações Externas
 * **Cloudinary**: Upload, processamento e entrega de ativos de imagem (avatares, banners, figurinhas estáticas e dinâmicas), além de exclusão resiliente, idempotente e em lote com integridade transacional garantida no banco de dados antes da remoção dos ativos na CDN.
 * **Meta Graph API (WhatsApp)**: Envio automatizado de códigos de autenticação (OTP) via mensagens de template.
-* **Nodemailer**: Transporte SMTP para disparo de e-mails transacionais, verificação de conta, recuperação de senha e alertas de segurança.
+* **Resend**: Provedor de API para envio de e-mails transacionais, verificação de conta via OTP, recuperação de senha e alertas de segurança.

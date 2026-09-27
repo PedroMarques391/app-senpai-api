@@ -16,7 +16,7 @@ A API Senpai segue os princípios da **Clean Architecture**, organizada em 3 cam
 - **MongoDB Atlas**: Banco de dados NoSQL principal.
 - **Redis (`ioredis`)**: Cache de alta velocidade para leituras (TTL padrão de 24h), invalidação reativa em mutações e rate limit temporizado de OTP.
 - **BullMQ**: Mensageria assíncrona e background workers (`WhatsAppWorker` para mensagens via Baileys/Evolution API e `EmailWorker` para e-mails transacionais com templates HTML responsivos, incluindo códigos OTP, links de recuperação de senha e e-mails de confirmação de segurança com dados de auditoria).
-- **Nodemailer / SMTP (`MailerInitializer`)**: Inicialização centralizada com pool de conexão SMTP compartilhado entre plugins Fastify e o `EmailWorker` para envio de códigos de verificação OTP, e-mails de recuperação de senha, alertas de segurança e comunicados.
+- **Resend (`MailerInitializer`)**: Provedor de e-mail transacional via API oficial do Resend integrado ao `EmailWorker` para envio de códigos de verificação OTP, e-mails de recuperação de senha, alertas de segurança e comunicados.
 - **Cloudinary**: Upload de mídia e transformação automática de assets (ex: conversão WebP, redimensionamento 256x256 e otimização para ícones de pacotes).
 - **JWT (`@fastify/jwt`)**: Autenticação stateless com tokens Bearer contendo payload estrito do usuário.
 
@@ -182,7 +182,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
   1. **Normalização e Validação do E-mail:** O payload recebe `email`, que passa por validação com Zod (`z.string().trim().toLowerCase().email()`) e sanitização via `UserUtils.normalizeIdentifier`.
   2. **Verificação de Existência e Status:** O backend localiza o usuário no MongoDB. Se o usuário não existir, estiver com `status: "inactive"` ou não possuir e-mail cadastrado, retorna erro genérico amigável (`"Erro ao tentar redefinir a senha. Tente novamente."`) para evitar enumeração de contas por terceiros.
   3. **Token Criptográfico & TTL:** Gera um token seguro de 40 caracteres hexadecimais (`crypto.randomBytes(20).toString("hex")`) e grava no Redis sob a chave `reset:<token>` associado ao e-mail com tempo de expiração de **10 minutos** (600 segundos).
-  4. **Envio Assíncrono via BullMQ & Nodemailer:** Enfileira o e-mail na fila `email`. O `EmailWorker` consome a fila e dispara o template HTML responsivo contendo o link de recuperação: `${PRODUCTION_URL}/pt/reset-password?token=${token}`.
+  4. **Envio Assíncrono via BullMQ & Resend:** Enfileira o e-mail na fila `email`. O `EmailWorker` consome a fila e dispara o template HTML responsivo contendo o link de recuperação: `${PRODUCTION_URL}/pt/reset-password?token=${token}`.
 - **Request Body:**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
   | :--- | :--- | :--- | :--- | :--- |
@@ -1065,6 +1065,269 @@ Módulo responsável pelo processamento de eventos de compras in-app e assinatur
       "error": "Unauthorized"
     }
     ```
+
+---
+
+### 3.14 Grupos do Usuário (`/group`)
+
+Módulo responsável pela gestão de grupos e canais privados vinculados ao perfil do usuário autenticado (como links de grupos do WhatsApp ou comunidades). Cada usuário possui no máximo **1** registro de grupos associado à sua conta, contendo até 2 links.
+
+Todas as rotas deste módulo são **privadas** e protegidas pelo hook global de autenticação JWT (`onRequest: app.authenticate`).
+
+#### `GET /group/`
+- **Descrição:** Retorna o registro de grupos do usuário autenticado.
+- **Headers:** `Authorization: Bearer <token>` (Obrigatório).
+- **Respostas:**
+  - `200 OK` (Com grupos cadastrados):
+    ```json
+    {
+      "success": true,
+      "groups": {
+        "_id": "67f1a2b3c4d5e6f7a8b9c0d1",
+        "user_id": "66dec987a123b456c7890123",
+        "groups": [
+          {
+            "id": "e4b10b88-197e-4869-a1b7-99b50db15d42",
+            "title": "Comunidade Oficial",
+            "url": "https://chat.whatsapp.com/Exemplo1"
+          },
+          {
+            "id": "18f97e29-cb62-4217-a0bf-40ca95be8570",
+            "title": "Grupo VIP",
+            "url": "https://chat.whatsapp.com/Exemplo2"
+          }
+        ],
+        "created_at": "2026-09-26T18:00:00.000Z",
+        "updated_at": "2026-09-26T18:00:00.000Z"
+      }
+    }
+    ```
+  - `200 OK` (Sem grupos cadastrados):
+    ```json
+    {
+      "success": true,
+      "groups": null
+    }
+    ```
+  - `401 Unauthorized`: Sessão expirada ou token ausente.
+
+#### `GET /group/:id`
+- **Descrição:** Busca um registro de grupos pelo seu `_id`.
+- **Headers:** `Authorization: Bearer <token>` (Obrigatório).
+- **Parâmetros de Rota:**
+  | Parâmetro | Tipo | Descrição |
+  | :--- | :--- | :--- |
+  | `id` | `String` (ObjectId hex de 24 caracteres) | Identificador único do registro de grupo. |
+- **Regra de Propriedade (Ownership):** O grupo deve obrigatoriamente pertencer ao usuário autenticado (`PermissionUtils.verifyOwnership`). Caso pertença a outro usuário, retorna `403 Forbidden`.
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "group": {
+        "_id": "67f1a2b3c4d5e6f7a8b9c0d1",
+        "user_id": "66dec987a123b456c7890123",
+        "groups": [
+          {
+            "id": "e4b10b88-197e-4869-a1b7-99b50db15d42",
+            "title": "Comunidade Oficial",
+            "url": "https://chat.whatsapp.com/Exemplo1"
+          }
+        ],
+        "created_at": "2026-09-26T18:00:00.000Z",
+        "updated_at": "2026-09-26T18:00:00.000Z"
+      }
+    }
+    ```
+  - `403 Forbidden`: `{"success": false, "message": "Operação não permitida: você não é o proprietário deste grupo"}`
+  - `404 Not Found`: `{"success": false, "message": "Grupo não encontrado"}`
+
+#### `POST /group/`
+- **Descrição:** Cria o registro de grupos para o usuário autenticado.
+- **Headers:** `Authorization: Bearer <token>` (Obrigatório).
+- **Regras de Negócio:**
+  1. **Criação ou Adição Automática (Upsert Lógico):** Cada usuário possui no máximo 1 documento de grupos. Se o usuário ainda não possuir grupos cadastrados, o documento é criado. Caso o usuário já possua 1 grupo cadastrado e envie mais 1 grupo via `POST /group/`, o novo item é adicionado ao documento existente.
+  2. **Limite Máximo de 2 Grupos:** A soma total de grupos vinculados à conta não pode exceder 2 itens. Se o usuário já tiver 2 grupos cadastrados (ou tentar enviar uma quantidade que exceda o limite), a requisição é rejeitada com `400 Bad Request`.
+  3. **Identificador Automático:** Se o campo `id` não for informado no payload de cada item, um identificador UUID único é gerado automaticamente pelo servidor.
+  4. **Validação de URL:** Todas as URLs enviadas devem ser links válidos (`z.url()`).
+- **Request Body (`createGroupDtoSchema`):**
+  | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `groups` | `z.array(groupItemSchema).min(1).max(2)` | `List<GroupItem>` | Sim | Array contendo de 1 a 2 grupos. |
+  | `groups[].id` | `z.string().default(uuid)` | `String?` | Não | Identificador único do item (gerado automaticamente se omitido). |
+  | `groups[].title` | `z.string().min(1)` | `String` | Sim | Título/nome do grupo. |
+  | `groups[].url` | `z.url()` | `String` | Sim | Link de acesso ou convite. |
+- **Payload de Exemplo:**
+  ```json
+  {
+    "groups": [
+      {
+        "title": "Comunidade de Membros",
+        "url": "https://chat.whatsapp.com/ABC123xyz"
+      },
+      {
+        "title": "Canal de Avisos",
+        "url": "https://chat.whatsapp.com/DEF456uvw"
+      }
+    ]
+  }
+  ```
+- **Respostas:**
+  - `201 Created`:
+    ```json
+    {
+      "success": true,
+      "message": "Grupo criado com sucesso",
+      "group": {
+        "_id": "67f1a2b3c4d5e6f7a8b9c0d1",
+        "user_id": "66dec987a123b456c7890123",
+        "groups": [
+          {
+            "id": "e4b10b88-197e-4869-a1b7-99b50db15d42",
+            "title": "Comunidade de Membros",
+            "url": "https://chat.whatsapp.com/ABC123xyz"
+          },
+          {
+            "id": "18f97e29-cb62-4217-a0bf-40ca95be8570",
+            "title": "Canal de Avisos",
+            "url": "https://chat.whatsapp.com/DEF456uvw"
+          }
+        ],
+        "created_at": "2026-09-26T18:00:00.000Z",
+        "updated_at": "2026-09-26T18:00:00.000Z"
+      }
+    }
+    ```
+  - `400 Bad Request`: `{"success": false, "message": "Você já atingiu o limite de 2 grupos"}`
+
+
+#### `PUT /group/:id`
+- **Descrição:** Atualiza os dados ou links de grupos do registro do usuário autenticado por completo.
+- **Headers:** `Authorization: Bearer <token>` (Obrigatório).
+- **Parâmetros de Rota:** `id` (ObjectId do registro de grupo).
+- **Regra de Propriedade (Ownership):** O grupo precisa pertencer ao usuário autenticado (`PermissionUtils.verifyOwnership`).
+- **Request Body (`updateGroupDtoSchema`):**
+  | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `groups` | `z.array(groupItemSchema).min(1).max(2).optional()` | `List<GroupItem>?` | Não | Novo array de 1 a 2 grupos. |
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "message": "Grupo atualizado com sucesso",
+      "group": {
+        "_id": "67f1a2b3c4d5e6f7a8b9c0d1",
+        "user_id": "66dec987a123b456c7890123",
+        "groups": [
+          {
+            "id": "e4b10b88-197e-4869-a1b7-99b50db15d42",
+            "title": "Comunidade Atualizada",
+            "url": "https://chat.whatsapp.com/NovoLink"
+          }
+        ],
+        "created_at": "2026-09-26T18:00:00.000Z",
+        "updated_at": "2026-09-26T18:30:00.000Z"
+      }
+    }
+    ```
+  - `403 Forbidden`: `{"success": false, "message": "Operação não permitida: você não é o proprietário deste grupo"}`
+  - `404 Not Found`: `{"success": false, "message": "Grupo não encontrado"}`
+
+#### `PATCH /group/item/:itemId`
+- **Descrição:** Atualiza pontualmente um item específico dentro do array `groups` do usuário autenticado (atualiza apenas `title` e/ou `url`), preservando os outros itens do array sem sobrescrevê-los.
+- **Headers:** `Authorization: Bearer <token>` (Obrigatório).
+- **Parâmetros de Rota:**
+  | Parâmetro | Tipo | Descrição |
+  | :--- | :--- | :--- |
+  | `itemId` | `String` (UUID do item) | Identificador único do item a ser atualizado. |
+- **Request Body (`updateGroupItemDtoSchema`):**
+  | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `title` | `z.string().min(1).optional()` | `String?` | Não | Novo título do item. |
+  | `url` | `z.url().optional()` | `String?` | Não | Nova URL do item. |
+- **Payload de Exemplo:**
+  ```json
+  {
+    "title": "Canal de Avisos Atualizado"
+  }
+  ```
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "message": "Item do grupo atualizado com sucesso",
+      "group": {
+        "_id": "67f1a2b3c4d5e6f7a8b9c0d1",
+        "user_id": "66dec987a123b456c7890123",
+        "groups": [
+          {
+            "id": "e4b10b88-197e-4869-a1b7-99b50db15d42",
+            "title": "Comunidade de Membros",
+            "url": "https://chat.whatsapp.com/ABC123xyz"
+          },
+          {
+            "id": "18f97e29-cb62-4217-a0bf-40ca95be8570",
+            "title": "Canal de Avisos Atualizado",
+            "url": "https://chat.whatsapp.com/DEF456uvw"
+          }
+        ],
+        "created_at": "2026-09-26T18:00:00.000Z",
+        "updated_at": "2026-09-26T18:35:00.000Z"
+      }
+    }
+    ```
+  - `400 Bad Request`: `{"success": false, "message": "Item do grupo não encontrado"}` ou `"Nenhum dado informado para atualização"`
+  - `401 Unauthorized`: Sessão expirada ou token ausente.
+
+#### `DELETE /group/item/:itemId`
+- **Descrição:** Remove um item de grupo específico pelo seu `itemId` dentro do array `groups` do usuário autenticado. Se for o único grupo restante do usuário, remove o item e exclui o documento limpo.
+- **Headers:** `Authorization: Bearer <token>` (Obrigatório).
+- **Parâmetros de Rota:**
+  | Parâmetro | Tipo | Descrição |
+  | :--- | :--- | :--- |
+  | `itemId` | `String` (UUID do item) | Identificador único do item a ser removido. |
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "message": "Item do grupo removido com sucesso",
+      "group": {
+        "_id": "67f1a2b3c4d5e6f7a8b9c0d1",
+        "user_id": "66dec987a123b456c7890123",
+        "groups": [
+          {
+            "id": "e4b10b88-197e-4869-a1b7-99b50db15d42",
+            "title": "Comunidade de Membros",
+            "url": "https://chat.whatsapp.com/ABC123xyz"
+          }
+        ],
+        "created_at": "2026-09-26T18:00:00.000Z",
+        "updated_at": "2026-09-26T18:40:00.000Z"
+      }
+    }
+    ```
+  - `400 Bad Request`: `{"success": false, "message": "Item do grupo não encontrado"}`
+  - `401 Unauthorized`: Sessão expirada ou token ausente.
+
+#### `DELETE /group/:id`
+
+- **Descrição:** Remove o registro de grupos do usuário autenticado.
+- **Headers:** `Authorization: Bearer <token>` (Obrigatório).
+- **Parâmetros de Rota:** `id` (ObjectId do registro de grupo).
+- **Regra de Propriedade (Ownership):** O grupo precisa pertencer ao usuário autenticado.
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "message": "Grupo removido com sucesso"
+    }
+    ```
+  - `403 Forbidden`: `{"success": false, "message": "Operação não permitida: você não é o proprietário deste grupo"}`
+  - `404 Not Found`: `{"success": false, "message": "Grupo não encontrado"}`
 
 ---
 
