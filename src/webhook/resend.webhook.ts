@@ -33,12 +33,10 @@ export const resendWebhook: FastifyPluginAsync = async (app) => {
             }
         )
 
-        console.log(event)
 
         if (event.type === 'email.clicked' || event.type === 'email.complained') {
             console.log(`[Resend Webhook] Event matches target: ${event.type}`);
             console.log('[Resend Webhook] Event data:', JSON.stringify(event.data, null, 2));
-            // Add custom logic here for handling clicked or complained events
         } else {
             console.log(`[Resend Webhook] Ignored event type: ${event.type}`);
         }
