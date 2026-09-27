@@ -4,13 +4,6 @@ import type { FastifyPluginAsync } from "fastify";
 
 export const resendWebhook: FastifyPluginAsync = async (app) => {
     app.post('', { config: { rawBody: true } }, async (request, reply) => {
-        console.log('[Resend Webhook] Request received');
-        const secret = process.env.RESEND_WEBHOOK_SECRET;
-
-        if (!secret) {
-            throw new Error('Webhook secret not configured');
-        }
-
         const svix_id = request.headers['svix-id'] as string;
         const svix_timestamp = request.headers['svix-timestamp'] as string;
         const svix_signature = request.headers['svix-signature'] as string;
