@@ -4,7 +4,11 @@ import {
   type Group,
   type GroupRepository as IGroupRepository,
 } from "@/models";
-import type { CreateGroupDto, UpdateGroupDto } from "@/dtos";
+import type {
+  CreateGroupDto,
+  UpdateGroupDto,
+  UpdateGroupItemDto,
+} from "@/dtos";
 import type { ObjectId } from "mongodb";
 
 export class GroupRepository implements IGroupRepository {
@@ -43,7 +47,65 @@ export class GroupRepository implements IGroupRepository {
     return updated;
   }
 
+  async updateGroupItem(
+    userId: ObjectId,
+    itemId: string,
+    data: UpdateGroupItemDto,
+  ): Promise<Group | null> {
+    const setFields: Record<string, any> = {
+      updated_at: new Date(),
+    };
+
+    if (data.title !== undefined) {
+      setFields["groups.$.title"] = data.title;
+    }
+    if (data.url !== undefined) {
+      setFields["groups.$.url"] = data.url;
+    }
+
+    const updated = await this.collection.findOneAndUpdate(
+      {
+        user_id: userId,
+        "groups.id": itemId,
+      },
+      {
+        $set: setFields,
+      },
+      { returnDocument: "after" },
+    );
+
+    return updated;
+  }
+
+  async deleteGroupItem(
+    userId: ObjectId,
+    itemId: string,
+  ): Promise<Group | null> {
+    const updated = await this.collection.findOneAndUpdate(
+      {
+        user_id: userId,
+        "groups.id": itemId,
+      },
+      {
+        $pull: {
+          groups: { id: itemId },
+        },
+        $set: {
+          updated_at: new Date(),
+        },
+      },
+      { returnDocument: "after" },
+    );
+
+    if (updated && updated.groups.length === 0) {
+      await this.collection.deleteOne({ _id: updated._id });
+    }
+
+    return updated;
+  }
+
   async delete(id: ObjectId): Promise<boolean> {
+
     const result = await this.collection.deleteOne({ _id: id });
     return result.deletedCount > 0;
   }

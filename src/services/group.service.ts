@@ -1,13 +1,21 @@
-import type { CreateGroupDto, UpdateGroupDto } from "@/dtos";
+import type {
+  CreateGroupDto,
+  UpdateGroupDto,
+  UpdateGroupItemDto,
+} from "@/dtos";
 import type { Group, GroupRepository } from "@/models";
 import { MongoUtils, PermissionUtils } from "@/utils";
 
 export class GroupService {
   constructor(private readonly groupRepository: GroupRepository) { }
 
-  async findManyGroups(userId: string): Promise<Group> {
+  async findManyGroups(userId: string): Promise<Group | null> {
     const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
-    return this.groupRepository.find(userObjectId);
+    const groups = await this.groupRepository.find(userObjectId);
+    if (!groups) {
+      throw new Error("Parece que você ainda não cadastrou nenhum grupo");
+    }
+    return groups;
   }
 
   async findGroupById(userId: string, id: string): Promise<Group> {
@@ -21,13 +29,25 @@ export class GroupService {
     return group;
   }
 
-
   async createGroup(userId: string, data: CreateGroupDto): Promise<Group> {
     const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
 
     const existingGroups = await this.groupRepository.find(userObjectId);
     if (existingGroups) {
-      throw new Error("Usuário já possui grupos cadastrados",);
+      if (existingGroups.groups.length + data.groups.length > 2) {
+        throw new Error("Você já atingiu o limite de 2 grupos");
+      }
+
+      const updatedGroups = [...existingGroups.groups, ...data.groups];
+      const updated = await this.groupRepository.update(existingGroups._id, {
+        groups: updatedGroups,
+      });
+
+      if (!updated) {
+        throw new Error("Não foi possível adicionar o novo grupo");
+      }
+
+      return updated;
     }
 
     const group = await this.groupRepository.create(userObjectId, data);
@@ -58,6 +78,46 @@ export class GroupService {
     }
     return updated;
   }
+
+  async updateGroupItem(
+    userId: string,
+    itemId: string,
+    data: UpdateGroupItemDto,
+  ): Promise<Group> {
+    const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
+
+    if (data.title === undefined && data.url === undefined) {
+      throw new Error("Nenhum dado informado para atualização");
+    }
+
+    const updatedGroup = await this.groupRepository.updateGroupItem(
+      userObjectId,
+      itemId,
+      data,
+    );
+
+    if (!updatedGroup) {
+      throw new Error("Item do grupo não encontrado");
+    }
+
+    return updatedGroup;
+  }
+
+  async deleteGroupItem(userId: string, itemId: string): Promise<Group> {
+    const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
+
+    const updatedGroup = await this.groupRepository.deleteGroupItem(
+      userObjectId,
+      itemId,
+    );
+
+    if (!updatedGroup) {
+      throw new Error("Item do grupo não encontrado");
+    }
+
+    return updatedGroup;
+  }
+
 
   async deleteGroup(userId: string, id: string): Promise<boolean> {
     const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");

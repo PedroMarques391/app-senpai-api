@@ -1,4 +1,8 @@
-import { createGroupDtoSchema, updateGroupDtoSchema } from "@/dtos";
+import {
+  createGroupDtoSchema,
+  updateGroupDtoSchema,
+  updateGroupItemDtoSchema,
+} from "@/dtos";
 import { GroupRepository } from "@/repositories";
 import { GroupService } from "@/services";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
@@ -73,6 +77,53 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
       });
     },
   );
+
+  app.patch(
+    "/item/:itemId",
+    {
+      schema: {
+        params: z.object({ itemId: z.string() }),
+        body: updateGroupItemDtoSchema,
+      },
+    },
+    async (request, reply) => {
+      const group = await service.updateGroupItem(
+        request.user._id,
+        request.params.itemId,
+        request.body,
+      );
+
+      const updatedItem = group.groups.find((item) => item.id === request.params.itemId);
+
+      return reply.status(200).send({
+        success: true,
+        message: `Grupo ${updatedItem?.title} atualizado com sucesso`,
+        group,
+      });
+    },
+  );
+
+  app.delete(
+    "/item/:itemId",
+    {
+      schema: {
+        params: z.object({ itemId: z.string() }),
+      },
+    },
+    async (request, reply) => {
+      const group = await service.deleteGroupItem(
+        request.user._id,
+        request.params.itemId,
+      );
+
+      return reply.status(200).send({
+        success: true,
+        message: "Item do grupo removido com sucesso",
+        group,
+      });
+    },
+  );
+
 
   app.delete(
     "/:id",
