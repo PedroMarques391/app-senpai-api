@@ -12,6 +12,7 @@ declare global {
       REDIS_URL: string;
       LOCAL_URL: string;
       PRODUCTION_URL: string;
+      PRODUCTION_API_URL: string;
       RESEND_API_KEY: string;
       RESEND_FROM: string;
       EMAIL_REPLY_TO?: string;

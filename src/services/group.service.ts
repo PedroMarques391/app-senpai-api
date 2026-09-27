@@ -243,7 +243,7 @@ export class GroupService {
   ) {
     const baseUrl =
       process.env.NODE_ENV === "production"
-        ? process.env.PRODUCTION_URL
+        ? process.env.PRODUCTION_API_URL
         : process.env.LOCAL_URL
 
     const ttl = 60 * 60 * 24 * 7;
