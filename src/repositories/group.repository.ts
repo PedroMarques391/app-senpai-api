@@ -2,6 +2,7 @@ import { MongoInitializer } from "@/init";
 import {
   insertGroupSchema,
   type Group,
+  type GroupItemStatus,
   type GroupRepository as IGroupRepository,
 } from "@/models";
 import type {
@@ -62,6 +63,9 @@ export class GroupRepository implements IGroupRepository {
     if (data.url !== undefined) {
       setFields["groups.$.url"] = data.url;
     }
+    if (data.title !== undefined || data.url !== undefined) {
+      setFields["groups.$.status"] = "pending";
+    }
 
     const updated = await this.collection.findOneAndUpdate(
       {
@@ -70,6 +74,28 @@ export class GroupRepository implements IGroupRepository {
       },
       {
         $set: setFields,
+      },
+      { returnDocument: "after" },
+    );
+
+    return updated;
+  }
+
+  async updateGroupItemStatus(
+    groupId: ObjectId,
+    itemId: string,
+    status: GroupItemStatus,
+  ): Promise<Group | null> {
+    const updated = await this.collection.findOneAndUpdate(
+      {
+        _id: groupId,
+        "groups.id": itemId,
+      },
+      {
+        $set: {
+          "groups.$.status": status,
+          updated_at: new Date(),
+        },
       },
       { returnDocument: "after" },
     );

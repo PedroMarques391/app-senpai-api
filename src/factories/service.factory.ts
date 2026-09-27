@@ -225,11 +225,12 @@ export class ServiceFactory {
     return this.dailyMissionService;
   }
 
-  static getGroupService(): GroupService {
+  static getGroupService(redisInstance: RedisClientType): GroupService {
     if (!this.groupService) {
       this.groupService = new GroupService(
         new GroupRepository(),
-        this.getEmailService()
+        this.getEmailService(),
+        this.getCacheService(redisInstance),
       );
     }
     return this.groupService;
