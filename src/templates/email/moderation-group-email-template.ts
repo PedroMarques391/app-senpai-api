@@ -1,9 +1,18 @@
+export interface ModerationGroupEmailItem {
+  id?: string;
+  title: string;
+  url: string;
+  status?: string;
+  acceptUrl?: string;
+  rejectUrl?: string;
+}
+
 export interface ModerationGroupEmailTemplateProps {
   eventTitle: string;
   eventDescription: string;
   userName: string;
   userEmail: string;
-  groups: { title: string; url: string }[];
+  groups: ModerationGroupEmailItem[];
 }
 
 export function renderModerationGroupEmailTemplate({
@@ -13,6 +22,18 @@ export function renderModerationGroupEmailTemplate({
   userEmail,
   groups,
 }: ModerationGroupEmailTemplateProps): string {
+  const getStatusBadge = (status?: string) => {
+    switch (status) {
+      case "accepted":
+        return `<span style="display:inline-block; padding:3px 10px; font-size:11px; font-weight:700; border-radius:12px; background-color:#D1FAE5; color:#065F46;">Aprovado</span>`;
+      case "rejected":
+        return `<span style="display:inline-block; padding:3px 10px; font-size:11px; font-weight:700; border-radius:12px; background-color:#FEE2E2; color:#991B1B;">Rejeitado</span>`;
+      case "pending":
+      default:
+        return `<span style="display:inline-block; padding:3px 10px; font-size:11px; font-weight:700; border-radius:12px; background-color:#FEF3C7; color:#92400E;">Pendente</span>`;
+    }
+  };
+
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -88,9 +109,19 @@ export function renderModerationGroupEmailTemplate({
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FDF3F4; border: 1px solid #FF3D82; border-radius: 12px; margin-bottom: ${index < groups.length - 1 ? '16px' : '0'};">
                 <tr>
                   <td style="padding: 16px 18px;">
-                    <p style="margin:0 0 16px 0; font-size: 14px; font-weight: 700; color:#3A2E33; border-bottom: 1px solid #F4D5DF; padding-bottom: 8px;">
-                      Detalhes do Grupo ${groups.length > 1 ? `#${index + 1}` : ''}
-                    </p>
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-bottom: 1px solid #F4D5DF; padding-bottom: 8px; margin-bottom: 16px;">
+                      <tr>
+                        <td align="left">
+                          <span style="font-size: 14px; font-weight: 700; color:#3A2E33;">
+                            Detalhes do Grupo ${groups.length > 1 ? `#${index + 1}` : ''}
+                          </span>
+                        </td>
+                        <td align="right">
+                          ${getStatusBadge(group.status)}
+                        </td>
+                      </tr>
+                    </table>
+                    
                     <p style="margin:0 0 6px 0; font-size: 12px; color:#8A7B80;">
                       Título
                     </p>
@@ -104,18 +135,39 @@ export function renderModerationGroupEmailTemplate({
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="padding-bottom: 12px;">
-                          <a href="${group.url}" style="display:inline-block; padding:12px 24px; background-color:#FF3D82; color:#FFFFFF; text-decoration:none; border-radius:8px; font-size:14px; font-weight:600; width:100%; text-align:center; box-sizing:border-box;">
+                          <a href="${group.url}" target="_blank" style="display:inline-block; padding:12px 24px; background-color:#3A2E33; color:#FFFFFF; text-decoration:none; border-radius:8px; font-size:14px; font-weight:600; width:100%; text-align:center; box-sizing:border-box;">
                             Acessar / Analisar Grupo
                           </a>
                         </td>
                       </tr>
                       <tr>
-                        <td>
+                        <td style="padding-bottom: ${group.acceptUrl && group.rejectUrl ? '16px' : '0'};">
                           <div style="background-color: #F4D5DF; padding: 12px; border-radius: 6px; word-break: break-all; font-family: monospace; font-size: 12px; color: #5C2A33; text-align: center;">
                             ${group.url}
                           </div>
                         </td>
                       </tr>
+                      ${group.acceptUrl && group.rejectUrl ? `
+                      <tr>
+                        <td>
+                          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                            <tr>
+                              <td width="48%" align="center">
+                                <a href="${group.acceptUrl}" style="display:inline-block; width:100%; padding:12px 16px; background-color:#10B981; color:#FFFFFF; text-decoration:none; border-radius:8px; font-size:14px; font-weight:700; text-align:center; box-sizing:border-box;">
+                                  ✓ Aprovar
+                                </a>
+                              </td>
+                              <td width="4%"></td>
+                              <td width="48%" align="center">
+                                <a href="${group.rejectUrl}" style="display:inline-block; width:100%; padding:12px 16px; background-color:#EF4444; color:#FFFFFF; text-decoration:none; border-radius:8px; font-size:14px; font-weight:700; text-align:center; box-sizing:border-box;">
+                                  ✕ Rejeitar
+                                </a>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                      ` : ''}
                     </table>
                   </td>
                 </tr>

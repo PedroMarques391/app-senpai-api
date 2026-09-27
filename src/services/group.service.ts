@@ -1,13 +1,28 @@
+import crypto from "node:crypto";
 import type { CreateGroupDto, UpdateGroupDto, UpdateGroupItemDto } from "@/dtos";
-import type { Group, GroupRepository } from "@/models";
+import type { Group, GroupItem, GroupRepository } from "@/models";
 import { MongoUtils, PermissionUtils } from "@/utils";
 import { EMAIL_SENDERS } from "@/constants";
-import { renderModerationGroupEmailTemplate } from "@/templates/email";
+import {
+  renderModerationGroupEmailTemplate,
+  type ModerationGroupEmailItem,
+} from "@/templates/email";
 import type { MailService } from "./mail.service";
+import type { CacheService } from "./cache.service";
+
+export interface GroupModerationTokenPayload {
+  groupId: string;
+  itemId: string;
+  action: "accepted" | "rejected";
+  moderatorEmail: string;
+  createdAt: number;
+}
 
 export class GroupService {
-  constructor(private readonly groupRepository: GroupRepository,
-    private readonly mailService: MailService
+  constructor(
+    private readonly groupRepository: GroupRepository,
+    private readonly mailService: MailService,
+    private readonly cacheService: CacheService,
   ) { }
 
   async findManyGroups(userId: string): Promise<Group | null> {
@@ -48,7 +63,15 @@ export class GroupService {
         throw new Error("Não foi possível adicionar o novo grupo");
       }
 
-      this.sendModerationEmail(email, userName, "Novo Grupo Cadastrado", "Um usuário cadastrou um novo grupo na plataforma. O link abaixo já está disponível.", data.groups);
+      const addedGroups = updated.groups.slice(existingGroups.groups.length);
+      await this.sendModerationEmail(
+        existingGroups._id.toString(),
+        email,
+        userName,
+        "Novo Grupo Cadastrado",
+        "Um usuário cadastrou um novo grupo na plataforma. Analise e aprove ou rejeite o link abaixo.",
+        addedGroups
+      );
 
       return updated;
     }
@@ -58,7 +81,14 @@ export class GroupService {
       throw new Error("Não foi possível criar o grupo");
     }
 
-    this.sendModerationEmail(email, userName, "Novo Grupo Cadastrado", "Um usuário cadastrou um novo grupo na plataforma. O link abaixo já está disponível.", data.groups);
+    await this.sendModerationEmail(
+      group._id.toString(),
+      email,
+      userName,
+      "Novo Grupo Cadastrado",
+      "Um usuário cadastrou um novo grupo na plataforma. Analise e aprove ou rejeite o link abaixo.",
+      group.groups
+    );
 
     return group;
   }
@@ -110,7 +140,14 @@ export class GroupService {
 
     const updatedItem = updatedGroup.groups.find((item) => item.id === itemId);
     if (updatedItem) {
-      this.sendModerationEmail(email, userName, "Grupo Atualizado", "As informações de um grupo existente foram atualizadas. Verifique as alterações para garantir conformidade.", [updatedItem]);
+      await this.sendModerationEmail(
+        updatedGroup._id.toString(),
+        email,
+        userName,
+        "Grupo Atualizado",
+        "As informações de um grupo existente foram atualizadas. Analise e aprove ou rejeite as alterações abaixo.",
+        [updatedItem]
+      );
     }
 
     return updatedGroup;
@@ -137,7 +174,14 @@ export class GroupService {
     }
 
     if (itemToDelete) {
-      this.sendModerationEmail(email, userName, "Grupo Removido", "Um grupo foi removido da plataforma pelo usuário. O link abaixo é mantido apenas como registro e referência histórica de auditoria.", [itemToDelete]);
+      await this.sendModerationEmail(
+        undefined,
+        email,
+        userName,
+        "Grupo Removido",
+        "Um grupo foi removido da plataforma pelo usuário. O link abaixo é mantido apenas como registro e referência histórica de auditoria.",
+        [itemToDelete]
+      );
     }
 
     return updatedGroup;
@@ -162,19 +206,102 @@ export class GroupService {
     return deleted;
   }
 
-  private sendModerationEmail(
+  async moderateGroupItem(token: string): Promise<{ group: Group; item: GroupItem; action: string }> {
+    const payload = await this.cacheService.get<GroupModerationTokenPayload>(`moderate:${token}`);
+    if (!payload) {
+      throw new Error("Link de moderação inválido ou já utilizado.");
+    }
+
+    const groupObjectId = MongoUtils.toObjectId(payload.groupId, "ID do grupo inválido");
+    const updated = await this.groupRepository.updateGroupItemStatus(
+      groupObjectId,
+      payload.itemId,
+      payload.action,
+    );
+
+    if (!updated) {
+      throw new Error("Grupo ou item não encontrado para moderação.");
+    }
+
+    await this.cacheService.del(`moderate:${token}`);
+
+    const updatedItem = updated.groups.find((i) => i.id === payload.itemId);
+    if (!updatedItem) {
+      throw new Error("Item do grupo não encontrado após atualização.");
+    }
+
+    return { group: updated, item: updatedItem, action: payload.action };
+  }
+
+  private async sendModerationEmail(
+    groupId: string | undefined,
     userEmail: string,
     userName: string,
     eventTitle: string,
     eventDescription: string,
-    items: { title: string; url: string }[]
+    items: GroupItem[]
   ) {
+    const baseUrl =
+      process.env.NODE_ENV === "production"
+        ? process.env.PRODUCTION_URL
+        : process.env.LOCAL_URL
+
+    const ttl = 60 * 60 * 24 * 7;
+
+    const emailGroups: ModerationGroupEmailItem[] = await Promise.all(
+      items.map(async (item) => {
+        let acceptUrl: string | undefined;
+        let rejectUrl: string | undefined;
+
+        if (groupId) {
+          const acceptToken = crypto.randomBytes(20).toString("hex");
+          const rejectToken = crypto.randomBytes(20).toString("hex");
+
+          await this.cacheService.set<GroupModerationTokenPayload>(
+            `moderate:${acceptToken}`,
+            {
+              groupId,
+              itemId: item.id,
+              action: "accepted",
+              moderatorEmail: process.env.MODERATOR_EMAIL,
+              createdAt: Date.now(),
+            },
+            ttl,
+          );
+
+          await this.cacheService.set<GroupModerationTokenPayload>(
+            `moderate:${rejectToken}`,
+            {
+              groupId,
+              itemId: item.id,
+              action: "rejected",
+              moderatorEmail: process.env.MODERATOR_EMAIL,
+              createdAt: Date.now(),
+            },
+            ttl,
+          );
+
+          acceptUrl = `${baseUrl}/group/moderate?token=${acceptToken}`;
+          rejectUrl = `${baseUrl}/group/moderate?token=${rejectToken}`;
+        }
+
+        return {
+          id: item.id,
+          title: item.title,
+          url: item.url,
+          status: item.status,
+          acceptUrl,
+          rejectUrl,
+        };
+      })
+    );
+
     const html = renderModerationGroupEmailTemplate({
       eventTitle,
       eventDescription,
       userName,
       userEmail,
-      groups: items,
+      groups: emailGroups,
     });
 
     this.mailService.sendMail({

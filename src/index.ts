@@ -87,6 +87,7 @@ server.register(packRoutes, { prefix: "/pack" });
 server.register(adminRouter, { prefix: "/admin" });
 server.register(storeRoutes, { prefix: "/store" });
 server.register(contentRoutes, { prefix: "/content" });
+server.register(groupRoutes, { prefix: "/group" });
 server.register(async (app) => {
   app.register(resendWebhook, { prefix: "/resend" });
 }, { prefix: "/webhooks" })
@@ -118,7 +119,6 @@ server.register(async (app) => {
   app.register(creationQuotaRoutes, { prefix: "/creation/quota" });
   app.register(billingRoutes, { prefix: "/webhooks/revenuecat" });
   app.register(dailyMissionRoutes, { prefix: "/missions" });
-  app.register(groupRoutes, { prefix: "/group" });
 });
 
 
