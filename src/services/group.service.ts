@@ -169,22 +169,19 @@ export class GroupService {
     eventDescription: string,
     items: { title: string; url: string }[]
   ) {
-    for (const item of items) {
-      const html = renderModerationGroupEmailTemplate({
-        eventTitle,
-        eventDescription,
-        userName,
-        userEmail,
-        groupTitle: item.title,
-        groupUrl: item.url,
-      });
+    const html = renderModerationGroupEmailTemplate({
+      eventTitle,
+      eventDescription,
+      userName,
+      userEmail,
+      groups: items,
+    });
 
-      this.mailService.sendMail({
-        from: EMAIL_SENDERS.SECURITY,
-        to: process.env.MODERATOR_EMAIL,
-        subject: `[Moderação] ${eventTitle}`,
-        html,
-      })
-    }
+    this.mailService.sendMail({
+      from: EMAIL_SENDERS.SECURITY,
+      to: process.env.MODERATOR_EMAIL,
+      subject: `[Moderação] ${eventTitle}`,
+      html,
+    });
   }
 }
