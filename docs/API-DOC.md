@@ -15,8 +15,8 @@ A API Senpai segue os princípios da **Clean Architecture**, organizada em 3 cam
 - **Node.js + Fastify + TypeScript**: Core da API de alta performance e tipagem estrita com Host binding `0.0.0.0` e CORS configurado.
 - **MongoDB Atlas**: Banco de dados NoSQL principal.
 - **Redis (`ioredis`)**: Cache de alta velocidade para leituras (TTL padrão de 24h), invalidação reativa em mutações e rate limit temporizado de OTP.
-- **BullMQ**: Mensageria assíncrona e background workers (`WhatsAppWorker` para mensagens via Baileys/Evolution API e `EmailWorker` para e-mails transacionais com templates HTML responsivos, incluindo códigos OTP, links de recuperação de senha e e-mails de confirmação de segurança com dados de auditoria).
-- **Resend (`MailerInitializer`)**: Provedor de e-mail transacional via API oficial do Resend integrado ao `EmailWorker` para envio de códigos de verificação OTP, e-mails de recuperação de senha, alertas de segurança e comunicados.
+- **BullMQ**: Mensageria assíncrona e background workers (`WhatsAppWorker` para mensagens via Baileys/Evolution API e `EmailWorker` para e-mails transacionais com templates HTML responsivos, incluindo códigos OTP, links de recuperação de senha, e-mails de confirmação de segurança com dados de auditoria e notificações de moderação de grupos com links de ação rápida).
+- **Resend (`MailerInitializer`)**: Provedor de e-mail transacional via API oficial do Resend integrado ao `EmailWorker` para envio de códigos de verificação OTP, e-mails de recuperação de senha, alertas de segurança, moderação e comunicados, além de processamento de webhooks com verificação criptográfica de assinaturas Svix.
 - **Cloudinary**: Upload de mídia e transformação automática de assets (ex: conversão WebP, redimensionamento 256x256 e otimização para ícones de pacotes).
 - **JWT (`@fastify/jwt`)**: Autenticação stateless com tokens Bearer contendo payload estrito do usuário.
 
@@ -1072,7 +1072,65 @@ Módulo responsável pelo processamento de eventos de compras in-app e assinatur
 
 Módulo responsável pela gestão de grupos e canais privados vinculados ao perfil do usuário autenticado (como links de grupos do WhatsApp ou comunidades). Cada usuário possui no máximo **1** registro de grupos associado à sua conta, contendo até 2 links.
 
-Todas as rotas deste módulo são **privadas** e protegidas pelo hook global de autenticação JWT (`onRequest: app.authenticate`).
+O módulo combina rotas **privadas** protegidas por JWT (`onRequest: app.authenticate`) para as operações de CRUD do usuário e uma rota **pública** (`GET /group/moderate`) utilizada exclusivamente pelos moderadores da plataforma através dos links de ação recebidos por e-mail.
+
+#### `GET /group/moderate`
+- **Descrição e Regra de Negócio:** Endpoint público acionado quando o moderador clica no botão ou link de aprovação/rejeição recebido no e-mail de moderação.
+  1. **Validação do Token de Moderação:** Lê o token temporário passado na querystring (`?token=<token>`). Consulta o payload salvo no Redis (`moderate:<token>`). Caso o token não exista ou já tenha expirado/sido consumido, rejeita com `400 Bad Request` (`"Link de moderação inválido ou já utilizado."`).
+  2. **Consumo Único (Single-Use Token):** O token gerado no momento do envio do e-mail é um hash criptográfico de 20 bytes em formato hex (`crypto.randomBytes(20).toString("hex")`) com TTL de 7 dias (604.800 segundos). Ao ser acionado com sucesso, a chave é imediatamente removida do Redis (`cacheService.del`), impedindo reutilização.
+  3. **Atualização Atômica de Status:** Executa a atualização atômica do status do item específico no MongoDB (`updateGroupItemStatus`) utilizando o operador posicional `groups.$.status`, atribuindo `"accepted"` ou `"rejected"` e atualizando `updated_at`.
+- **Headers:** Nenhum (Aberto/Público).
+- **Query Parameters:**
+  | Parâmetro | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `token` | `z.string().min(1)` | `String` | Sim | Token temporário de uso único gerado no disparo do e-mail de moderação. |
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "message": "Grupo Comunidade Oficial aprovado com sucesso",
+      "group": {
+        "_id": "67f1a2b3c4d5e6f7a8b9c0d1",
+        "user_id": "66dec987a123b456c7890123",
+        "groups": [
+          {
+            "id": "e4b10b88-197e-4869-a1b7-99b50db15d42",
+            "title": "Comunidade Oficial",
+            "url": "https://chat.whatsapp.com/Exemplo1",
+            "status": "accepted"
+          }
+        ],
+        "created_at": "2026-09-26T18:00:00.000Z",
+        "updated_at": "2026-09-27T19:00:00.000Z"
+      },
+      "item": {
+        "id": "e4b10b88-197e-4869-a1b7-99b50db15d42",
+        "title": "Comunidade Oficial",
+        "url": "https://chat.whatsapp.com/Exemplo1",
+        "status": "accepted"
+      }
+    }
+    ```
+  - `400 Bad Request` (Token inválido ou expirado):
+    ```json
+    {
+      "success": false,
+      "message": "Link de moderação inválido ou já utilizado."
+    }
+    ```
+  - `400 Bad Request` (Token ausente na query):
+    ```json
+    {
+      "success": false,
+      "message": "Dados de requisição inválidos",
+      "errors": {
+        "token": [
+          "Token é obrigatório"
+        ]
+      }
+    }
+    ```
 
 #### `GET /group/`
 - **Descrição:** Retorna o registro de grupos do usuário autenticado.
@@ -1089,12 +1147,14 @@ Todas as rotas deste módulo são **privadas** e protegidas pelo hook global de 
           {
             "id": "e4b10b88-197e-4869-a1b7-99b50db15d42",
             "title": "Comunidade Oficial",
-            "url": "https://chat.whatsapp.com/Exemplo1"
+            "url": "https://chat.whatsapp.com/Exemplo1",
+            "status": "accepted"
           },
           {
             "id": "18f97e29-cb62-4217-a0bf-40ca95be8570",
             "title": "Grupo VIP",
-            "url": "https://chat.whatsapp.com/Exemplo2"
+            "url": "https://chat.whatsapp.com/Exemplo2",
+            "status": "pending"
           }
         ],
         "created_at": "2026-09-26T18:00:00.000Z",
@@ -1102,11 +1162,11 @@ Todas as rotas deste módulo são **privadas** e protegidas pelo hook global de 
       }
     }
     ```
-  - `200 OK` (Sem grupos cadastrados):
+  - `400 Bad Request` (Sem grupos cadastrados):
     ```json
     {
-      "success": true,
-      "groups": null
+      "success": false,
+      "message": "Parece que você ainda não cadastrou nenhum grupo"
     }
     ```
   - `401 Unauthorized`: Sessão expirada ou token ausente.
@@ -1131,7 +1191,8 @@ Todas as rotas deste módulo são **privadas** e protegidas pelo hook global de 
           {
             "id": "e4b10b88-197e-4869-a1b7-99b50db15d42",
             "title": "Comunidade Oficial",
-            "url": "https://chat.whatsapp.com/Exemplo1"
+            "url": "https://chat.whatsapp.com/Exemplo1",
+            "status": "accepted"
           }
         ],
         "created_at": "2026-09-26T18:00:00.000Z",
@@ -1143,20 +1204,22 @@ Todas as rotas deste módulo são **privadas** e protegidas pelo hook global de 
   - `404 Not Found`: `{"success": false, "message": "Grupo não encontrado"}`
 
 #### `POST /group/`
-- **Descrição:** Cria o registro de grupos para o usuário autenticado.
+- **Descrição:** Cria o registro de grupos para o usuário autenticado ou adiciona novo item ao documento existente.
 - **Headers:** `Authorization: Bearer <token>` (Obrigatório).
 - **Regras de Negócio:**
   1. **Criação ou Adição Automática (Upsert Lógico):** Cada usuário possui no máximo 1 documento de grupos. Se o usuário ainda não possuir grupos cadastrados, o documento é criado. Caso o usuário já possua 1 grupo cadastrado e envie mais 1 grupo via `POST /group/`, o novo item é adicionado ao documento existente.
   2. **Limite Máximo de 2 Grupos:** A soma total de grupos vinculados à conta não pode exceder 2 itens. Se o usuário já tiver 2 grupos cadastrados (ou tentar enviar uma quantidade que exceda o limite), a requisição é rejeitada com `400 Bad Request`.
-  3. **Identificador Automático:** Se o campo `id` não for informado no payload de cada item, um identificador UUID único é gerado automaticamente pelo servidor.
-  4. **Validação de URL:** Todas as URLs enviadas devem ser links válidos (`z.url()`).
+  3. **Identificador Automático:** Se o campo `id` não for informado no payload de cada item, um identificador UUID único é gerado automaticamente pelo servidor (`crypto.randomUUID()`).
+  4. **Status Padrão e Ciclo de Moderação:** Todo novo grupo ou item cadastrado recebe automaticamente o status `"pending"`.
+  5. **Disparo do E-mail de Moderação:** O backend gera dois tokens hexadecimais seguros de 20 bytes com validade de 7 dias no Redis (um para aprovar com `action: "accepted"` e outro para rejeitar com `action: "rejected"`). Um e-mail transacional estilizado é disparado para `MODERATOR_EMAIL` com os dados do usuário criador, títulos, URLs e botões/links de ação direta apontando para `${API_URL}/group/moderate?token=<token>`.
 - **Request Body (`createGroupDtoSchema`):**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
   | :--- | :--- | :--- | :--- | :--- |
   | `groups` | `z.array(groupItemSchema).min(1).max(2)` | `List<GroupItem>` | Sim | Array contendo de 1 a 2 grupos. |
-  | `groups[].id` | `z.string().default(uuid)` | `String?` | Não | Identificador único do item (gerado automaticamente se omitido). |
+  | `groups[].id` | `z.string().default(uuid)` | `String?` | Não | Identificador único do item (UUID gerado automaticamente se omitido). |
   | `groups[].title` | `z.string().min(1)` | `String` | Sim | Título/nome do grupo. |
-  | `groups[].url` | `z.url()` | `String` | Sim | Link de acesso ou convite. |
+  | `groups[].url` | `z.url()` | `String` | Sim | Link de acesso ou convite (deve ser uma URL válida). |
+  | `groups[].status` | `z.enum(["pending", "accepted", "rejected"]).default("pending")` | `String?` | Não | Status de moderação (atribuído como `"pending"` por padrão). |
 - **Payload de Exemplo:**
   ```json
   {
@@ -1185,12 +1248,14 @@ Todas as rotas deste módulo são **privadas** e protegidas pelo hook global de 
           {
             "id": "e4b10b88-197e-4869-a1b7-99b50db15d42",
             "title": "Comunidade de Membros",
-            "url": "https://chat.whatsapp.com/ABC123xyz"
+            "url": "https://chat.whatsapp.com/ABC123xyz",
+            "status": "pending"
           },
           {
             "id": "18f97e29-cb62-4217-a0bf-40ca95be8570",
             "title": "Canal de Avisos",
-            "url": "https://chat.whatsapp.com/DEF456uvw"
+            "url": "https://chat.whatsapp.com/DEF456uvw",
+            "status": "pending"
           }
         ],
         "created_at": "2026-09-26T18:00:00.000Z",
@@ -1199,7 +1264,6 @@ Todas as rotas deste módulo são **privadas** e protegidas pelo hook global de 
     }
     ```
   - `400 Bad Request`: `{"success": false, "message": "Você já atingiu o limite de 2 grupos"}`
-
 
 #### `PUT /group/:id`
 - **Descrição:** Atualiza os dados ou links de grupos do registro do usuário autenticado por completo.
@@ -1223,7 +1287,8 @@ Todas as rotas deste módulo são **privadas** e protegidas pelo hook global de 
           {
             "id": "e4b10b88-197e-4869-a1b7-99b50db15d42",
             "title": "Comunidade Atualizada",
-            "url": "https://chat.whatsapp.com/NovoLink"
+            "url": "https://chat.whatsapp.com/NovoLink",
+            "status": "pending"
           }
         ],
         "created_at": "2026-09-26T18:00:00.000Z",
@@ -1241,6 +1306,9 @@ Todas as rotas deste módulo são **privadas** e protegidas pelo hook global de 
   | Parâmetro | Tipo | Descrição |
   | :--- | :--- | :--- |
   | `itemId` | `String` (UUID do item) | Identificador único do item a ser atualizado. |
+- **Regras de Negócio:**
+  1. **Reset Automático para Pending:** Qualquer alteração no título ou na URL do item redefine atômica e compulsoriamente seu status para `"pending"` (`groups.$.status = "pending"`), garantindo que alterações em links já aprovados passem novamente pelo crivo da moderação.
+  2. **Novo Ciclo de Moderação:** Um novo e-mail de moderação com links seguros de aprovação e rejeição de uso único é disparado para `MODERATOR_EMAIL`.
 - **Request Body (`updateGroupItemDtoSchema`):**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
   | :--- | :--- | :--- | :--- | :--- |
@@ -1257,7 +1325,7 @@ Todas as rotas deste módulo são **privadas** e protegidas pelo hook global de 
     ```json
     {
       "success": true,
-      "message": "Item do grupo atualizado com sucesso",
+      "message": "Grupo Canal de Avisos Atualizado atualizado com sucesso",
       "group": {
         "_id": "67f1a2b3c4d5e6f7a8b9c0d1",
         "user_id": "66dec987a123b456c7890123",
@@ -1265,12 +1333,14 @@ Todas as rotas deste módulo são **privadas** e protegidas pelo hook global de 
           {
             "id": "e4b10b88-197e-4869-a1b7-99b50db15d42",
             "title": "Comunidade de Membros",
-            "url": "https://chat.whatsapp.com/ABC123xyz"
+            "url": "https://chat.whatsapp.com/ABC123xyz",
+            "status": "accepted"
           },
           {
             "id": "18f97e29-cb62-4217-a0bf-40ca95be8570",
             "title": "Canal de Avisos Atualizado",
-            "url": "https://chat.whatsapp.com/DEF456uvw"
+            "url": "https://chat.whatsapp.com/DEF456uvw",
+            "status": "pending"
           }
         ],
         "created_at": "2026-09-26T18:00:00.000Z",
@@ -1288,6 +1358,7 @@ Todas as rotas deste módulo são **privadas** e protegidas pelo hook global de 
   | Parâmetro | Tipo | Descrição |
   | :--- | :--- | :--- |
   | `itemId` | `String` (UUID do item) | Identificador único do item a ser removido. |
+- **Regra de Auditoria:** Dispara um e-mail de notificação para o moderador informando a remoção do grupo com dados de auditoria do item excluído.
 - **Respostas:**
   - `200 OK`:
     ```json
@@ -1301,7 +1372,8 @@ Todas as rotas deste módulo são **privadas** e protegidas pelo hook global de 
           {
             "id": "e4b10b88-197e-4869-a1b7-99b50db15d42",
             "title": "Comunidade de Membros",
-            "url": "https://chat.whatsapp.com/ABC123xyz"
+            "url": "https://chat.whatsapp.com/ABC123xyz",
+            "status": "accepted"
           }
         ],
         "created_at": "2026-09-26T18:00:00.000Z",
@@ -1313,7 +1385,6 @@ Todas as rotas deste módulo são **privadas** e protegidas pelo hook global de 
   - `401 Unauthorized`: Sessão expirada ou token ausente.
 
 #### `DELETE /group/:id`
-
 - **Descrição:** Remove o registro de grupos do usuário autenticado.
 - **Headers:** `Authorization: Bearer <token>` (Obrigatório).
 - **Parâmetros de Rota:** `id` (ObjectId do registro de grupo).
@@ -1328,6 +1399,69 @@ Todas as rotas deste módulo são **privadas** e protegidas pelo hook global de 
     ```
   - `403 Forbidden`: `{"success": false, "message": "Operação não permitida: você não é o proprietário deste grupo"}`
   - `404 Not Found`: `{"success": false, "message": "Grupo não encontrado"}`
+
+---
+
+### 3.15 Webhooks de E-mail Resend (`/webhooks/resend`)
+
+Módulo responsável por receber e processar eventos transacionais de e-mail disparados pelo **Resend** (provedor oficial integrado via `ResendEmailProvider`). Permite rastreamento de entregas, cliques em links e controle de reputação de e-mails da aplicação.
+
+#### `POST /webhooks/resend`
+- **Descrição e Regra de Negócio:**
+  1. **Validação Criptográfica de Assinatura Svix:** O webhook do Resend utiliza o padrão Svix para autenticidade. O endpoint extrai os cabeçalhos obrigatórios `svix-id`, `svix-timestamp` e `svix-signature` e valida a integridade do payload bruto (`request.rawBody`) via `app.mailer.verifyWebhook(...)` utilizando a chave secreta `RESEND_WEBHOOK_SECRET`.
+  2. **Configuração de Raw Body:** A rota é configurada explicitamente com `{ config: { rawBody: true } }` através do plugin `fastify-raw-body`, garantindo que a assinatura seja conferida exatamente contra o payload original recebido sem transformações de serialização.
+  3. **Eventos Monitorados:**
+     - `email.clicked`: O destinatário clicou em um link contido no e-mail (ex: link de recuperação de senha ou moderação). O backend registra o evento para telemetria.
+     - `email.complained`: O usuário marcou a mensagem como spam ou reportou abuso.
+     - `email.delivered`, `email.bounced`, etc.: Eventos informativos adicionais de entrega.
+- **Headers:**
+  | Header | Tipo | Obrigatório? | Descrição |
+  | :--- | :--- | :--- | :--- |
+  | `svix-id` | `String` | Sim | Identificador exclusivo da mensagem/evento Svix. |
+  | `svix-timestamp` | `String` | Sim | Timestamp Unix em segundos da emissão do webhook. |
+  | `svix-signature` | `String` | Sim | Assinatura HMAC criptográfica calculada pelo Svix. |
+  | `Content-Type` | `String` | Sim | `application/json` |
+- **Payload de Exemplo (Webhook do Resend):**
+  ```json
+  {
+    "type": "email.clicked",
+    "created_at": "2026-09-27T18:45:00.000Z",
+    "data": {
+      "email_id": "49a3999c-0ce1-4ea6-ab68-afcd6dc2e794",
+      "from": "Senpai Security <security@senpaiapp.com>",
+      "to": [
+        "user@example.com"
+      ],
+      "subject": "Redefinição de Senha",
+      "click": {
+        "link": "https://senpaiapp.com/pt/reset-password?token=6f8a...",
+        "timestamp": "2026-09-27T18:45:00.000Z"
+      }
+    }
+  }
+  ```
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "message": "Webhook processed"
+    }
+    ```
+  - `400 Bad Request` (Headers Svix ausentes):
+    ```json
+    {
+      "success": false,
+      "message": "Missing svix headers"
+    }
+    ```
+  - `400 Bad Request` (Falha na assinatura criptográfica):
+    ```json
+    {
+      "success": false,
+      "message": "Invalid webhook signature"
+    }
+    ```
 
 ---
 
@@ -1386,6 +1520,9 @@ export type MissionMetric =
   | "stickers_created"
   | "packs_favorited"
   | "vip_daily_reward";
+
+// Status de Moderação de Grupos
+export type GroupItemStatus = "pending" | "accepted" | "rejected";
 ```
 
 ### Modelos de Gamificação & Missões
@@ -1469,6 +1606,32 @@ export interface QuotaSnapshotDto {
 }
 ```
 
+### Modelo de Grupos e Moderação (`Group`, `GroupItem`)
+```typescript
+export interface GroupItem {
+  id: string;                      // UUID gerado automaticamente
+  title: string;                   // Título do grupo
+  url: string;                     // URL de convite/acesso
+  status: GroupItemStatus;         // "pending" | "accepted" | "rejected"
+}
+
+export interface Group {
+  _id: string;                     // ObjectId hex de 24 chars
+  user_id: string;                 // ObjectId hex do usuário proprietário
+  groups: GroupItem[];             // Lista de 1 a 2 grupos
+  created_at: string | Date;       // ISO 8601 UTC
+  updated_at: string | Date;       // ISO 8601 UTC
+}
+
+export interface GroupModerationTokenPayload {
+  groupId: string;
+  itemId: string;
+  action: "accepted" | "rejected";
+  moderatorEmail: string;
+  createdAt: number;               // Epoch timestamp em milissegundos
+}
+```
+
 ---
 
 ## 5. Guia de Melhores Práticas para o Flutter
@@ -1513,3 +1676,9 @@ export interface QuotaSnapshotDto {
       - **Se `vip_pro`:** Apresente modal de upsell direcionado ao **VIP Mestre (20 GB)** destacando os 10 GB adicionais.
       - **Se `vip_master`:** Exiba alerta informando cota máxima e forneça atalho para a biblioteca de pacotes/figurinhas para liberar espaço.
     - O token JWT decodificado no login ou refresh (`request.user.subscription.type`) permite alternar a interface e exibir o selo de plano instantaneamente sem requisições adicionais de rede.
+11. **Gestão e Exibição de Status de Grupos (`status: "pending" | "accepted" | "rejected"`):**
+    - Na listagem ou tela de edição de grupos do perfil, utilize o campo `status` retornado em cada item para renderizar o estado de moderação:
+      - `"pending"`: Exiba etiqueta ou badge âmbar de **"Em análise"**. O link não deve ser exibido publicamente para terceiros ou no feed público até que seja validado pela moderação.
+      - `"accepted"`: Exiba badge verde **"Aprovado"** e torne o link clicável para comunidades ou membros.
+      - `"rejected"`: Exiba badge vermelho **"Rejeitado"** e ofereça botão de edição imediato para que o usuário corrija o título ou o link.
+    - Qualquer chamada a `PATCH /group/item/:itemId` atualizando título ou URL altera atômica e automaticamente o status para `"pending"` no backend, disparando um novo fluxo de moderação.
