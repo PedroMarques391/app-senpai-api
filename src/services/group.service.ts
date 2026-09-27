@@ -180,7 +180,7 @@ export class GroupService {
       });
 
       this.mailService.sendMail({
-        from: EMAIL_SENDERS.NOREPLY,
+        from: EMAIL_SENDERS.SECURITY,
         to: process.env.MODERATOR_EMAIL,
         subject: `[Moderação] ${eventTitle}`,
         html,
