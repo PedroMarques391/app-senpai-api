@@ -1,7 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
-import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY || 're_fake');
+
 
 export const resendWebhook: FastifyPluginAsync = async (app) => {
     app.post('', { config: { rawBody: true } }, async (request, reply) => {
@@ -25,15 +24,14 @@ export const resendWebhook: FastifyPluginAsync = async (app) => {
 
         const payloadString = request.rawBody as string;
 
-        const event = resend.webhooks.verify({
-            payload: payloadString,
-            headers: {
+        const event = await app.mailer.verifyWebhook(
+            payloadString,
+            {
                 id: svix_id,
                 timestamp: svix_timestamp,
                 signature: svix_signature,
-            },
-            webhookSecret: secret,
-        }) as any;
+            }
+        )
 
         if (event.type === 'email.clicked' || event.type === 'email.complained') {
             console.log(`[Resend Webhook] Event matches target: ${event.type}`);

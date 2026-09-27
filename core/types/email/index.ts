@@ -1,3 +1,5 @@
+import type { WebhookEventPayload } from "resend";
+
 export interface OtpEmailTemplateProps {
   otp: string;
   userName?: string;
@@ -33,4 +35,5 @@ export interface SendEmailPayload {
 
 export interface EmailProvider {
   send(payload: SendEmailPayload): Promise<void>;
+  verifyWebhook(payload: string, headers: Record<string, string>): Promise<WebhookEventPayload>;
 }
