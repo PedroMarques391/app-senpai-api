@@ -2,10 +2,13 @@ import { ObjectId } from "mongodb";
 import { randomUUID } from "node:crypto";
 import z from "zod";
 
+export const groupItemStatusSchema = z.enum(["pending", "accepted", "rejected"]);
+
 export const groupItemSchema = z.object({
     id: z.string().default(() => randomUUID()),
     title: z.string().min(1, "O título é obrigatório"),
     url: z.url("A URL deve ser válida"),
+    status: groupItemStatusSchema.default("pending"),
 });
 
 export const groupsSchema = z.object({
