@@ -40,7 +40,7 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
     async (request, reply) => {
       const groups = await groupService.findManyGroups(
         request.user._id,
-        request.user.subscription?.type,
+        request.user.subscription.type,
       );
       return reply.status(200).send({
         success: true,
@@ -61,7 +61,7 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
       const group = await groupService.findGroupById(
         request.user._id,
         request.params.id,
-        request.user.subscription?.type,
+        request.user.subscription.type,
       );
       return reply.status(200).send({
         success: true,
@@ -84,7 +84,7 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
         request.user.email,
         request.user.userName || request.user.name,
         request.body,
-        request.user.subscription?.type,
+        request.user.subscription.type,
       );
       return reply.status(201).send({
         success: true,
@@ -108,7 +108,7 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
         request.user._id,
         request.params.id,
         request.body,
-        request.user.subscription?.type,
+        request.user.subscription.type,
       );
       return reply.status(200).send({
         success: true,
@@ -134,7 +134,7 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
         request.user.userName || request.user.name,
         request.params.itemId,
         request.body,
-        request.user.subscription?.type,
+        request.user.subscription.type,
       );
 
       const updatedItem = group.groups.find(
@@ -163,7 +163,7 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
         request.user.email,
         request.user.userName || request.user.name,
         request.params.itemId,
-        request.user.subscription?.type,
+        request.user.subscription.type,
       );
 
       return reply.status(200).send({
@@ -186,7 +186,7 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
       await groupService.deleteGroup(
         request.user._id,
         request.params.id,
-        request.user.subscription?.type,
+        request.user.subscription.type,
       );
       return reply.status(200).send({
         success: true,
