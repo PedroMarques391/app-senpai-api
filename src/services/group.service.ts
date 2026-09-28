@@ -25,7 +25,8 @@ export class GroupService {
     private readonly cacheService: CacheService,
   ) { }
 
-  async findManyGroups(userId: string): Promise<Group | null> {
+  async findManyGroups(userId: string, subscriptionType?: string): Promise<Group | null> {
+    PermissionUtils.verifyMasterSubscription(subscriptionType);
     const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
     const groups = await this.groupRepository.find(userObjectId);
     if (!groups) {
@@ -34,7 +35,8 @@ export class GroupService {
     return groups;
   }
 
-  async findGroupById(userId: string, id: string): Promise<Group> {
+  async findGroupById(userId: string, id: string, subscriptionType?: string): Promise<Group> {
+    PermissionUtils.verifyMasterSubscription(subscriptionType);
     const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
     const groupObjectId = MongoUtils.toObjectId(id, "ID do grupo inválido");
     const group = await this.groupRepository.findById(groupObjectId);
@@ -45,7 +47,8 @@ export class GroupService {
     return group;
   }
 
-  async createGroup(userId: string, email: string, userName: string, data: CreateGroupDto): Promise<Group> {
+  async createGroup(userId: string, email: string, userName: string, data: CreateGroupDto, subscriptionType?: string): Promise<Group> {
+    PermissionUtils.verifyMasterSubscription(subscriptionType);
     const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
 
     const existingGroups = await this.groupRepository.find(userObjectId);
@@ -97,7 +100,9 @@ export class GroupService {
     userId: string,
     id: string,
     data: UpdateGroupDto,
+    subscriptionType?: string,
   ): Promise<Group> {
+    PermissionUtils.verifyMasterSubscription(subscriptionType);
     const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
     const groupObjectId = MongoUtils.toObjectId(id, "ID do grupo inválido");
 
@@ -121,7 +126,9 @@ export class GroupService {
     userName: string,
     itemId: string,
     data: UpdateGroupItemDto,
+    subscriptionType?: string,
   ): Promise<Group> {
+    PermissionUtils.verifyMasterSubscription(subscriptionType);
     const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
 
     if (data.title === undefined && data.url === undefined) {
@@ -157,8 +164,10 @@ export class GroupService {
     userId: string,
     email: string,
     userName: string,
-    itemId: string
+    itemId: string,
+    subscriptionType?: string,
   ): Promise<Group> {
+    PermissionUtils.verifyMasterSubscription(subscriptionType);
     const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
 
     const existingGroup = await this.groupRepository.find(userObjectId);
@@ -188,7 +197,8 @@ export class GroupService {
   }
 
 
-  async deleteGroup(userId: string, id: string): Promise<boolean> {
+  async deleteGroup(userId: string, id: string, subscriptionType?: string): Promise<boolean> {
+    PermissionUtils.verifyMasterSubscription(subscriptionType);
     const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
     const groupObjectId = MongoUtils.toObjectId(id, "ID do grupo inválido");
 

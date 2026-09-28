@@ -35,10 +35,13 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
   app.get(
     "/",
     {
-      onRequest: [app.authenticate],
+      onRequest: [app.authenticate, app.requireMaster],
     },
     async (request, reply) => {
-      const groups = await groupService.findManyGroups(request.user._id);
+      const groups = await groupService.findManyGroups(
+        request.user._id,
+        request.user.subscription?.type,
+      );
       return reply.status(200).send({
         success: true,
         groups,
@@ -49,7 +52,7 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
   app.get(
     "/:id",
     {
-      onRequest: [app.authenticate],
+      onRequest: [app.authenticate, app.requireMaster],
       schema: {
         params: z.object({ id: z.string() }),
       },
@@ -58,6 +61,7 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
       const group = await groupService.findGroupById(
         request.user._id,
         request.params.id,
+        request.user.subscription?.type,
       );
       return reply.status(200).send({
         success: true,
@@ -69,7 +73,7 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post(
     "/",
     {
-      onRequest: [app.authenticate],
+      onRequest: [app.authenticate, app.requireMaster],
       schema: {
         body: createGroupDtoSchema,
       },
@@ -80,6 +84,7 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
         request.user.email,
         request.user.userName || request.user.name,
         request.body,
+        request.user.subscription?.type,
       );
       return reply.status(201).send({
         success: true,
@@ -92,7 +97,7 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
   app.put(
     "/:id",
     {
-      onRequest: [app.authenticate],
+      onRequest: [app.authenticate, app.requireMaster],
       schema: {
         params: z.object({ id: z.string() }),
         body: updateGroupDtoSchema,
@@ -103,6 +108,7 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
         request.user._id,
         request.params.id,
         request.body,
+        request.user.subscription?.type,
       );
       return reply.status(200).send({
         success: true,
@@ -115,7 +121,7 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
   app.patch(
     "/item/:itemId",
     {
-      onRequest: [app.authenticate],
+      onRequest: [app.authenticate, app.requireMaster],
       schema: {
         params: z.object({ itemId: z.string() }),
         body: updateGroupItemDtoSchema,
@@ -128,6 +134,7 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
         request.user.userName || request.user.name,
         request.params.itemId,
         request.body,
+        request.user.subscription?.type,
       );
 
       const updatedItem = group.groups.find(
@@ -145,7 +152,7 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
   app.delete(
     "/item/:itemId",
     {
-      onRequest: [app.authenticate],
+      onRequest: [app.authenticate, app.requireMaster],
       schema: {
         params: z.object({ itemId: z.string() }),
       },
@@ -156,6 +163,7 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
         request.user.email,
         request.user.userName || request.user.name,
         request.params.itemId,
+        request.user.subscription?.type,
       );
 
       return reply.status(200).send({
@@ -169,13 +177,17 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
   app.delete(
     "/:id",
     {
-      onRequest: [app.authenticate],
+      onRequest: [app.authenticate, app.requireMaster],
       schema: {
         params: z.object({ id: z.string() }),
       },
     },
     async (request, reply) => {
-      await groupService.deleteGroup(request.user._id, request.params.id);
+      await groupService.deleteGroup(
+        request.user._id,
+        request.params.id,
+        request.user.subscription?.type,
+      );
       return reply.status(200).send({
         success: true,
         message: "Grupo removido com sucesso",
