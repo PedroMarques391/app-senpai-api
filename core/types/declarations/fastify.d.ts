@@ -17,6 +17,7 @@ declare module "fastify" {
     requireAdmin: (
       ...allowedRoles: UserRole[]
     ) => (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    requireMaster: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
     checkPackCreationQuota: (
       req: FastifyRequest,
       reply: FastifyReply,

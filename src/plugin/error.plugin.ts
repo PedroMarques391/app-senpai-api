@@ -12,8 +12,11 @@ export const errorPlugin: FastifyPluginAsync = async (app) => {
     }
 
     if (error instanceof Error) {
-      return reply.status(400).send({
+      const statusCode = (error as any).statusCode ?? 400;
+      const code: string | undefined = (error as any).code;
+      return reply.status(statusCode).send({
         success: false,
+        code: code ? code : "BAD_REQUEST",
         message: error.message,
       });
     }
@@ -21,6 +24,7 @@ export const errorPlugin: FastifyPluginAsync = async (app) => {
     request.log.error(error);
     return reply.status(500).send({
       success: false,
+      code: "INTERNAL_SERVER_ERROR",
       message: "Erro interno do servidor",
     });
   });

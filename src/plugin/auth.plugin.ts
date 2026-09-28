@@ -37,6 +37,21 @@ async function authPlugin(fastify: FastifyInstance) {
       }
     };
   });
+
+
+  fastify.decorate(
+    "requireMaster",
+    async function (request: FastifyRequest, reply: FastifyReply) {
+      if (request.user?.subscription?.type !== "MESTRE") {
+        return reply.status(403).send({
+          success: false,
+          code: "MESTRE_ONLY_FEATURE",
+          message:
+            "A funcionalidade de grupos é exclusiva para usuários com plano VIP Mestre, que tal um upgrade?",
+        });
+      }
+    },
+  );
 }
 
 export default fp(authPlugin);
