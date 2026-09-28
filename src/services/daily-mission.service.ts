@@ -13,6 +13,7 @@ import {
   VIP_MESTRE_DAILY_PETALS,
   VIP_PRO_DAILY_PETALS,
 } from "@/constants";
+import type { VipType } from "@/schemas";
 import { DateUtils, LevelUtils, QuotaUtils } from "@/utils";
 import { MissionService } from "./mission.service";
 import { ObjectId } from "mongodb";
@@ -108,7 +109,10 @@ export class DailyMissionService {
     );
 
     const isVip = freshUser?.premium === true;
-    const vipType = freshUser?.subscription?.type ?? (isVip ? "PRO" : "FREE");
+    const rawVipType = freshUser?.subscription?.type?.trim().toUpperCase();
+    const vipType: VipType = ["MESTRE", "PRO", "FREE"].includes(rawVipType)
+      ? (rawVipType as VipType)
+      : (isVip ? "PRO" : "FREE");
 
     if (isVip && (vipType === "PRO" || vipType === "MESTRE")) {
       const petalsReward =
@@ -163,7 +167,10 @@ export class DailyMissionService {
       if (!user) throw new Error("Usuário não encontrado.");
 
       const isVip = user.premium === true;
-      const vipType = user.subscription?.type ?? (isVip ? "PRO" : "FREE");
+      const rawVipType = user.subscription?.type?.trim().toUpperCase();
+      const vipType: VipType = ["PRO", "MESTRE", "FREE"].includes(rawVipType)
+        ? (rawVipType as VipType)
+        : (isVip ? "PRO" : "FREE");
 
       if (!isVip || (vipType !== "PRO" && vipType !== "MESTRE")) {
         throw new Error(
