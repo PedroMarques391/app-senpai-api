@@ -101,13 +101,7 @@ export class AuthService {
       isNumberVerified: true,
       last_login: new Date(),
     });
-
     await this.userRepository.update({ _id: user._id }, fullUser);
-
-    const rawType = fullUser.subscription?.type?.trim().toUpperCase();
-    const subscriptionType: VipType = ["MESTRE", "PRO", "FREE"].includes(rawType)
-      ? (rawType as VipType)
-      : (fullUser.premium ? "PRO" : "FREE");
 
     const payload = {
       _id: fullUser._id.toString(),
@@ -119,7 +113,7 @@ export class AuthService {
       isNumberVerified: fullUser.isNumberVerified,
       role: fullUser.role,
       subscription: {
-        type: subscriptionType,
+        type: fullUser.subscription.type,
       },
     };
 
@@ -159,31 +153,29 @@ export class AuthService {
       throw new Error("E-mail, usuário ou senha incorretos. Verifique os dados e tente novamente.");
     }
 
-    user.last_login = new Date();
+    const fullUser = UserUtils.applyDefaults({
+      ...user,
+      last_login: new Date(),
+    });
 
-    const rawType = user.subscription?.type?.trim().toUpperCase();
-    const subscriptionType: VipType = ["MESTRE", "PRO", "FREE"].includes(rawType)
-      ? (rawType as VipType)
-      : (user.premium ? "PRO" : "FREE");
+    await this.userRepository.update({ _id: fullUser._id }, fullUser);
 
     const payload = {
-      _id: user._id.toString(),
-      wa_id: user.wa_id,
-      name: user.name,
-      userName: user.userName,
-      premium: user.premium,
-      email: user.email,
-      isNumberVerified: user.isNumberVerified,
-      role: user.role,
+      _id: fullUser._id.toString(),
+      wa_id: fullUser.wa_id,
+      name: fullUser.name,
+      userName: fullUser.userName,
+      premium: fullUser.premium,
+      email: fullUser.email,
+      isNumberVerified: fullUser.isNumberVerified,
+      role: fullUser.role,
       subscription: {
-        type: subscriptionType,
+        type: fullUser.subscription.type,
       },
     };
     const token = AuthUtils.generateJWT(this.jwtInstance, payload);
 
-    await this.userRepository.update({ _id: user._id }, user);
-
-    return { user, token };
+    return { user: fullUser, token };
   }
 
   async register(
