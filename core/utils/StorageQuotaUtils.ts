@@ -19,19 +19,11 @@ export class StorageQuotaUtils {
   };
 
   static getLimit(type: VipType = "FREE"): number {
-    const raw = String(type).trim().toUpperCase();
-    const normalized: VipType = ["MESTRE", "PRO"].includes(raw)
-      ? (raw as VipType)
-      : "FREE";
-    return this.LIMITS[normalized] ?? this.FREE_LIMIT_BYTES;
+    return this.LIMITS[type] ?? this.FREE_LIMIT_BYTES;
   }
 
   static toPlanTier(type: VipType = "FREE"): PlanTier {
-    const raw = String(type).trim().toUpperCase();
-    const normalized: VipType = ["MESTRE", "PRO"].includes(raw)
-      ? (raw as VipType)
-      : "FREE";
-    return this.PLAN_TIERS[normalized] ?? "free";
+    return this.PLAN_TIERS[type] ?? "free";
   }
 
   static hasAvailableStorage(

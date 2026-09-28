@@ -19,7 +19,7 @@ export interface JwtPayload {
   role?: string;
   premium?: boolean;
   isNumberVerified?: boolean;
-  subscription?: {
+  subscription: {
     type: VipType;
   };
 }

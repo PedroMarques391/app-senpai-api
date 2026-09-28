@@ -44,7 +44,7 @@ declare module "@fastify/jwt" {
       isNumberVerified: boolean;
       role: UserRole;
       premium: boolean;
-      subscription?: {
+      subscription: {
         type: VipType;
       };
     };

@@ -17,7 +17,13 @@ export class UserUtils {
 
   static applyDefaults(user: Partial<User>): User {
     const partialSchema = userSchema.partial();
-    return partialSchema.parse(user) as User;
+    const parsed = partialSchema.parse(user) as User;
+
+    if (parsed.premium && parsed.subscription.type === "FREE") {
+      parsed.subscription.type = "PRO";
+    }
+
+    return parsed;
   }
 
   static normalizeIdentifier(identifier: string): string {
