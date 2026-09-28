@@ -101,10 +101,7 @@ async function quotaPlugin(fastify: FastifyInstance) {
         });
       }
 
-      const rawType = request.user.subscription?.type?.trim().toUpperCase();
-      const subscriptionType: VipType = ["PRO", "MESTRE", "FREE"].includes(rawType)
-        ? (rawType as VipType)
-        : (request.user.premium ? "PRO" : "FREE");
+      const subscriptionType: VipType = request.user.subscription.type;
 
       const limitBytes = StorageQuotaUtils.getLimit(subscriptionType);
       const planTier = StorageQuotaUtils.toPlanTier(subscriptionType);

@@ -42,8 +42,7 @@ async function authPlugin(fastify: FastifyInstance) {
   fastify.decorate(
     "requireMaster",
     async function (request: FastifyRequest, reply: FastifyReply) {
-      const type = request.user?.subscription?.type?.trim().toUpperCase();
-      if (type !== "MESTRE") {
+      if (request.user?.subscription?.type !== "MESTRE") {
         return reply.status(403).send({
           success: false,
           code: "MESTRE_ONLY_FEATURE",
