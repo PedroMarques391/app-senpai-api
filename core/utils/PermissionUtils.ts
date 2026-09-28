@@ -15,7 +15,8 @@ export class PermissionUtils {
   }
 
   static verifyMasterSubscription(subscriptionType?: string): void {
-    if (subscriptionType !== "MESTRE") {
+    const normalized = subscriptionType?.trim().toUpperCase();
+    if (normalized !== "MESTRE") {
       throw new MasterOnlyFeatureError();
     }
   }

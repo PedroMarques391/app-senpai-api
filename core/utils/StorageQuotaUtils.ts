@@ -1,4 +1,4 @@
-import type { VipType } from "@/models";
+import type { VipType } from "@/schemas";
 import type { PlanTier } from "@/types";
 
 export class StorageQuotaUtils {
@@ -19,11 +19,19 @@ export class StorageQuotaUtils {
   };
 
   static getLimit(type: VipType = "FREE"): number {
-    return this.LIMITS[type] ?? this.FREE_LIMIT_BYTES;
+    const raw = String(type).trim().toUpperCase();
+    const normalized: VipType = ["MESTRE", "PRO"].includes(raw)
+      ? (raw as VipType)
+      : "FREE";
+    return this.LIMITS[normalized] ?? this.FREE_LIMIT_BYTES;
   }
 
   static toPlanTier(type: VipType = "FREE"): PlanTier {
-    return this.PLAN_TIERS[type] ?? "free";
+    const raw = String(type).trim().toUpperCase();
+    const normalized: VipType = ["MESTRE", "PRO"].includes(raw)
+      ? (raw as VipType)
+      : "FREE";
+    return this.PLAN_TIERS[normalized] ?? "free";
   }
 
   static hasAvailableStorage(
