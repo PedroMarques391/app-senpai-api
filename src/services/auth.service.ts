@@ -1,4 +1,5 @@
 import { createUserDtoSchema, type CreateUserDto } from "@/dtos";
+import type { VipType } from "@/schemas";
 import type { User, UserRepository } from "@/models";
 import type { WhatsAppQueue } from "@/queues";
 import type { OtpService } from "./otp.service";
@@ -103,6 +104,11 @@ export class AuthService {
 
     await this.userRepository.update({ _id: user._id }, fullUser);
 
+    const rawType = fullUser.subscription?.type?.trim().toUpperCase();
+    const subscriptionType: VipType = ["MESTRE", "PRO", "FREE"].includes(rawType)
+      ? (rawType as VipType)
+      : (fullUser.premium ? "PRO" : "FREE");
+
     const payload = {
       _id: fullUser._id.toString(),
       wa_id: fullUser.wa_id,
@@ -113,7 +119,7 @@ export class AuthService {
       isNumberVerified: fullUser.isNumberVerified,
       role: fullUser.role,
       subscription: {
-        type: fullUser.subscription?.type ?? (fullUser.premium ? "PRO" : "FREE"),
+        type: subscriptionType,
       },
     };
 
@@ -155,6 +161,11 @@ export class AuthService {
 
     user.last_login = new Date();
 
+    const rawType = user.subscription?.type?.trim().toUpperCase();
+    const subscriptionType: VipType = ["MESTRE", "PRO", "FREE"].includes(rawType)
+      ? (rawType as VipType)
+      : (user.premium ? "PRO" : "FREE");
+
     const payload = {
       _id: user._id.toString(),
       wa_id: user.wa_id,
@@ -165,7 +176,7 @@ export class AuthService {
       isNumberVerified: user.isNumberVerified,
       role: user.role,
       subscription: {
-        type: user.subscription?.type ?? (user.premium ? "PRO" : "FREE"),
+        type: subscriptionType,
       },
     };
     const token = AuthUtils.generateJWT(this.jwtInstance, payload);
