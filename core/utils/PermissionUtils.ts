@@ -1,4 +1,5 @@
 import type { ObjectId } from "mongodb";
+import { MasterOnlyFeatureError, VerifyOwnershipError } from "@/errors";
 
 export class PermissionUtils {
   static verifyOwnership(
@@ -7,9 +8,15 @@ export class PermissionUtils {
     resourceName: string,
   ): void {
     if (resourceUserId.toString() !== currentUserId.toString()) {
-      throw new Error(
+      throw new VerifyOwnershipError(
         `Operação não permitida: você não é o proprietário deste ${resourceName}`,
       );
+    }
+  }
+
+  static verifyMasterSubscription(subscriptionType?: string): void {
+    if (subscriptionType !== "MESTRE") {
+      throw new MasterOnlyFeatureError();
     }
   }
 }
