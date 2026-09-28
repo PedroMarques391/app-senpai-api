@@ -1,4 +1,5 @@
 import type { CreatePackDto } from "@/dtos";
+import type { VipType } from "@/schemas";
 import { ServiceFactory } from "@/factories";
 import { StorageQuotaUtils } from "@/utils";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
@@ -100,9 +101,10 @@ async function quotaPlugin(fastify: FastifyInstance) {
         });
       }
 
-      const subscriptionType =
-        request.user.subscription?.type ??
-        (request.user.premium ? "PRO" : "FREE");
+      const rawType = request.user.subscription?.type?.trim().toUpperCase();
+      const subscriptionType: VipType = ["PRO", "MESTRE", "FREE"].includes(rawType)
+        ? (rawType as VipType)
+        : (request.user.premium ? "PRO" : "FREE");
 
       const limitBytes = StorageQuotaUtils.getLimit(subscriptionType);
       const planTier = StorageQuotaUtils.toPlanTier(subscriptionType);
