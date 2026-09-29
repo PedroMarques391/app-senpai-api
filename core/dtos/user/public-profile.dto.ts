@@ -10,6 +10,7 @@ export const publicProfileDtoSchema = userSchema.pick({
   isVerifiedCreator: true,
   createdAt: true,
   subscription: true,
+  activity: true,
 });
 
 export type PublicProfileDto = z.infer<typeof publicProfileDtoSchema>;

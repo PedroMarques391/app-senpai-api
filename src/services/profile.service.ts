@@ -38,6 +38,7 @@ export class ProfileService {
       bio: user.bio,
       isVerifiedCreator: user.isVerifiedCreator,
       subscription: user.subscription,
+      activity: user.activity,
     };
   }
 
