@@ -37,6 +37,7 @@ export class ProfileService {
       banner_url: user.banner_url,
       bio: user.bio,
       isVerifiedCreator: user.isVerifiedCreator,
+      subscription: user.subscription,
     };
   }
 
