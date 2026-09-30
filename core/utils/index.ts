@@ -12,3 +12,4 @@ export * from "./OtpUtils";
 export * from "./DateUtils";
 export * from "./GeoUtils";
 export * from "./NetworkUtils";
+export * from "./SubscriptionUtils";

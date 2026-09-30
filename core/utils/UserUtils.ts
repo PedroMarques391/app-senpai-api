@@ -1,6 +1,8 @@
 import type { User } from "@/models";
 import { userSchema } from "@/schemas";
 
+import { SubscriptionUtils } from "./SubscriptionUtils";
+
 export class UserUtils {
   static isDifferentUser(
     existing: User | null | undefined,
@@ -19,9 +21,13 @@ export class UserUtils {
     const partialSchema = userSchema.partial();
     const parsed = partialSchema.parse(user) as User;
 
-    if (parsed.premium && parsed.subscription.type === "FREE") {
-      parsed.subscription.type = "PRO";
-    }
+    const sanitized = SubscriptionUtils.sanitizeSubscription(
+      parsed.subscription,
+      parsed.premium,
+    );
+
+    parsed.premium = sanitized.premium;
+    parsed.subscription = sanitized.subscription;
 
     return parsed;
   }
