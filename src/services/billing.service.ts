@@ -37,6 +37,8 @@ export class BillingService implements IBillingService {
       `[Billing] Processing RevenueCat event: ${event.type} for user ${userId} (plan=${plan}, type=${type}, expires=${expirationDate.toISOString()})`,
     );
 
+    const startDate = new Date(event.purchased_at_ms);
+
     switch (event.type) {
       case "INITIAL_PURCHASE":
       case "RENEWAL":
@@ -48,7 +50,7 @@ export class BillingService implements IBillingService {
           {
             premium: true,
             subscription: {
-              start: new Date(),
+              start: startDate,
               end: expirationDate,
               plan,
               type,
@@ -57,8 +59,32 @@ export class BillingService implements IBillingService {
         );
         break;
 
-      case "CANCELLATION":
+      case "CANCELLATION": {
+        const isCustomerSupportRefund =
+          event.cancel_reason === "CUSTOMER_SUPPORT";
+        const hasExpired = expirationDate.getTime() <= Date.now();
+
+        if (isCustomerSupportRefund || hasExpired) {
+          await this.userRepository.update(
+            { _id: userObjectId },
+            {
+              premium: false,
+              subscription: {
+                start: null,
+                end: null,
+                plan: null,
+                type: "FREE",
+              },
+            },
+          );
+        }
+        break;
+      }
+
       case "EXPIRATION":
+        console.log(
+          `[Billing] Subscription expired for user ${userId}. Revoking VIP access.`,
+        );
         await this.userRepository.update(
           { _id: userObjectId },
           {
