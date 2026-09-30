@@ -17,7 +17,7 @@ export class ProfileService {
       throw new Error("Perfil de usuário não encontrado");
     }
     PermissionUtils.verifyOwnership(user._id, userObjectId, "Perfil Privado");
-    return user;
+    return UserUtils.applyDefaults(user);
   }
 
   async getProfileByUsername(
@@ -29,16 +29,18 @@ export class ProfileService {
       throw new Error("Perfil de usuário não encontrado");
     }
 
+    const sanitizedUser = UserUtils.applyDefaults(user);
+
     return {
-      name: user.name,
-      userName: user.userName,
-      createdAt: user.createdAt,
-      avatar_url: user.avatar_url,
-      banner_url: user.banner_url,
-      bio: user.bio,
-      isVerifiedCreator: user.isVerifiedCreator,
-      subscription: user.subscription,
-      activity: user.activity,
+      name: sanitizedUser.name,
+      userName: sanitizedUser.userName,
+      createdAt: sanitizedUser.createdAt,
+      avatar_url: sanitizedUser.avatar_url,
+      banner_url: sanitizedUser.banner_url,
+      bio: sanitizedUser.bio,
+      isVerifiedCreator: sanitizedUser.isVerifiedCreator,
+      subscription: sanitizedUser.subscription,
+      activity: sanitizedUser.activity,
     };
   }
 

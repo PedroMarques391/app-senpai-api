@@ -9,7 +9,7 @@ import type {
 } from "@/dtos";
 import type { User, UserRepository } from "@/models";
 import type { PaginatedResult } from "@/types";
-import { AuthUtils, MongoUtils } from "@/utils";
+import { AuthUtils, MongoUtils, UserUtils } from "@/utils";
 
 export class UserService {
   constructor(private readonly userRepository: UserRepository) {}
@@ -20,7 +20,7 @@ export class UserService {
     if (!user) {
       throw new Error("Usuário não encontrado.");
     }
-    return user;
+    return UserUtils.applyDefaults(user);
   }
 
   async createUser(userData: CreateUserDto): Promise<User | null> {
@@ -132,7 +132,7 @@ export class UserService {
     if (!user) {
       throw new Error("Usuário não encontrado");
     }
-    return user;
+    return UserUtils.applyDefaults(user);
   }
 
   async updateRole(
