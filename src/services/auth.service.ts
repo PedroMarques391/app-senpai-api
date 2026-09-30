@@ -4,7 +4,6 @@ import type { WhatsAppQueue } from "@/queues";
 import type { AuthResult, SendOtpResult, ServiceResponse } from "@/types";
 import { AuthUtils, UserUtils } from "@/utils";
 import type { JWT as FastifyJWT } from "@fastify/jwt";
-import type { CacheService } from "./cache.service";
 import type { OtpService } from "./otp.service";
 
 export class AuthService {
@@ -16,7 +15,6 @@ export class AuthService {
     private readonly jwtInstance: FastifyJWT,
     private readonly whatsappQueue: WhatsAppQueue,
     private readonly otpService: OtpService,
-    private readonly cacheService: CacheService,
   ) {}
 
   async sendOTP(rawWaId: string): Promise<ServiceResponse<SendOtpResult>> {
@@ -104,11 +102,6 @@ export class AuthService {
     });
     await this.userRepository.update({ _id: user._id }, fullUser);
 
-    await Promise.all([
-      this.cacheService.del(`profile:${fullUser._id}`),
-      this.cacheService.del(`profile:username:${fullUser.userName}`),
-    ]);
-
     const payload = {
       _id: fullUser._id.toString(),
       wa_id: fullUser.wa_id,
@@ -169,11 +162,6 @@ export class AuthService {
     });
 
     await this.userRepository.update({ _id: fullUser._id }, fullUser);
-
-    await Promise.all([
-      this.cacheService.del(`profile:${fullUser._id}`),
-      this.cacheService.del(`profile:username:${fullUser.userName}`),
-    ]);
 
     const payload = {
       _id: fullUser._id.toString(),

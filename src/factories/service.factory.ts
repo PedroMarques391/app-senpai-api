@@ -146,7 +146,6 @@ export class ServiceFactory {
       jwtInstance,
       QueueFactory.getWhatsAppQueue(),
       this.getOtpService(redisInstance),
-      this.getCacheService(redisInstance),
     );
   }
   static getContentService(): ContentService {
