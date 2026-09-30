@@ -1,15 +1,11 @@
 import { createUserDtoSchema, type CreateUserDto } from "@/dtos";
-import type { VipType } from "@/schemas";
 import type { User, UserRepository } from "@/models";
 import type { WhatsAppQueue } from "@/queues";
-import type { OtpService } from "./otp.service";
-import type {
-  AuthResult,
-  SendOtpResult,
-  ServiceResponse,
-} from "@/types";
+import type { AuthResult, SendOtpResult, ServiceResponse } from "@/types";
 import { AuthUtils, UserUtils } from "@/utils";
 import type { JWT as FastifyJWT } from "@fastify/jwt";
+import type { CacheService } from "./cache.service";
+import type { OtpService } from "./otp.service";
 
 export class AuthService {
   constructor(
@@ -20,7 +16,8 @@ export class AuthService {
     private readonly jwtInstance: FastifyJWT,
     private readonly whatsappQueue: WhatsAppQueue,
     private readonly otpService: OtpService,
-  ) { }
+    private readonly cacheService: CacheService,
+  ) {}
 
   async sendOTP(rawWaId: string): Promise<ServiceResponse<SendOtpResult>> {
     const variants = AuthUtils.getWaIdVariants(rawWaId);
@@ -83,7 +80,9 @@ export class AuthService {
     const variants = AuthUtils.getWaIdVariants(rawWaId);
     const user = await this.userRepository.find({ wa_id: { $in: variants } });
     if (!user) {
-      throw new Error("Conta não encontrada. Verifique seu número de WhatsApp.");
+      throw new Error(
+        "Conta não encontrada. Verifique seu número de WhatsApp.",
+      );
     }
 
     if (user.status === "inactive") {
@@ -93,7 +92,9 @@ export class AuthService {
     const isValid = await this.otpService.verifyOtp(user.wa_id, otpCode);
 
     if (!isValid) {
-      throw new Error("Código de verificação inválido ou expirado. Solicite um novo código.");
+      throw new Error(
+        "Código de verificação inválido ou expirado. Solicite um novo código.",
+      );
     }
 
     const fullUser = UserUtils.applyDefaults({
@@ -102,6 +103,11 @@ export class AuthService {
       last_login: new Date(),
     });
     await this.userRepository.update({ _id: user._id }, fullUser);
+
+    await Promise.all([
+      this.cacheService.del(`profile:${fullUser._id}`),
+      this.cacheService.del(`profile:username:${fullUser.userName}`),
+    ]);
 
     const payload = {
       _id: fullUser._id.toString(),
@@ -132,7 +138,9 @@ export class AuthService {
       user = await this.userRepository.find({ userName: cleanIdentifier });
     }
     if (!user) {
-      throw new Error("E-mail, usuário ou senha incorretos. Verifique os dados e tente novamente.");
+      throw new Error(
+        "E-mail, usuário ou senha incorretos. Verifique os dados e tente novamente.",
+      );
     }
 
     if (user.status === "inactive") {
@@ -150,7 +158,9 @@ export class AuthService {
       user.password,
     );
     if (!isMatch) {
-      throw new Error("E-mail, usuário ou senha incorretos. Verifique os dados e tente novamente.");
+      throw new Error(
+        "E-mail, usuário ou senha incorretos. Verifique os dados e tente novamente.",
+      );
     }
 
     const fullUser = UserUtils.applyDefaults({
@@ -159,6 +169,11 @@ export class AuthService {
     });
 
     await this.userRepository.update({ _id: fullUser._id }, fullUser);
+
+    await Promise.all([
+      this.cacheService.del(`profile:${fullUser._id}`),
+      this.cacheService.del(`profile:username:${fullUser.userName}`),
+    ]);
 
     const payload = {
       _id: fullUser._id.toString(),
