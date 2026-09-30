@@ -18,6 +18,7 @@ declare global {
       EMAIL_REPLY_TO?: string;
       MODERATOR_EMAIL: string
       RESEND_WEBHOOK_SECRET: string;
+      REVENUECAT_WEBHOOK_SECRET: string;
     }
   }
 }
