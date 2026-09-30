@@ -17,7 +17,25 @@ export class ProfileService {
       throw new Error("Perfil de usuário não encontrado");
     }
     PermissionUtils.verifyOwnership(user._id, userObjectId, "Perfil Privado");
-    return UserUtils.applyDefaults(user);
+
+    const sanitized = UserUtils.applyDefaults(user);
+
+    if (user.premium && !sanitized.premium) {
+      await this.userRepository.update(
+        { _id: userObjectId },
+        {
+          premium: false,
+          subscription: {
+            start: null,
+            end: null,
+            plan: null,
+            type: "FREE",
+          },
+        },
+      );
+    }
+
+    return sanitized;
   }
 
   async getProfileByUsername(
@@ -50,7 +68,9 @@ export class ProfileService {
     currentUsername?: string,
   ): Promise<void> {
     if (!newUsername || newUsername === currentUsername) return;
-    const userExists = await this.userRepository.find({ userName: newUsername });
+    const userExists = await this.userRepository.find({
+      userName: newUsername,
+    });
     if (userExists && userExists._id.toString() !== userId) {
       throw new Error("Este nome de usuário já está em uso");
     }
@@ -142,7 +162,11 @@ export class ProfileService {
     }
 
     await Promise.all([
-      this.ensureUsernameAvailable(id, updateData.userName, currentUser.userName),
+      this.ensureUsernameAvailable(
+        id,
+        updateData.userName,
+        currentUser.userName,
+      ),
       this.ensureEmailAvailable(id, updateData.email, currentUser.email),
     ]);
 
