@@ -14,7 +14,6 @@ import {
 import {
   adminRouter,
   authRoutes,
-  billingRoutes,
   contentRoutes,
   creationQuotaRoutes,
   dailyMissionRoutes,
@@ -38,7 +37,7 @@ import {
 
 import fastifyCors from "@fastify/cors";
 import fastifyRawBody from "fastify-raw-body";
-import { resendWebhook } from "./webhook";
+import { resendWebhook, revenuecatWebhook } from "./webhook";
 const server = fastify({
   logger:
     process.env.NODE_ENV === "production"
@@ -90,6 +89,7 @@ server.register(contentRoutes, { prefix: "/content" });
 server.register(groupRoutes, { prefix: "/group" });
 server.register(async (app) => {
   app.register(resendWebhook, { prefix: "/resend" });
+  app.register(revenuecatWebhook, { prefix: "/revenuecat" });
 }, { prefix: "/webhooks" })
 
 server.get("/health", (request, reply) => {
@@ -117,7 +117,6 @@ server.register(async (app) => {
   app.register(uploadRoutes, { prefix: "/upload" });
   app.register(termsRoutes, { prefix: "/terms" });
   app.register(creationQuotaRoutes, { prefix: "/creation/quota" });
-  app.register(billingRoutes, { prefix: "/webhooks/revenuecat" });
   app.register(dailyMissionRoutes, { prefix: "/missions" });
 });
 
