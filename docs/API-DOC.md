@@ -1018,19 +1018,7 @@ O módulo de gamificação do Senpai estimula a retenção e o engajamento diár
 
 Módulo responsável pelo processamento de eventos de compras in-app e assinaturas de planos VIP (VIP Pro e VIP Mestre) através da integração com **RevenueCat**.
 
-#### `GET /webhooks/revenuecat/`
-- **Descrição:** Endpoint de verificação de liveness e status da rota de faturamento.
-- **Headers:** Nenhum (Aberto).
-- **Respostas:**
-  - `200 OK`:
-    ```json
-    {
-      "success": true,
-      "message": "Billing route is up"
-    }
-    ```
-
-#### `POST /webhooks/revenuecat/revenuecat-webhook`
+#### `POST /webhooks/revenuecat`
 - **Descrição & Regras de Negócio:**
   1. **Autenticação por Secret:** Requer header `Authorization: Bearer <REVENUECAT_WEBHOOK_SECRET>`. Requisições com token inválido ou ausente são rejeitadas com HTTP `401 Unauthorized`.
   2. **Identificação do Usuário:** O RevenueCat envia o campo `event.app_user_id`, que deve corresponder ao `_id` do usuário no MongoDB (Hex de 24 caracteres).
@@ -1667,7 +1655,7 @@ export interface GroupModerationTokenPayload {
 9. **Integração de Assinaturas com RevenueCat:**
    - No cliente Flutter, configure o SDK do Purchases / RevenueCat informando o `_id` do MongoDB retornado no login (`request.user._id`) como `app_user_id`:
      `await Purchases.logIn(user.id);`
-   - O backend processa o webhook oficial do RevenueCat (`POST /webhooks/revenuecat/revenuecat-webhook`) para conceder o status VIP (`premium: true`) e salvar o plano contratado (`VIP_PRO` ou `VIP_MESTRE`).
+   - O backend processa o webhook oficial do RevenueCat (`POST /webhooks/revenuecat`) para conceder o status VIP (`premium: true`) e salvar o plano contratado (`VIP_PRO` ou `VIP_MESTRE`).
    - Após a conclusão da compra na App Store / Play Store pelo Flutter, recarregue os dados via `GET /profile/` para refletir imediatamente as novas cotas ilimitadas e o selo VIP no aplicativo.
 10. **Tratamento de Cotas de Armazenamento no Flutter (`STORAGE_LIMIT_EXCEEDED`):**
     - Ao interceptar HTTP `403 Forbidden` com `code: "STORAGE_LIMIT_EXCEEDED"` no upload de mídias:
