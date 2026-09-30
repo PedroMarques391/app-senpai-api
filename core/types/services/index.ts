@@ -1,5 +1,7 @@
+import type { IRevenuePayload } from "../revenueCat";
+
 export interface IBillingService {
-  handleRevenueCatWebhook(payload: any): Promise<void>;
+  handleRevenueCatWebhook(payload: IRevenuePayload): Promise<void>;
 }
 
 export interface ICacheService {
