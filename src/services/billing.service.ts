@@ -1,54 +1,43 @@
 import type { UserRepository } from "@/models";
-import type { IBillingService } from "@/types";
+import type { IBillingService, IRevenuePayload } from "@/types";
 import { MongoUtils } from "@/utils";
 
 export class BillingService implements IBillingService {
-  constructor(private readonly userRepository: UserRepository) { }
+  constructor(private readonly userRepository: UserRepository) {}
 
-  async handleRevenueCatWebhook(payload: any): Promise<void> {
-    const event = payload?.event;
-    if (!event) {
-      console.warn("[Billing] Webhook received without 'event' payload");
-      return;
-    }
+  async handleRevenueCatWebhook(payload: IRevenuePayload): Promise<void> {
+    const event = payload.event;
+    const userId = event.app_user_id;
 
-    const rawUserId = event.app_user_id;
-    const eventType = event.type;
-
-    if (!rawUserId) {
+    if (!userId) {
       console.warn("[Billing] Webhook received without 'app_user_id'");
       return;
     }
 
-    let userObjectId;
-    try {
-      userObjectId = MongoUtils.toObjectId(rawUserId, "ID de usuário inválido");
-    } catch (e) {
-      console.error(`[Billing] Invalid user ID received in webhook: ${rawUserId}`, e);
+    const userObjectId = MongoUtils.toObjectId(
+      userId,
+      "ID de usuário inválido",
+    );
+
+    if (!userObjectId) {
+      console.error(`[Billing] Invalid user ID received in webhook: ${userId}`);
       return;
     }
 
-    // Identifica data de expiração (ms ou ISO), com fallback de 30 dias caso não venha no evento
-    const expirationDate = event.expiration_at_ms
-      ? new Date(event.expiration_at_ms)
-      : event.expires_date_ms
-      ? new Date(event.expires_date_ms)
-      : event.expiration_at
-      ? new Date(event.expiration_at)
-      : event.expires_date
-      ? new Date(event.expires_date)
-      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-    const productId = (event.product_id || "").toLowerCase();
-    const isMestre = productId.includes("mestre");
-    const plan = isMestre ? "VIP_MESTRE" : "VIP_PRO";
-    const type = isMestre ? "MESTRE" : "PRO";
-
-    console.log(
-      `[Billing] Processing RevenueCat event: ${eventType} for user ${rawUserId} (plan=${plan}, type=${type}, expires=${expirationDate.toISOString()})`,
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const expirationDate = new Date(
+      event.expiration_at_ms ?? Date.now() + THIRTY_DAYS_MS,
     );
 
-    switch (eventType) {
+    const isMasterPlan = event.product_id === "vip_mestre:basic-vip-mestre";
+    const plan = isMasterPlan ? "VIP_MESTRE" : "VIP_PRO";
+    const type = isMasterPlan ? "MESTRE" : "PRO";
+
+    console.log(
+      `[Billing] Processing RevenueCat event: ${event.type} for user ${userId} (plan=${plan}, type=${type}, expires=${expirationDate.toISOString()})`,
+    );
+
+    switch (event.type) {
       case "INITIAL_PURCHASE":
       case "RENEWAL":
       case "PRODUCT_CHANGE":
@@ -75,6 +64,9 @@ export class BillingService implements IBillingService {
           {
             premium: false,
             subscription: {
+              start: null,
+              end: null,
+              plan: null,
               type: "FREE",
             },
           },
@@ -82,7 +74,7 @@ export class BillingService implements IBillingService {
         break;
 
       default:
-        console.log(`[Billing] Unhandled RevenueCat event: ${eventType}`);
+        console.log(`[Billing] Unhandled RevenueCat event: ${event.type}`);
     }
   }
 }

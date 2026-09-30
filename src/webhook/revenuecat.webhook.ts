@@ -1,4 +1,5 @@
 import { ServiceFactory } from "@/factories";
+import type { IRevenuePayload } from "@/types";
 import type { FastifyPluginAsync } from "fastify";
 
 export const revenuecatWebhook: FastifyPluginAsync = async (app) => {
@@ -18,7 +19,8 @@ export const revenuecatWebhook: FastifyPluginAsync = async (app) => {
       return reply.status(401).send({ error: "Unauthorized" });
     }
 
-    const payload = request.body as any;
+    const payload = request.body as IRevenuePayload;
+
     await billingService.handleRevenueCatWebhook(payload);
 
     const userId = payload?.event?.app_user_id;
