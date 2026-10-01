@@ -16,11 +16,12 @@ declare global {
       RESEND_API_KEY: string;
       RESEND_FROM: string;
       EMAIL_REPLY_TO?: string;
-      MODERATOR_EMAIL: string
+      MODERATOR_EMAIL: string;
       RESEND_WEBHOOK_SECRET: string;
       REVENUECAT_WEBHOOK_SECRET: string;
+      GEMINI_API_KEY: string;
     }
   }
 }
 
-export { };
+export {};
