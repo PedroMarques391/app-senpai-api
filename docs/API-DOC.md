@@ -1453,6 +1453,107 @@ Módulo responsável por receber e processar eventos transacionais de e-mail dis
 
 ---
 
+### 3.16 Assistente de IA / Chat do Senpai (`/chat`)
+
+Módulo de Inteligência Artificial conversacional oficial do **Bot do Senpai**, alimentado pelo Google Gemini via Vercel AI SDK (`@ai-sdk/google`). O assistente é **especializado exclusivamente no produto**, oferecendo suporte ao usuário sobre funcionalidades, criação de figurinhas (estáticas e dinâmicas/vídeos/GIFs), pacotes, limites de planos, personalização e economia de pétalas.
+
+#### Diretrizes e Guardrails do Chatbot
+1. **Escopo Estrito:** Perguntas fora do tema do Senpai (política, celebridades, receitas, código genérico, notícias) são redirecionadas educada e brevemente.
+2. **Anti-Alucinação:** Não inventa informações não existentes na base oficial. Caso não encontre a resposta, informa com transparência e oferece suporte sobre os recursos e planos disponíveis.
+3. **Conversão para Assinatura:** Detalha benefícios dos planos Free, VIP Pro e VIP Mestre e direciona para o site [https://botdosenpai.com.br](https://botdosenpai.com.br) ou compras no app.
+
+#### `POST /chat/`
+- **Descrição e Regra de Negócio:**
+  1. **Autenticação Obrigatória:** O endpoint exige token JWT válido no header `Authorization: Bearer <jwt_token>`.
+  2. **Entrada Flexível (Pergunta Única ou Histórico Multi-turn):** Aceita tanto uma pergunta simples em `prompt` quanto a lista de histórico em `messages`, permitindo chats contínuos e contextuais no Flutter.
+  3. **Streaming HTTP em Tempo Real:** O endpoint **não** responde com um JSON estático. Ele responde com um fluxo contínuo de texto (`Transfer-Encoding: chunked` e `Content-Type: text/plain; charset=utf-8`). Cada chunk emitido pela conexão contém uma fatia do texto gerado pela IA, proporcionando o efeito de digitação em tempo real (typewriter) no app Flutter.
+- **Headers da Requisição:**
+  | Header | Tipo | Obrigatório? | Descrição |
+  | :--- | :--- | :--- | :--- |
+  | `Authorization` | `String` | Sim | Token JWT no formato `Bearer <token>`. |
+  | `Content-Type` | `String` | Sim | `application/json` |
+- **Request Body (JSON):**
+  | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `messages` | `z.array(chatMessageDtoSchema).min(1)` | `List<ChatMessageDto>` | Sim | Lista contendo ao menos uma mensagem (pergunta atual ou histórico completo). |
+
+- **Estrutura de `ChatMessageDto` (cada item da lista `messages`):**
+  | Campo | Tipo | Valores Permitidos | Descrição |
+  | :--- | :--- | :--- | :--- |
+  | `role` | `String` | `"user" \| "assistant" \| "system"` | Papel do emissor da mensagem. |
+  | `content` | `String` | Texto não vazio (`min(1)`) | Conteúdo textual da mensagem enviada ou recebida. |
+
+- **Exemplo de Request Body (Pergunta simples / 1 mensagem):**
+  ```json
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Como faço para criar uma figurinha animada?"
+      }
+    ]
+  }
+  ```
+
+- **Exemplo de Request Body (Histórico de conversa / Multi-turn contínuo):**
+  ```json
+  {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Quais são os planos disponíveis?"
+      },
+      {
+        "role": "assistant",
+        "content": "O Bot do Senpai oferece três planos: Free, VIP Pro e VIP Mestre..."
+      },
+      {
+        "role": "user",
+        "content": "Quanto de armazenamento tem o VIP Pro?"
+      }
+    ]
+  }
+  ```
+
+- **Headers da Resposta de Sucesso (HTTP 200):**
+  | Header | Valor | Descrição |
+  | :--- | :--- | :--- |
+  | `Content-Type` | `text/plain; charset=utf-8` | Formato textual codificado em UTF-8. |
+  | `Transfer-Encoding` | `chunked` | Indica que os dados são enviados em fluxo (stream) em tempo real. |
+
+- **Respostas:**
+  - `200 OK` (Stream de texto puro contínuo):
+    Os chunks chegam em sequência contínua à medida que o modelo Gemini os produz:
+    ```text
+    O Plano
+     VIP Pro oferece
+     10 GB de armazenamento
+     em nuvem para suas figurinhas.
+    ```
+  - `400 Bad Request` (Validação Zod):
+    ```json
+    {
+      "success": false,
+      "message": "A lista de mensagens deve conter ao menos 1 mensagem"
+    }
+    ```
+  - `401 Unauthorized` (Token ausente ou expirado):
+    ```json
+    {
+      "success": false,
+      "message": "Sua sessão expirou ou é inválida. Por favor, faça login novamente."
+    }
+    ```
+  - `500 Internal Server Error` (Erro inesperado):
+    ```json
+    {
+      "success": false,
+      "message": "Erro interno do servidor"
+    }
+    ```
+
+---
+
 ## 4. Modelos e Enums do Domínio
 
 ### Enums
@@ -1618,6 +1719,19 @@ export interface GroupModerationTokenPayload {
   moderatorEmail: string;
   createdAt: number;               // Epoch timestamp em milissegundos
 }
+
+### DTOs do Chat de IA (`ChatMessageDto`, `ChatBodyDto`)
+```typescript
+export type ChatRole = "user" | "assistant" | "system";
+
+export interface ChatMessageDto {
+  role: ChatRole;                  // Papel da mensagem no chat
+  content: string;                 // Conteúdo em texto puro
+}
+
+export interface ChatBodyDto {
+  messages: ChatMessageDto[];      // Lista com ao menos 1 mensagem (histórico ou mensagem atual)
+}
 ```
 
 ---
@@ -1670,3 +1784,112 @@ export interface GroupModerationTokenPayload {
       - `"accepted"`: Exiba badge verde **"Aprovado"** e torne o link clicável para comunidades ou membros.
       - `"rejected"`: Exiba badge vermelho **"Rejeitado"** e ofereça botão de edição imediato para que o usuário corrija o título ou o link.
     - Qualquer chamada a `PATCH /group/item/:itemId` atualizando título ou URL altera atômica e automaticamente o status para `"pending"` no backend, disparando um novo fluxo de moderação.
+12. **Integração do Chat de IA com Streaming HTTP em Tempo Real no Flutter (Dart):**
+    - **CRÍTICO - Não use `http.post` com `await`:** O método `http.post(...)` padrão do pacote `http` espera toda a resposta ser concluída antes de retornar a string inteira, o que destrói a experiência de streaming em tempo real.
+    - **Como consumir corretamente:** Utilize `http.Request` + `client.send(request)` + `response.stream.transform(utf8.decoder)`. Dessa forma, cada pequeno pedaço (chunk) emitido pelo Gemini no backend chega imediatamente ao Flutter, permitindo renderizar o texto sendo digitado na tela instantaneamente.
+    - **Exemplo completo de Service no Flutter (`ChatService.dart`):**
+      ```dart
+      import 'dart:async';
+      import 'dart:convert';
+      import 'package:http/http.dart' as http;
+
+      class ChatMessage {
+        final String role; // "user" | "assistant" | "system"
+        String content;
+
+        ChatMessage({required this.role, required this.content});
+
+        Map<String, dynamic> toJson() => {
+          'role': role,
+          'content': content,
+        };
+      }
+
+      class ChatService {
+        final String baseUrl;
+        http.Client? _client;
+
+        ChatService({required this.baseUrl});
+
+        /// Envia histórico completo de mensagens com streaming em tempo real
+        Stream<String> streamChat({
+          required List<ChatMessage> messages,
+          required String token,
+        }) async* {
+          _client = http.Client();
+
+          final request = http.Request('POST', Uri.parse('$baseUrl/chat/'));
+          request.headers.addAll({
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          });
+
+          request.body = jsonEncode({
+            'messages': messages.map((m) => m.toJson()).toList(),
+          });
+
+          final response = await _client!.send(request);
+
+          if (response.statusCode != 200) {
+            final errorBody = await response.stream.bytesToString();
+            throw Exception('Falha no chat (${response.statusCode}): $errorBody');
+          }
+
+          // Transforma o fluxo binário em strings UTF-8 conforme os chunks chegam
+          yield* response.stream.transform(utf8.decoder);
+        }
+
+        /// Cancela a requisição em andamento caso o usuário saia da tela
+        void cancel() {
+          _client?.close();
+          _client = null;
+        }
+      }
+      ```
+    - **Exemplo de uso na View do Flutter (`ChatScreenState`):**
+      ```dart
+      StreamSubscription<String>? _streamSub;
+
+      void sendMessage(String text) {
+        final userMessage = ChatMessage(role: 'user', content: text);
+        final assistantMessage = ChatMessage(role: 'assistant', content: '');
+
+        setState(() {
+          _messages.add(userMessage);
+          _messages.add(assistantMessage);
+          _isLoading = true;
+        });
+
+        _streamSub = _chatService
+            .streamChat(messages: _messages.sublist(0, _messages.length - 1), token: userToken)
+            .listen(
+              (chunk) {
+                setState(() {
+                  // Concatena cada fragmento recebido em tempo real na última mensagem da IA
+                  assistantMessage.content += chunk;
+                });
+              },
+              onDone: () {
+                setState(() => _isLoading = false);
+              },
+              onError: (error) {
+                setState(() {
+                  _isLoading = false;
+                  assistantMessage.content = 'Erro ao receber resposta. Tente novamente.';
+                });
+              },
+            );
+      }
+
+      @override
+      void dispose() {
+        _streamSub?.cancel();
+        _chatService.cancel();
+        super.dispose();
+      }
+      ```
+    - **Vantagens para a Experiência do Usuário (UX):**
+      1. **Latência percebida quase zero:** O usuário começa a ler a resposta em menos de 1 segundo.
+      2. **Econômico em memória e CPU:** O stream decodifica diretamente em pedaços de texto leve.
+      3. **Contexto contínuo:** Enviando `messages`, o assistente lembra das perguntas anteriores do usuário na mesma sessão.
+      4. **Seguro contra travamentos:** Se o usuário fechar a tela, `_streamSub?.cancel()` e `client.close()` encerram o socket imediatamente no lado do cliente e do servidor.
