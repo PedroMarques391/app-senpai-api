@@ -1,7 +1,8 @@
 import { MAX_STICKERS_PER_PACK } from "@/constants";
-import { createStickerDtoSchema } from "@/dtos";
 import { stickerPackSchema } from "@/schemas";
 import z from "zod";
+
+import { createStickerDtoSchema } from "../sticker";
 
 export const createPackDtoSchema = stickerPackSchema
   .pick({
