@@ -157,4 +157,12 @@ export class PackRepository implements IPackRepository {
       { $inc: { likes_count: delta } },
     );
   }
+
+  async incrementDownloadsCount(packId: ObjectId): Promise<boolean> {
+    const result = await this.collection.updateOne(
+      { _id: packId },
+      { $inc: { downloads_count: 1 } },
+    );
+    return result.matchedCount > 0;
+  }
 }

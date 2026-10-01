@@ -298,4 +298,9 @@ export class PackService {
 
     return result;
   }
+
+  async incrementDownloadsCount(id: string): Promise<boolean> {
+    const packObjectId = MongoUtils.toObjectId(id, "ID do pacote inválido");
+    return this.packRepository.incrementDownloadsCount(packObjectId);
+  }
 }

@@ -230,4 +230,33 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
       });
     },
   );
+
+  app.post(
+    "/:id/download",
+    {
+      schema: { params: z.object({ id: z.string() }) },
+    },
+    async (request, reply) => {
+      const updated = await packService.incrementDownloadsCount(
+        request.params.id,
+      );
+
+      if (!updated) {
+        return reply.status(404).send({
+          success: false,
+          message: "Pacote não encontrado",
+        });
+      }
+
+      await Promise.all([
+        cacheService.del(`pack:${request.params.id}`),
+        cacheService.delPattern("pack:list:*"),
+      ]);
+
+      return reply.status(200).send({
+        success: true,
+        message: "Download contabilizado com sucesso",
+      });
+    },
+  );
 };

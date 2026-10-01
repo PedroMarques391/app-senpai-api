@@ -18,4 +18,5 @@ export interface PackRepository {
   ): Promise<StickerPack | null>;
   delete(id: ObjectId, userId: ObjectId): Promise<boolean>;
   updateLikesCount(packId: ObjectId, delta: 1 | -1): Promise<void>;
+  incrementDownloadsCount(packId: ObjectId): Promise<boolean>;
 }
