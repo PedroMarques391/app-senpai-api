@@ -129,7 +129,18 @@ export class UserRepository implements IUserRepository {
   ): Promise<void> {
     await this.collection.updateOne(
       { _id: userId },
-      { $inc: { storage_used_bytes: bytes } },
+      [
+        {
+          $set: {
+            storage_used_bytes: {
+              $max: [
+                0,
+                { $add: [{ $ifNull: ["$storage_used_bytes", 0] }, bytes] },
+              ],
+            },
+          },
+        },
+      ],
     );
   }
 
