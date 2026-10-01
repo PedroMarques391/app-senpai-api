@@ -1,7 +1,7 @@
 import { DateUtils } from "./DateUtils";
 
 export class QuotaUtils {
-  static readonly FREE_DAILY_STICKER_LIMIT = 3;
+  static readonly FREE_DAILY_STICKER_LIMIT = 6;
 
   static getCycleInfo(referenceDate: Date = new Date()): {
     cycleDate: string;
