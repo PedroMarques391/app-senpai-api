@@ -824,6 +824,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
     ```json
     {
       "success": false,
+      "code": "FILE_TOO_LARGE",
       "message": "O arquivo excede o limite máximo permitido de 25 MB."
     }
     ```
