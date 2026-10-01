@@ -466,7 +466,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 *(Requer Header `Authorization`)*
 - **Descrição & Regras de Negócio:**
   1. **PreHandler de Cota Diária:** Executa `checkPackCreationQuota`. Se o usuário for Free e exceder o limite de 1 pacote/dia ou o total de 6 figurinhas/dia, a requisição é barrada com HTTP `403 QUOTA_EXCEEDED`.
-  2. **Criação de Figurinhas em Lote Embutidas:** O body aceita a propriedade `stickers?: CreateStickerDto[]`. Todas as figurinhas enviadas são criadas e vinculadas ao pacote na mesma operação atômica, incrementando o `stickers_count` do usuário (`static` ou `dynamic`) e acumulando `storage_used_bytes` com base na soma dos `size_bytes` de cada figurinha.
+  2. **Criação de Figurinhas em Lote Embutidas:** O body aceita a propriedade `stickers?: CreateStickerDto[]` (limitada a no máximo 30 figurinhas pelo schema Zod). Todas as figurinhas enviadas são criadas e vinculadas ao pacote na mesma operação atômica, incrementando o `stickers_count` do usuário (`static` ou `dynamic`) e acumulando `storage_used_bytes` com base na soma dos `size_bytes` de cada figurinha.
   3. **Geração Automática do `icon_url`:** Se o campo `icon_url` não for informado no payload, mas o array `stickers` contiver ao menos uma figurinha com URL válida do Cloudinary, o backend gera automaticamente o `icon_url` aplicando a transformação de otimização `c_fill,w_256,h_256,f_webp,q_auto`.
   4. **Campos Opcionais com Defaults:** `description` é opcional (default `"Sem descrição"`), e `tags` é opcional (default `[]`).
   5. **Registro de Cota:** Grava o consumo da cota em `creation_quotas` para usuários Free.
@@ -480,7 +480,8 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   | `tags` | `z.array(z.string())` | `List<String>?` | Não | `[]` / Max 10 tags, cada 2 a 20 chars | Tags descritivas. |
   | `is_public` | `z.boolean()` | `bool?` | Não | `true` | Visibilidade pública. |
   | `icon_url` | `z.url()` | `String?` | Não | Nulo (ou derivado da 1ª figurinha) | URL do ícone do pacote. |
-  | `stickers` | `z.array(createStickerDtoSchema)` | `List<CreateStickerDto>?` | Não | Opcional | Array de figurinhas iniciais para criar junto ao pacote. |
+  | `stickers` | `z.array(createStickerDtoSchema)` | `List<CreateStickerDto>?` | Não | `max(30)` / Opcional | Array de figurinhas iniciais para criar junto ao pacote (máximo 30). |
+
 - **Respostas:**
   - `201 Created`: `{"success": true, "message": "Pacote criado com sucesso", "pack": { ...StickerPack }}`
   - `403 Forbidden` (Cota excedida):
@@ -564,11 +565,12 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 *(Requer Header `Authorization`)*
 - **Descrição & Regras de Negócio:**
   1. **Validação de Cota:** Executa `checkStickerCreationQuota`. Se o usuário Free já tiver criado 6 figurinhas no ciclo diário, retorna `403 QUOTA_EXCEEDED`.
-  2. **Validação de Propriedade:** Verifica se o usuário autenticado é o proprietário do pacote.
-  3. **Auto-preenchimento do Ícone do Pacote:** Se o pacote estiver sem `icon_url`, a criação da primeira figurinha gera e salva automaticamente o `icon_url` do pacote aplicando a transformação Cloudinary `c_fill,w_256,h_256,f_webp,q_auto` na URL desta figurinha.
-  4. **Contador do Usuário e Armazenamento:** Incrementa atômica e persistentemente o contador `stickers_count.static` ou `stickers_count.dynamic` do perfil do usuário e incrementa `storage_used_bytes` caso `size_bytes` seja informado.
-  5. **Registro de Cota:** Registra o uso da cota para usuários Free em `creation_quotas`.
-  6. **Invalidação Reativa de Cache:** Limpa os caches de figurinhas (`stickers:pack:<packId>`), do pacote (`pack:<packId>`), listagens (`pack:list:*`), pacotes do usuário (`pack:user:<userId>`) e do perfil do usuário (`profile:<userId>`), garantindo sincronização instantânea dos contadores na interface do app.
+  2. **Validação de Limite Máximo por Pacote (30 figurinhas):** Verifica a quantidade atual de figurinhas pertencentes ao pacote no banco. Se o pacote já contiver 30 figurinhas, a criação é bloqueada com HTTP `400 Bad Request` (`"O pacote já atingiu o limite máximo permitido de 30 figurinhas."`).
+  3. **Validação de Propriedade:** Verifica se o usuário autenticado é o proprietário do pacote.
+  4. **Auto-preenchimento do Ícone do Pacote:** Se o pacote estiver sem `icon_url`, a criação da primeira figurinha gera e salva automaticamente o `icon_url` do pacote aplicando a transformação Cloudinary `c_fill,w_256,h_256,f_webp,q_auto` na URL desta figurinha.
+  5. **Contador do Usuário e Armazenamento:** Incrementa atômica e persistentemente o contador `stickers_count.static` ou `stickers_count.dynamic` do perfil do usuário e incrementa `storage_used_bytes` caso `size_bytes` seja informado.
+  6. **Registro de Cota:** Registra o uso da cota para usuários Free em `creation_quotas`.
+  7. **Invalidação Reativa de Cache:** Limpa os caches de figurinhas (`stickers:pack:<packId>`), do pacote (`pack:<packId>`), listagens (`pack:list:*`), pacotes do usuário (`pack:user:<userId>`) e do perfil do usuário (`profile:<userId>`), garantindo sincronização instantânea dos contadores na interface do app.
 - **Request Body (`CreateStickerDto`):**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Constraints | Descrição |
   | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -581,7 +583,15 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   | `size_bytes` | `z.number().nonnegative()` | `int?` | Não | `>= 0` / default `0` | Tamanho do arquivo em bytes. |
 - **Respostas:**
   - `201 Created`: `{"success": true, "message": "Figurinha criada com sucesso", "sticker": { ...Sticker }}`
+  - `400 Bad Request` (Limite do pacote atingido):
+    ```json
+    {
+      "success": false,
+      "message": "O pacote já atingiu o limite máximo permitido de 30 figurinhas."
+    }
+    ```
   - `403 Forbidden` (Cota excedida): `{"success": false, "code": "QUOTA_EXCEEDED", "message": "..."}`
+
 
 #### `PUT /sticker/:id`
 *(Requer Header `Authorization`)*

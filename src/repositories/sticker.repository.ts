@@ -32,6 +32,11 @@ export class StickerRepository implements IStickerRepository {
     return stickers;
   }
 
+  async countByPackId(packId: ObjectId): Promise<number> {
+    return this.collection.countDocuments({ pack_id: packId });
+  }
+
+
   async create(stickerData: CreateStickerPayload): Promise<Sticker | null> {
     const parsedData = insertStickerSchema.parse(stickerData);
 

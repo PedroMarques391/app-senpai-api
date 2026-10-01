@@ -1,3 +1,4 @@
+import { MAX_STICKERS_PER_PACK } from "@/constants";
 import type {
   CreatePackDto,
   CreateStickerDto,
@@ -38,6 +39,13 @@ export class PackService {
 
     const sanitizedTags = packData.tags?.map((tag) => tag.toLowerCase().trim());
     const { stickers, ...packFields } = packData;
+
+    if (stickers && stickers.length > MAX_STICKERS_PER_PACK) {
+      throw new Error(
+        `Um pacote pode conter no máximo ${MAX_STICKERS_PER_PACK} figurinhas.`,
+      );
+    }
+
 
     let iconUrlToSave = packFields.icon_url;
     if (

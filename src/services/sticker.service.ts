@@ -1,3 +1,4 @@
+import { MAX_STICKERS_PER_PACK } from "@/constants";
 import type { CreateStickerDto, UpdateStickerDto } from "@/dtos";
 import type { Sticker } from "@/models";
 import type {
@@ -33,6 +34,14 @@ export class StickerService {
     }
 
     PermissionUtils.verifyOwnership(pack.user_id, userObjectId, "pacote");
+
+    const currentStickersCount =
+      await this.stickerRepository.countByPackId(packObjectId);
+    if (currentStickersCount >= MAX_STICKERS_PER_PACK) {
+      throw new Error(
+        `O pacote já atingiu o limite máximo permitido de ${MAX_STICKERS_PER_PACK} figurinhas.`,
+      );
+    }
 
     const sticker = await this.stickerRepository.create({
       ...stickerData,
