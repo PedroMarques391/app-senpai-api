@@ -14,9 +14,11 @@ import {
 import {
   adminRouter,
   authRoutes,
+  chatRoutes,
   contentRoutes,
   creationQuotaRoutes,
   dailyMissionRoutes,
+  groupRoutes,
   inventoryRoutes,
   packRoutes,
   profileRoutes,
@@ -24,7 +26,6 @@ import {
   storeRoutes,
   termsRoutes,
   uploadRoutes,
-  groupRoutes,
 } from "@/routes";
 import { EmailWorker, WhatsAppWorker } from "@/workers";
 import fastifyMultipart from "@fastify/multipart";
@@ -43,15 +44,15 @@ const server = fastify({
     process.env.NODE_ENV === "production"
       ? true
       : {
-        transport: {
-          target: "pino-pretty",
-          options: {
-            colorize: true,
-            translateTime: "HH:MM:ss Z",
-            ignore: "pid,hostname",
+          transport: {
+            target: "pino-pretty",
+            options: {
+              colorize: true,
+              translateTime: "HH:MM:ss Z",
+              ignore: "pid,hostname",
+            },
           },
         },
-      },
 }).withTypeProvider<ZodTypeProvider>();
 
 server.register(fastifyCors, {
@@ -62,9 +63,9 @@ server.register(fastifyCors, {
 });
 
 server.register(fastifyRawBody, {
-  field: 'rawBody',
+  field: "rawBody",
   global: false,
-  encoding: 'utf8',
+  encoding: "utf8",
   runFirst: true,
 });
 
@@ -87,10 +88,13 @@ server.register(adminRouter, { prefix: "/admin" });
 server.register(storeRoutes, { prefix: "/store" });
 server.register(contentRoutes, { prefix: "/content" });
 server.register(groupRoutes, { prefix: "/group" });
-server.register(async (app) => {
-  app.register(resendWebhook, { prefix: "/resend" });
-  app.register(revenuecatWebhook, { prefix: "/revenuecat" });
-}, { prefix: "/webhooks" })
+server.register(
+  async (app) => {
+    app.register(resendWebhook, { prefix: "/resend" });
+    app.register(revenuecatWebhook, { prefix: "/revenuecat" });
+  },
+  { prefix: "/webhooks" },
+);
 
 server.get("/health", (request, reply) => {
   return reply.status(200).send({
@@ -100,7 +104,6 @@ server.get("/health", (request, reply) => {
 });
 
 server.register(async (app) => {
-
   app.addHook("onRequest", app.authenticate);
 
   app.get("/me", async (request, reply) => {
@@ -118,8 +121,8 @@ server.register(async (app) => {
   app.register(termsRoutes, { prefix: "/terms" });
   app.register(creationQuotaRoutes, { prefix: "/creation/quota" });
   app.register(dailyMissionRoutes, { prefix: "/missions" });
+  app.register(chatRoutes, { prefix: "/chat" });
 });
-
 
 const bootstrap = async () => {
   try {
