@@ -271,8 +271,8 @@ O sistema de cotas diárias controla a criação de pacotes e figurinhas para us
 
 #### Regras de Negócio do Ciclo de Cotas:
 1. **Fuso Horário de Reset:** O ciclo diário é baseado no horário de Brasília (UTC-3) e **reinicia todos os dias às 06:00 BRT** (09:00 UTC).
-2. **Limite Diário Grátis:** Usuários Free podem criar até **1 pacote** e até **3 figurinhas por dia** (`QuotaUtils.FREE_DAILY_STICKER_LIMIT = 3`).
-3. **Bloqueio de Pacote Ativo:** Ao criar ou reservar o primeiro pacote do dia, todas as criações subsequentes daquele dia devem pertencer ao mesmo pacote até que a cota de 3 figurinhas se esgote.
+2. **Limite Diário Grátis:** Usuários Free podem criar até **1 pacote** e até **6 figurinhas por dia** (`QuotaUtils.FREE_DAILY_STICKER_LIMIT = 6`).
+3. **Bloqueio de Pacote Ativo:** Ao criar ou reservar o primeiro pacote do dia, todas as criações subsequentes daquele dia devem pertencer ao mesmo pacote até que a cota de 6 figurinhas se esgote.
 4. **Usuários VIP (`premium: true`):** Possuem cota ilimitada (`isUnlimited: true`), sem restrição de pacote ou limite diário.
 
 #### Regras de Cota de Armazenamento (`Storage Quota`):
@@ -330,7 +330,7 @@ Além das cotas diárias de criação, a plataforma monitora e limita o consumo 
     {
       "success": false,
       "code": "QUOTA_EXCEEDED",
-      "message": "Sua criação grátis de hoje já está vinculada ao pack \"Memes de Gatinhos\". Você pode continuar nele até completar 3 figurinhas."
+      "message": "Sua criação grátis de hoje já está vinculada ao pack \"Memes de Gatinhos\". Você pode continuar nele até completar 6 figurinhas."
     }
     ```
 
@@ -465,7 +465,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 #### `POST /pack/`
 *(Requer Header `Authorization`)*
 - **Descrição & Regras de Negócio:**
-  1. **PreHandler de Cota Diária:** Executa `checkPackCreationQuota`. Se o usuário for Free e exceder o limite de 1 pacote/dia ou o total de 3 figurinhas/dia, a requisição é barrada com HTTP `403 QUOTA_EXCEEDED`.
+  1. **PreHandler de Cota Diária:** Executa `checkPackCreationQuota`. Se o usuário for Free e exceder o limite de 1 pacote/dia ou o total de 6 figurinhas/dia, a requisição é barrada com HTTP `403 QUOTA_EXCEEDED`.
   2. **Criação de Figurinhas em Lote Embutidas:** O body aceita a propriedade `stickers?: CreateStickerDto[]`. Todas as figurinhas enviadas são criadas e vinculadas ao pacote na mesma operação atômica, incrementando o `stickers_count` do usuário (`static` ou `dynamic`) e acumulando `storage_used_bytes` com base na soma dos `size_bytes` de cada figurinha.
   3. **Geração Automática do `icon_url`:** Se o campo `icon_url` não for informado no payload, mas o array `stickers` contiver ao menos uma figurinha com URL válida do Cloudinary, o backend gera automaticamente o `icon_url` aplicando a transformação de otimização `c_fill,w_256,h_256,f_webp,q_auto`.
   4. **Campos Opcionais com Defaults:** `description` é opcional (default `"Sem descrição"`), e `tags` é opcional (default `[]`).
@@ -563,7 +563,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 #### `POST /sticker/:packId`
 *(Requer Header `Authorization`)*
 - **Descrição & Regras de Negócio:**
-  1. **Validação de Cota:** Executa `checkStickerCreationQuota`. Se o usuário Free já tiver criado 3 figurinhas no ciclo diário, retorna `403 QUOTA_EXCEEDED`.
+  1. **Validação de Cota:** Executa `checkStickerCreationQuota`. Se o usuário Free já tiver criado 6 figurinhas no ciclo diário, retorna `403 QUOTA_EXCEEDED`.
   2. **Validação de Propriedade:** Verifica se o usuário autenticado é o proprietário do pacote.
   3. **Auto-preenchimento do Ícone do Pacote:** Se o pacote estiver sem `icon_url`, a criação da primeira figurinha gera e salva automaticamente o `icon_url` do pacote aplicando a transformação Cloudinary `c_fill,w_256,h_256,f_webp,q_auto` na URL desta figurinha.
   4. **Contador do Usuário e Armazenamento:** Incrementa atômica e persistentemente o contador `stickers_count.static` ou `stickers_count.dynamic` do perfil do usuário e incrementa `storage_used_bytes` caso `size_bytes` seja informado.

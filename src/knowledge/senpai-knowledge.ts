@@ -26,7 +26,7 @@ export const SENPAI_KNOWLEDGE_BASE = `
 ## 4. PLANOS E BENEFÍCIOS REAIS
 
 ### Plano Free (Gratuito)
-- **Criação de figurinhas:** Cota de 2 a 3 figurinhas grátis por dia.
+- **Criação de figurinhas:** Cota de até 6 figurinhas grátis por dia.
 - **Regra de cota diária:** A criação gratuita do dia fica vinculada a um único pacote diário até atingir o limite.
 - **Armazenamento em nuvem:** 500 MB (plan_tier: "free").
 - **Acesso:** Comandos básicos diretamente no WhatsApp e teste dos recursos do aplicativo.
