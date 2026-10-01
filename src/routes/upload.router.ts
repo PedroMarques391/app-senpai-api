@@ -21,14 +21,8 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
       if (!data) {
         return reply.status(400).send({
           success: false,
+          code: "NO_FILE_PROVIDED",
           message: "Nenhum arquivo enviado",
-        });
-      }
-
-      if (data.file.truncated) {
-        return reply.status(413).send({
-          success: false,
-          message: "O arquivo excede o limite máximo permitido de 25 MB.",
         });
       }
 
@@ -36,6 +30,7 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
       if (!userName) {
         return reply.status(401).send({
           success: false,
+          code: "USER_NAME_REQUIRED",
           message:
             "Para criar um sticker é necessário ter um nome de usuário, por favor atualize seu perfil.",
         });

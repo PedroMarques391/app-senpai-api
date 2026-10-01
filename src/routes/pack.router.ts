@@ -51,7 +51,6 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
       const hasFilters = Boolean(
         search || category || (tags && tags.length > 0),
       );
-      // Include sort+order in cache key so different orderings don't share the same entry
       const cacheKey = !hasFilters
         ? `pack:list:${page || 1}:${limit || 20}:${sort || "recent"}:${order || "desc"}`
         : null;

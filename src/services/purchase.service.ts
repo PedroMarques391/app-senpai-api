@@ -44,8 +44,6 @@ export class PurchaseService {
       throw new Error("Você não tem pétalas suficientes para comprar este item.");
     }
 
-    // deductPetals agora retorna o saldo atualizado (ou null se falhar,
-    // ex.: condição de saldo insuficiente verificada no próprio update atômico)
     const newBalance = await this.userRepository.deductPetals(
       userObjectId,
       storeItem.price_in_petals,
