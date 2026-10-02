@@ -37,6 +37,7 @@ import {
 } from "fastify-type-provider-zod";
 
 import fastifyCors from "@fastify/cors";
+import fastifyRateLimit from "@fastify/rate-limit";
 import fastifyRawBody from "fastify-raw-body";
 import { resendWebhook, revenuecatWebhook } from "./webhook";
 const server = fastify({
@@ -74,6 +75,12 @@ server.register(fastifyMultipart, {
     fileSize: 25 * 1024 * 1024,
   },
 });
+
+await server.register(fastifyRateLimit, {
+  max: 100,
+  timeWindow: 60 * 1000,
+});
+
 server.setValidatorCompiler(validatorCompiler);
 server.setSerializerCompiler(serializerCompiler);
 
@@ -122,6 +129,13 @@ server.register(async (app) => {
   app.register(creationQuotaRoutes, { prefix: "/creation/quota" });
   app.register(dailyMissionRoutes, { prefix: "/missions" });
   app.register(chatRoutes, { prefix: "/chat" });
+});
+
+server.get("/", async (request, reply) => {
+  return reply.status(200).send({
+    message: "Server is running, but you probably shouldn't be here. Go away.",
+    success: true,
+  });
 });
 
 const bootstrap = async () => {
