@@ -278,12 +278,12 @@ O sistema de cotas diárias controla a criação de pacotes e figurinhas para us
 #### Regras de Cota de Armazenamento (`Storage Quota`):
 
 > [!NOTE]
-> **Atualizado em 23/09/2026:** Limites de armazenamento revisados para suportar 3 tiers de plano (Free: 500 MB, VIP Pro: 10 GB e VIP Mestre: 20 GB). O contrato da resposta de erro `STORAGE_LIMIT_EXCEEDED` passa a adotar a propriedade canônica `plan_tier`.
+> **Atualizado em 07/10/2026:** Limites de armazenamento revisados para suportar 3 tiers de plano (Free: 500 MB, VIP Pro: 3 GB e VIP Mestre: 6 GB). O contrato da resposta de erro `STORAGE_LIMIT_EXCEEDED` passa a adotar a propriedade canônica `plan_tier`.
 
 Além das cotas diárias de criação, a plataforma monitora e limita o consumo total de armazenamento de mídias (`storage_used_bytes`) de cada usuário conforme o tier de plano:
 1. **Limite Plano Free:** **500 MB** (`536.870.912` bytes).
-2. **Limite Plano VIP Pro (`plan_tier: "vip_pro"`):** **10 GB** (`10.737.418.240` bytes).
-3. **Limite Plano VIP Mestre (`plan_tier: "vip_master"`):** **20 GB** (`21.474.836.480` bytes).
+2. **Limite Plano VIP Pro (`plan_tier: "vip_pro"`):** **3 GB** (`3.221.225.472` bytes).
+3. **Limite Plano VIP Mestre (`plan_tier: "vip_master"`):** **6 GB** (`6.442.450.944` bytes).
 4. **PreHandler `checkStorageQuota`:** Intercepta envios de mídia no endpoint `POST /upload`. A resolução do limite é executada em tempo $O(1)$ lendo `request.user.subscription.type` (`"FREE" | "PRO" | "MESTRE"`) diretamente do token JWT decodificado em memória (zero consultas ao banco para identificar plano). Apenas o consumo atual (`storage_used_bytes`) é lido do MongoDB. Se `storage_used_bytes + content_length > limit`, a requisição é barrada antes do stream para o Cloudinary com HTTP `403 Forbidden` (`code: "STORAGE_LIMIT_EXCEEDED"`).
 5. **Ciclo de Vida e Sincronização:**
    - O tamanho em bytes da figurinha (`size_bytes`) é persistido e incrementado em `storage_used_bytes` na criação de figurinhas ou pacotes com itens.
@@ -786,7 +786,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 
 #### `POST /upload/?folder=...`
 - **Descrição:** Envia arquivos de imagem/sticker via Multipart Stream diretamente ao Cloudinary, organizando o path em pastas segregadas por usuário (`folder/userName/filename`).
-- **Validação de Cota:** Possui o preHandler `app.checkStorageQuota`. Bloqueia o upload antes de iniciar a transmissão se o tamanho indicado no header `Content-Length` somado ao `storage_used_bytes` do usuário ultrapassar o limite do plano (500 MB Free / 10 GB VIP Pro / 20 GB VIP Mestre).
+- **Validação de Cota:** Possui o preHandler `app.checkStorageQuota`. Bloqueia o upload antes de iniciar a transmissão se o tamanho indicado no header `Content-Length` somado ao `storage_used_bytes` do usuário ultrapassar o limite do plano (500 MB Free / 3 GB VIP Pro / 6 GB VIP Mestre).
 - **Limite Máximo por Arquivo (25 MB):** O servidor rejeita imediatamente uploads truncados ou que excedam 25 MB com HTTP `413 Payload Too Large`.
 - **Respostas:**
   - `201 Created`:
@@ -807,7 +807,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
     {
       "success": false,
       "code": "STORAGE_LIMIT_EXCEEDED",
-      "message": "Limite de armazenamento atingido (500 MB para plano Free). Faça upgrade para VIP e desbloqueie até 20 GB!",
+      "message": "Limite de armazenamento atingido (500 MB para plano Free). Faça upgrade para VIP e desbloqueie até 6 GB!",
       "storage": {
         "used_bytes": 536870912,
         "limit_bytes": 536870912,
@@ -817,9 +817,9 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
     }
     ```
     > **Variações de Mensagem por Tier:**
-    > - **Free (`plan_tier: "free"`):** `"Limite de armazenamento atingido (500 MB para plano Free). Faça upgrade para VIP e desbloqueie até 20 GB!"`
-    > - **VIP Pro (`plan_tier: "vip_pro"`):** `"Limite de armazenamento atingido (10 GB para plano VIP Pro). Faça upgrade para VIP Mestre e desbloqueie 20 GB!"`
-    > - **VIP Mestre (`plan_tier: "vip_master"`):** `"Limite de armazenamento atingido (20 GB para plano VIP Mestre). Libere espaço excluindo figurinhas ou mídias antigas."`
+    > - **Free (`plan_tier: "free"`):** `"Limite de armazenamento atingido (500 MB para plano Free). Faça upgrade para VIP e desbloqueie até 6 GB!"`
+    > - **VIP Pro (`plan_tier: "vip_pro"`):** `"Limite de armazenamento atingido (3 GB para plano VIP Pro). Faça upgrade para VIP Mestre e desbloqueie 6 GB!"`
+    > - **VIP Mestre (`plan_tier: "vip_master"`):** `"Limite de armazenamento atingido (6 GB para plano VIP Mestre). Libere espaço excluindo figurinhas ou mídias antigas."`
   - `413 Payload Too Large`:
     ```json
     {
@@ -1538,7 +1538,7 @@ Módulo de Inteligência Artificial conversacional oficial do **Bot do Senpai**,
     ```text
     O Plano
      VIP Pro oferece
-     10 GB de armazenamento
+     3 GB de armazenamento
      em nuvem para suas figurinhas.
     ```
   - `400 Bad Request` (Validação Zod):
@@ -1785,8 +1785,8 @@ export interface ChatBodyDto {
 10. **Tratamento de Cotas de Armazenamento no Flutter (`STORAGE_LIMIT_EXCEEDED`):**
     - Ao interceptar HTTP `403 Forbidden` com `code: "STORAGE_LIMIT_EXCEEDED"` no upload de mídias:
       - Leia o campo canônico `storage.plan_tier` (`"free" | "vip_pro" | "vip_master"`).
-      - **Se `free`:** Apresente modal ou paywall oferecendo planos **VIP Pro (10 GB)** e **VIP Mestre (20 GB)**.
-      - **Se `vip_pro`:** Apresente modal de upsell direcionado ao **VIP Mestre (20 GB)** destacando os 10 GB adicionais.
+      - **Se `free`:** Apresente modal ou paywall oferecendo planos **VIP Pro (3 GB)** e **VIP Mestre (6 GB)**.
+      - **Se `vip_pro`:** Apresente modal de upsell direcionado ao **VIP Mestre (6 GB)** destacando os 3 GB adicionais.
       - **Se `vip_master`:** Exiba alerta informando cota máxima e forneça atalho para a biblioteca de pacotes/figurinhas para liberar espaço.
     - O token JWT decodificado no login ou refresh (`request.user.subscription.type`) permite alternar a interface e exibir o selo de plano instantaneamente sem requisições adicionais de rede.
 11. **Gestão e Exibição de Status de Grupos (`status: "pending" | "accepted" | "rejected"`):**

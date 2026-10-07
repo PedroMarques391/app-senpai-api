@@ -33,7 +33,7 @@ export const SENPAI_KNOWLEDGE_BASE = `
 
 ### Plano VIP Pro (Para Criadores Individuais)
 - **Criação de figurinhas:** SEM LIMITES (criação ilimitada de figurinhas estáticas e animadas/vídeos/GIFs).
-- **Armazenamento em nuvem:** 10 GB (plan_tier: "vip_pro").
+- **Armazenamento em nuvem:** 3 GB (plan_tier: "vip_pro").
 - **Ferramentas avançadas liberadas:**
   - Remoção automática de fundo.
   - Figurinhas anônimas (sem autor e sem pacote).
@@ -44,7 +44,7 @@ export const SENPAI_KNOWLEDGE_BASE = `
 - **Sem restrição de packs:** Pode criar em quantos pacotes quiser sem travas diárias.
 
 ### Plano VIP Mestre (Para Grupos de WhatsApp e Administradores)
-- **Inclui TUDO do Plano VIP Pro** + armazenamento estendido para **20 GB** (plan_tier: "vip_master").
+- **Inclui TUDO do Plano VIP Pro** + armazenamento estendido para **6 GB** (plan_tier: "vip_master").
 - **Recursos Exclusivos para Grupos de WhatsApp:**
   - **Moderação avançada de grupo:** Comandos para banir membros que violam regras, silenciar e organizar conversas.
   - **Automação de horários:** Abertura e fechamento automático do grupo em horários pré-programados.
