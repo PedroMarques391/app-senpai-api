@@ -3,8 +3,8 @@ import type { PlanTier } from "@/types";
 
 export class StorageQuotaUtils {
   static readonly FREE_LIMIT_BYTES = 536_870_912;
-  static readonly VIP_PRO_LIMIT_BYTES = 10 * 1024 * 1024 * 1024;
-  static readonly VIP_MASTER_LIMIT_BYTES = 20 * 1024 * 1024 * 1024;
+  static readonly VIP_PRO_LIMIT_BYTES = 3 * 1024 * 1024 * 1024;
+  static readonly VIP_MASTER_LIMIT_BYTES = 6 * 1024 * 1024 * 1024;
 
   private static readonly LIMITS: Record<VipType, number> = {
     FREE: StorageQuotaUtils.FREE_LIMIT_BYTES,
