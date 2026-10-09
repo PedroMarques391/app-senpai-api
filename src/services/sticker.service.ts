@@ -1,4 +1,5 @@
-import { MAX_STICKERS_PER_PACK } from "@/constants";
+import { MAX_STICKERS_PER_PACK, MIN_STICKERS_PER_PACK } from "@/constants";
+import { PackRulesError } from "@/errors";
 import type { CreateStickerDto, UpdateStickerDto } from "@/dtos";
 import type { Sticker } from "@/models";
 import type {
@@ -38,9 +39,15 @@ export class StickerService {
     const currentStickersCount =
       await this.stickerRepository.countByPackId(packObjectId);
     if (currentStickersCount >= MAX_STICKERS_PER_PACK) {
-      throw new Error(
+      throw new PackRulesError(
+        "max",
         `O pacote já atingiu o limite máximo permitido de ${MAX_STICKERS_PER_PACK} figurinhas.`,
       );
+    }
+
+    const existingStickers = await this.stickerRepository.findByPackId(packObjectId);
+    if (existingStickers.length > 0 && existingStickers[0].type !== stickerData.type) {
+      throw new PackRulesError("type_mismatch");
     }
 
     const sticker = await this.stickerRepository.create({
@@ -191,6 +198,11 @@ export class StickerService {
       userObjectId,
       "figurinha",
     );
+
+    const currentPackCount = await this.stickerRepository.countByPackId(existingSticker.pack_id);
+    if (currentPackCount <= MIN_STICKERS_PER_PACK) {
+      throw new PackRulesError("min");
+    }
 
     const result = await this.stickerRepository.delete(
       stickerObjectId,

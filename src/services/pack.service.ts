@@ -1,4 +1,5 @@
-import { MAX_STICKERS_PER_PACK } from "@/constants";
+import { MAX_STICKERS_PER_PACK, MIN_STICKERS_PER_PACK } from "@/constants";
+import { PackRulesError } from "@/errors";
 import type {
   CreatePackDto,
   CreateStickerDto,
@@ -40,10 +41,17 @@ export class PackService {
     const sanitizedTags = packData.tags?.map((tag) => tag.toLowerCase().trim());
     const { stickers, ...packFields } = packData;
 
-    if (stickers && stickers.length > MAX_STICKERS_PER_PACK) {
-      throw new Error(
-        `Um pacote pode conter no máximo ${MAX_STICKERS_PER_PACK} figurinhas.`,
-      );
+    if (!stickers || stickers.length < MIN_STICKERS_PER_PACK) {
+      throw new PackRulesError("min");
+    }
+
+    if (stickers.length > MAX_STICKERS_PER_PACK) {
+      throw new PackRulesError("max");
+    }
+
+    const firstType = stickers[0]?.type;
+    if (stickers.some((s) => s.type !== firstType)) {
+      throw new PackRulesError("type_mismatch");
     }
 
 

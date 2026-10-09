@@ -1,4 +1,4 @@
-import { MAX_STICKERS_PER_PACK } from "@/constants";
+import { MAX_STICKERS_PER_PACK, MIN_STICKERS_PER_PACK } from "@/constants";
 import { stickerPackSchema } from "@/schemas";
 import z from "zod";
 
@@ -16,6 +16,10 @@ export const createPackDtoSchema = stickerPackSchema
     tags: z.array(z.string().min(2).max(20)).max(10).optional().default([]),
     stickers: z
       .array(createStickerDtoSchema)
+      .min(
+        MIN_STICKERS_PER_PACK,
+        `Um pacote precisa ter no mínimo ${MIN_STICKERS_PER_PACK} figurinhas.`,
+      )
       .max(
         MAX_STICKERS_PER_PACK,
         `Um pacote pode conter no máximo ${MAX_STICKERS_PER_PACK} figurinhas.`,
