@@ -10,6 +10,7 @@ import { AuthUtils, MongoUtils, PermissionUtils, UserUtils } from "@/utils";
 export class ProfileService {
   constructor(private readonly userRepository: UserRepository) {}
 
+
   async getProfile(id: string): Promise<User | null> {
     const userObjectId = MongoUtils.toObjectId(id, "ID de usuário inválido");
     const user = await this.userRepository.find({ _id: userObjectId });

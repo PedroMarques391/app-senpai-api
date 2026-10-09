@@ -107,13 +107,10 @@ export class AuthService {
       wa_id: fullUser.wa_id,
       name: fullUser.name,
       userName: fullUser.userName,
-      premium: fullUser.premium,
       email: fullUser.email,
       isNumberVerified: fullUser.isNumberVerified,
+      isEmailVerified: fullUser.isEmailVerified,
       role: fullUser.role,
-      subscription: {
-        type: fullUser.subscription.type,
-      },
     };
 
     const token = AuthUtils.generateJWT(this.jwtInstance, payload);
@@ -168,13 +165,10 @@ export class AuthService {
       wa_id: fullUser.wa_id,
       name: fullUser.name,
       userName: fullUser.userName,
-      premium: fullUser.premium,
       email: fullUser.email,
       isNumberVerified: fullUser.isNumberVerified,
+      isEmailVerified: fullUser.isEmailVerified,
       role: fullUser.role,
-      subscription: {
-        type: fullUser.subscription.type,
-      },
     };
     const token = AuthUtils.generateJWT(this.jwtInstance, payload);
 

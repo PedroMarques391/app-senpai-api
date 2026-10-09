@@ -1,6 +1,8 @@
 import fastifyJwt from "@fastify/jwt";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
+import { ServiceFactory } from "@/factories";
+import type { User } from "@/models";
 import type { UserRole } from "@/schemas";
 
 async function authPlugin(fastify: FastifyInstance) {
@@ -38,16 +40,49 @@ async function authPlugin(fastify: FastifyInstance) {
     };
   });
 
-
   fastify.decorate(
     "requireMaster",
     async function (request: FastifyRequest, reply: FastifyReply) {
-      if (request.user?.subscription?.type !== "MESTRE") {
+      if (!request.user) {
+        return reply.status(401).send({
+          message:
+            "Sua sessão expirou ou é inválida. Por favor, faça login novamente.",
+          success: false,
+        });
+      }
+
+      const profileService = ServiceFactory.getProfileService();
+      const cacheService = ServiceFactory.getCacheService(fastify.redis);
+      const cacheKey = `profile:${request.user._id}`;
+      let profile = await cacheService.get<User>(cacheKey);
+      if (!profile) {
+        profile = await profileService.getProfile(request.user._id);
+        if (profile) {
+          await cacheService.set(cacheKey, profile, 60 * 60 * 24);
+        }
+      }
+
+      request.profile = profile ?? undefined;
+
+      if (profile?.subscription?.type !== "MESTRE") {
         return reply.status(403).send({
           success: false,
           code: "MESTRE_ONLY_FEATURE",
           message:
             "A funcionalidade de grupos é exclusiva para usuários com plano VIP Mestre, que tal um upgrade?",
+        });
+      }
+    },
+  );
+
+  fastify.decorate(
+    "requireVerifiedEmail",
+    async function (request: FastifyRequest, reply: FastifyReply) {
+      if (!request.user?.isEmailVerified) {
+        return reply.status(403).send({
+          success: false,
+          code: "EMAIL_NOT_VERIFIED",
+          message: "Verifique seu e-mail para criar figurinhas e packs.",
         });
       }
     },

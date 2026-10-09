@@ -1,5 +1,5 @@
-import type { UserRole, VipType } from "@/schemas";
-import type { StickerPack } from "@/models";
+import type { UserRole } from "@/schemas";
+import type { StickerPack, User } from "@/models";
 import type { EmailProvider } from "@/types";
 import "@fastify/jwt";
 import "fastify";
@@ -8,6 +8,7 @@ import type { RedisClientType } from "redis";
 declare module "fastify" {
   export interface FastifyRequest {
     pack?: StickerPack;
+    profile?: User;
   }
 
   export interface FastifyInstance {
@@ -18,6 +19,7 @@ declare module "fastify" {
       ...allowedRoles: UserRole[]
     ) => (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
     requireMaster: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    requireVerifiedEmail: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
     checkPackCreationQuota: (
       req: FastifyRequest,
       reply: FastifyReply,
@@ -42,11 +44,8 @@ declare module "@fastify/jwt" {
       userName: string;
       email: string;
       isNumberVerified: boolean;
+      isEmailVerified: boolean;
       role: UserRole;
-      premium: boolean;
-      subscription: {
-        type: VipType;
-      };
     };
   }
 }

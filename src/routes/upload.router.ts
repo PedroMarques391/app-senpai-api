@@ -14,7 +14,7 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
           folder: z.string().optional(),
         }),
       },
-      preHandler: [app.checkStorageQuota],
+      preHandler: [app.checkStorageQuota, app.requireVerifiedEmail],
     },
     async (request, reply) => {
       const data = await request.file();

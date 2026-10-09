@@ -4,6 +4,7 @@ import {
   updatePackDtoSchema,
 } from "@/dtos";
 import { ServiceFactory } from "@/factories";
+import type { User } from "@/models";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
 
@@ -12,6 +13,7 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
   const packFavoriteService = ServiceFactory.getPackFavoriteService();
   const cacheService = ServiceFactory.getCacheService(app.redis);
   const creationQuotaService = ServiceFactory.getCreationQuotaService();
+  const profileService = ServiceFactory.getProfileService();
 
   app.get(
     "/",
@@ -94,7 +96,7 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
     "/",
     {
       onRequest: [app.authenticate],
-      preHandler: [app.checkPackCreationQuota],
+      preHandler: [app.checkPackCreationQuota, app.requireVerifiedEmail],
       schema: { body: createPackDtoSchema },
     },
     async (request, reply) => {
@@ -105,11 +107,19 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
       );
 
       const stickerCount = request.body.stickers?.length ?? 0;
+      const cacheKey = `profile:${request.user._id}`;
+      let profile = await cacheService.get<User>(cacheKey);
+      if (!profile) {
+        profile = await profileService.getProfile(request.user._id);
+        if (profile) {
+          await cacheService.set(cacheKey, profile, 60 * 60 * 24);
+        }
+      }
       await creationQuotaService.recordUsage(
         request.user._id,
         request.body.pack_name,
         stickerCount,
-        request.user.premium === true,
+        profile?.premium === true,
       );
 
       await Promise.all([

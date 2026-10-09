@@ -1,6 +1,7 @@
 import type { CreatePackDto } from "@/dtos";
-import type { VipType } from "@/schemas";
 import { ServiceFactory } from "@/factories";
+import type { User } from "@/models";
+import type { VipType } from "@/schemas";
 import { StorageQuotaUtils } from "@/utils";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
@@ -8,7 +9,19 @@ import fp from "fastify-plugin";
 async function quotaPlugin(fastify: FastifyInstance) {
   const creationQuotaService = ServiceFactory.getCreationQuotaService();
   const packService = ServiceFactory.getPackService();
-  const userService = ServiceFactory.getUserService();
+  const profileService = ServiceFactory.getProfileService();
+  const cacheService = ServiceFactory.getCacheService(fastify.redis);
+
+  const getProfile = async (userId: string): Promise<User | null> => {
+    const cacheKey = `profile:${userId}`;
+    const cached = await cacheService.get<User>(cacheKey);
+    if (cached) return cached;
+    const profile = await profileService.getProfile(userId);
+    if (profile) {
+      await cacheService.set(cacheKey, profile, 60 * 60 * 24);
+    }
+    return profile;
+  };
 
   fastify.decorate(
     "checkPackCreationQuota",
@@ -20,7 +33,8 @@ async function quotaPlugin(fastify: FastifyInstance) {
         });
       }
 
-      const isVip = request.user.premium === true;
+      const profile = await getProfile(request.user._id);
+      const isVip = profile?.premium === true;
       if (isVip) {
         return;
       }
@@ -57,7 +71,8 @@ async function quotaPlugin(fastify: FastifyInstance) {
         });
       }
 
-      const isVip = request.user.premium === true;
+      const profile = await getProfile(request.user._id);
+      const isVip = profile?.premium === true;
       if (isVip) {
         return;
       }
@@ -101,23 +116,26 @@ async function quotaPlugin(fastify: FastifyInstance) {
         });
       }
 
-      const subscriptionType: VipType = request.user.subscription.type;
-
-      const limitBytes = StorageQuotaUtils.getLimit(subscriptionType);
-      const planTier = StorageQuotaUtils.toPlanTier(subscriptionType);
-
-      const dbUser = await userService.findUserById(request.user._id);
-      if (!dbUser) {
+      const profile = await getProfile(request.user._id);
+      if (!profile) {
         return reply.status(401).send({
           success: false,
           message: "Usuário não encontrado.",
         });
       }
 
-      const usedBytes = dbUser.storage_used_bytes ?? 0;
+      const subscriptionType: VipType = profile.subscription?.type ?? "FREE";
+      const limitBytes = StorageQuotaUtils.getLimit(subscriptionType);
+      const planTier = StorageQuotaUtils.toPlanTier(subscriptionType);
+
+      const usedBytes = profile.storage_used_bytes ?? 0;
       const contentLength = Number(request.headers["content-length"] ?? 0);
 
-      const hasAvailableStorage = StorageQuotaUtils.hasAvailableStorage(usedBytes, contentLength, subscriptionType);
+      const hasAvailableStorage = StorageQuotaUtils.hasAvailableStorage(
+        usedBytes,
+        contentLength,
+        subscriptionType,
+      );
 
       if (!hasAvailableStorage) {
         let message: string;
