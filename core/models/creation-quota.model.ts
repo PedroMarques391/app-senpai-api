@@ -8,4 +8,5 @@ export interface QuotaSnapshotDto {
   packName: string | null;
   createdStickerCount: number;
   isUnlimited: boolean;
+  dailyLimit?: number;
 }

@@ -17,6 +17,7 @@ export class CreationQuotaService {
       packName,
       createdStickerCount: isVip ? 0 : createdStickerCount,
       isUnlimited: isVip,
+      dailyLimit: QuotaUtils.FREE_DAILY_STICKER_LIMIT,
     };
   }
 
