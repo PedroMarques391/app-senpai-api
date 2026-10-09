@@ -465,8 +465,9 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 #### `POST /pack/`
 *(Requer Header `Authorization`)*
 - **Descrição & Regras de Negócio:**
-  1. **PreHandler de Cota Diária:** Executa `checkPackCreationQuota`. Se o usuário for Free e exceder o limite de 1 pacote/dia ou o total de 6 figurinhas/dia, a requisição é barrada com HTTP `403 QUOTA_EXCEEDED`.
-  2. **Criação de Figurinhas em Lote Embutidas:** O body aceita a propriedade `stickers?: CreateStickerDto[]` (limitada a no máximo 30 figurinhas pelo schema Zod). Todas as figurinhas enviadas são criadas e vinculadas ao pacote na mesma operação atômica, incrementando o `stickers_count` do usuário (`static` ou `dynamic`) e acumulando `storage_used_bytes` com base na soma dos `size_bytes` de cada figurinha.
+  1. **PreHandler de E-mail Verificado (`requireVerifiedEmail`):** Exige que o usuário tenha o e-mail verificado (`isEmailVerified === true`). Se não tiver, retorna HTTP `403 Forbidden` (`code: "EMAIL_NOT_VERIFIED"`).
+  2. **PreHandler de Cota Diária:** Executa `checkPackCreationQuota`. Se o usuário for Free e exceder o limite de 1 pacote/dia ou o total de 6 figurinhas/dia, a requisição é barrada com HTTP `403 QUOTA_EXCEEDED`.
+  3. **Criação de Figurinhas em Lote Embutidas:** O body aceita a propriedade `stickers: CreateStickerDto[]` (mínimo de 3 e máximo de 30 figurinhas). Um pack nunca pode ser criado com menos de 3 figurinhas (`PACK_MIN_STICKERS`). Todas as figurinhas do lote devem ter o mesmo tipo (`type: "static"` ou `"dynamic"`); misturar tipos retorna erro HTTP `400` (`PACK_TYPE_MISMATCH`). Todas as figurinhas enviadas são criadas e vinculadas ao pacote na mesma operação atômica, incrementando o `stickers_count` do usuário (`static` ou `dynamic`) e acumulando `storage_used_bytes` com base na soma dos `size_bytes` de cada figurinha.
   3. **Geração Automática do `icon_url`:** Se o campo `icon_url` não for informado no payload, mas o array `stickers` contiver ao menos uma figurinha com URL válida do Cloudinary, o backend gera automaticamente o `icon_url` aplicando a transformação de otimização `c_fill,w_256,h_256,f_webp,q_auto`.
   4. **Campos Opcionais com Defaults:** `description` é opcional (default `"Sem descrição"`), e `tags` é opcional (default `[]`).
   5. **Registro de Cota:** Grava o consumo da cota em `creation_quotas` para usuários Free.
@@ -480,7 +481,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   | `tags` | `z.array(z.string())` | `List<String>?` | Não | `[]` / Max 10 tags, cada 2 a 20 chars | Tags descritivas. |
   | `is_public` | `z.boolean()` | `bool?` | Não | `true` | Visibilidade pública. |
   | `icon_url` | `z.url()` | `String?` | Não | Nulo (ou derivado da 1ª figurinha) | URL do ícone do pacote. |
-  | `stickers` | `z.array(createStickerDtoSchema)` | `List<CreateStickerDto>?` | Não | `max(30)` / Opcional | Array de figurinhas iniciais para criar junto ao pacote (máximo 30). |
+  | `stickers` | `z.array(createStickerDtoSchema)` | `List<CreateStickerDto>` | Sim | `min(3).max(30)` | Array de figurinhas iniciais do pacote (mínimo 3, máximo 30, mesmo tipo). |
 
 - **Respostas:**
   - `201 Created`: `{"success": true, "message": "Pacote criado com sucesso", "pack": { ...StickerPack }}`
