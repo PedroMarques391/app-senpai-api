@@ -1,14 +1,19 @@
 import { MAX_STICKERS_PER_PACK, MIN_STICKERS_PER_PACK } from "@/constants";
-import { PackRulesError } from "@/errors";
 import type { CreateStickerDto, UpdateStickerDto } from "@/dtos";
+import { PackRulesError } from "@/errors";
 import type { Sticker } from "@/models";
 import type {
   PackRepository,
   StickerRepository,
   UserRepository,
 } from "@/repositories";
+import {
+  CloudinaryUtils,
+  MongoUtils,
+  PermissionUtils,
+  UserUtils,
+} from "@/utils";
 import type { UploadService } from "./upload.service";
-import { CloudinaryUtils, MongoUtils, PermissionUtils } from "@/utils";
 
 export class StickerService {
   constructor(
@@ -45,13 +50,27 @@ export class StickerService {
       );
     }
 
-    const existingStickers = await this.stickerRepository.findByPackId(packObjectId);
-    if (existingStickers.length > 0 && existingStickers[0].type !== stickerData.type) {
+    const existingStickers =
+      await this.stickerRepository.findByPackId(packObjectId);
+    if (
+      existingStickers.length > 0 &&
+      existingStickers[0].type !== stickerData.type
+    ) {
       throw new PackRulesError("type_mismatch");
     }
 
+    const user = await this.userRepository.find({ _id: userObjectId });
+    const sanitizedUser = UserUtils.applyDefaults(user);
+    const isMaster = sanitizedUser?.subscription?.type === "MESTRE";
+    const defaultAuthor = sanitizedUser?.userName || "Desconhecido";
+
+    const resolvedAuthor = isMaster
+      ? stickerData.author || defaultAuthor
+      : defaultAuthor;
+
     const sticker = await this.stickerRepository.create({
       ...stickerData,
+      author: resolvedAuthor,
       pack_id: packObjectId,
       user_id: userObjectId,
     });
@@ -163,10 +182,22 @@ export class StickerService {
       "figurinha",
     );
 
+    const user = await this.userRepository.find({ _id: userObjectId });
+    const sanitizedUser = user ? UserUtils.applyDefaults(user) : null;
+    const isMaster = sanitizedUser?.subscription?.type === "MESTRE";
+    const defaultAuthor = sanitizedUser?.userName || existingSticker.author;
+
+    const resolvedAuthor = isMaster
+      ? updateData.author || defaultAuthor
+      : defaultAuthor;
+
     const sticker = await this.stickerRepository.update(
       stickerObjectId,
       userObjectId,
-      updateData,
+      {
+        ...updateData,
+        author: resolvedAuthor,
+      },
     );
     if (!sticker) {
       throw new Error(
@@ -199,7 +230,9 @@ export class StickerService {
       "figurinha",
     );
 
-    const currentPackCount = await this.stickerRepository.countByPackId(existingSticker.pack_id);
+    const currentPackCount = await this.stickerRepository.countByPackId(
+      existingSticker.pack_id,
+    );
     if (currentPackCount <= MIN_STICKERS_PER_PACK) {
       throw new PackRulesError("min");
     }
