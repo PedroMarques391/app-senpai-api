@@ -1,6 +1,5 @@
 import type { CreatePackDto } from "@/dtos";
 import { ServiceFactory } from "@/factories";
-import type { User } from "@/models";
 import type { VipType } from "@/schemas";
 import { StorageQuotaUtils } from "@/utils";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
@@ -9,19 +8,7 @@ import fp from "fastify-plugin";
 async function quotaPlugin(fastify: FastifyInstance) {
   const creationQuotaService = ServiceFactory.getCreationQuotaService();
   const packService = ServiceFactory.getPackService();
-  const profileService = ServiceFactory.getProfileService();
-  const cacheService = ServiceFactory.getCacheService(fastify.redis);
-
-  const getProfile = async (userId: string): Promise<User | null> => {
-    const cacheKey = `profile:${userId}`;
-    const cached = await cacheService.get<User>(cacheKey);
-    if (cached) return cached;
-    const profile = await profileService.getProfile(userId);
-    if (profile) {
-      await cacheService.set(cacheKey, profile, 60 * 60 * 24);
-    }
-    return profile;
-  };
+  const profileService = ServiceFactory.getProfileService(fastify.redis);
 
   fastify.decorate(
     "checkPackCreationQuota",
@@ -33,7 +20,7 @@ async function quotaPlugin(fastify: FastifyInstance) {
         });
       }
 
-      const profile = await getProfile(request.user._id);
+      const profile = await profileService.getProfile(request.user._id);
       const isVip = profile?.premium === true;
       if (isVip) {
         return;
@@ -71,7 +58,7 @@ async function quotaPlugin(fastify: FastifyInstance) {
         });
       }
 
-      const profile = await getProfile(request.user._id);
+      const profile = await profileService.getProfile(request.user._id);
       const isVip = profile?.premium === true;
       if (isVip) {
         return;
@@ -116,7 +103,7 @@ async function quotaPlugin(fastify: FastifyInstance) {
         });
       }
 
-      const profile = await getProfile(request.user._id);
+      const profile = await profileService.getProfile(request.user._id);
       if (!profile) {
         return reply.status(401).send({
           success: false,

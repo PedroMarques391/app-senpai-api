@@ -1,9 +1,8 @@
+import { ServiceFactory } from "@/factories";
+import type { UserRole } from "@/schemas";
 import fastifyJwt from "@fastify/jwt";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
-import { ServiceFactory } from "@/factories";
-import type { User } from "@/models";
-import type { UserRole } from "@/schemas";
 
 async function authPlugin(fastify: FastifyInstance) {
   fastify.register(fastifyJwt, {
@@ -51,16 +50,8 @@ async function authPlugin(fastify: FastifyInstance) {
         });
       }
 
-      const profileService = ServiceFactory.getProfileService();
-      const cacheService = ServiceFactory.getCacheService(fastify.redis);
-      const cacheKey = `profile:${request.user._id}`;
-      let profile = await cacheService.get<User>(cacheKey);
-      if (!profile) {
-        profile = await profileService.getProfile(request.user._id);
-        if (profile) {
-          await cacheService.set(cacheKey, profile, 60 * 60 * 24);
-        }
-      }
+      const profileService = ServiceFactory.getProfileService(fastify.redis);
+      const profile = await profileService.getProfile(request.user._id);
 
       request.profile = profile ?? undefined;
 
@@ -78,7 +69,18 @@ async function authPlugin(fastify: FastifyInstance) {
   fastify.decorate(
     "requireVerifiedEmail",
     async function (request: FastifyRequest, reply: FastifyReply) {
-      if (!request.user?.isEmailVerified) {
+      if (!request.user) {
+        return reply.status(401).send({
+          message:
+            "Sua sessão expirou ou é inválida. Por favor, faça login novamente.",
+          success: false,
+        });
+      }
+
+      const profileService = ServiceFactory.getProfileService(fastify.redis);
+      const profile = await profileService.getProfile(request.user._id);
+
+      if (!profile?.isEmailVerified) {
         return reply.status(403).send({
           success: false,
           code: "EMAIL_NOT_VERIFIED",
@@ -87,6 +89,7 @@ async function authPlugin(fastify: FastifyInstance) {
       }
     },
   );
+
 }
 
 export default fp(authPlugin);
