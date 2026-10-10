@@ -81,7 +81,7 @@ export const adminUserRoutes: FastifyPluginAsyncZod = async (app) => {
         request.params.id,
         request.body,
       );
-      await profileService.invalidateProfile(request.params.id);
+      await profileService.invalidateProfile(request.params.id, user.userName);
       return reply.status(200).send({
         success: true,
         message: "Cargo do usuário atualizado com sucesso",

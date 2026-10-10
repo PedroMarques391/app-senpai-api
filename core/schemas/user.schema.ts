@@ -1,7 +1,15 @@
 import { ObjectId } from "mongodb";
 import { z } from "zod";
 
-export const userRoleEnum = z.enum(["user", "admin", "moderator", "company"]);
+export const userRoleEnum = z.enum([
+  "user",
+  "admin",
+  "moderator",
+  "company",
+  "owner",
+  "developer",
+  "senpai",
+]);
 export type UserRole = z.infer<typeof userRoleEnum>;
 
 export const userStatusEnum = z.enum(["active", "inactive"]);

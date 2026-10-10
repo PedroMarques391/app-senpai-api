@@ -107,6 +107,7 @@ export class ProfileService {
         isVerifiedCreator: sanitizedUser.isVerifiedCreator,
         subscription: sanitizedUser.subscription,
         activity: sanitizedUser.activity,
+        role: sanitizedUser.role,
       };
     };
 

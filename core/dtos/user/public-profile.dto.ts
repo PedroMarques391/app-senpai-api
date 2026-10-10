@@ -11,6 +11,7 @@ export const publicProfileDtoSchema = userSchema.pick({
   createdAt: true,
   subscription: true,
   activity: true,
+  role: true,
 });
 
 export type PublicProfileDto = z.infer<typeof publicProfileDtoSchema>;

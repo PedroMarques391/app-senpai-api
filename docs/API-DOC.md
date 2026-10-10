@@ -32,7 +32,7 @@ A API Senpai segue os princípios da **Clean Architecture**, organizada em 3 cam
   - `name`: `String`
   - `userName`: `String`
   - `email`: `String`
-  - `role`: `"user" | "admin" | "moderator" | "company"`
+  - `role`: `"user" | "admin" | "moderator" | "company" | "owner" | "developer" | "senpai"`
   - `premium`: `boolean` (Define acesso a cotas ilimitadas e recursos VIP)
   - `isNumberVerified`: `boolean`
   - `isEmailVerified`: `boolean` (Indica se o e-mail cadastrado foi autenticado via OTP)
@@ -1571,7 +1571,7 @@ Módulo de Inteligência Artificial conversacional oficial do **Bot do Senpai**,
 ### Enums
 ```typescript
 // Roles do Usuário
-export type UserRole = "user" | "admin" | "moderator" | "company";
+export type UserRole = "user" | "admin" | "moderator" | "company" | "owner" | "developer" | "senpai";
 
 // Status da Conta
 export type UserStatus = "active" | "inactive";
