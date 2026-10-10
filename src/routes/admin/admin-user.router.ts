@@ -10,7 +10,7 @@ import z from "zod";
 
 export const adminUserRoutes: FastifyPluginAsyncZod = async (app) => {
   const userService = ServiceFactory.getUserService();
-  const cacheService = ServiceFactory.getCacheService(app.redis);
+  const profileService = ServiceFactory.getProfileService(app.redis);
 
   app.get(
     "/",
@@ -57,7 +57,7 @@ export const adminUserRoutes: FastifyPluginAsyncZod = async (app) => {
         request.params.id,
         request.body,
       );
-      await cacheService.del(`profile:${request.params.id}`);
+      await profileService.invalidateProfile(request.params.id);
       return reply.status(200).send({
         success: true,
         message: "Status do usuário atualizado com sucesso",
@@ -81,7 +81,7 @@ export const adminUserRoutes: FastifyPluginAsyncZod = async (app) => {
         request.params.id,
         request.body,
       );
-      await cacheService.del(`profile:${request.params.id}`);
+      await profileService.invalidateProfile(request.params.id);
       return reply.status(200).send({
         success: true,
         message: "Cargo do usuário atualizado com sucesso",
@@ -104,7 +104,7 @@ export const adminUserRoutes: FastifyPluginAsyncZod = async (app) => {
         request.params.id,
         request.body,
       );
-      await cacheService.del(`profile:${request.params.id}`);
+      await profileService.invalidateProfile(request.params.id);
       return reply.status(200).send({
         success: true,
         message: "Saldo de pétalas ajustado com sucesso",
@@ -113,3 +113,4 @@ export const adminUserRoutes: FastifyPluginAsyncZod = async (app) => {
     },
   );
 };
+

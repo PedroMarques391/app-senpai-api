@@ -8,6 +8,7 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
   const storeService = ServiceFactory.getStoreService();
   const purchaseService = ServiceFactory.getPurchaseService();
   const cacheService = ServiceFactory.getCacheService(app.redis);
+  const profileService = ServiceFactory.getProfileService(app.redis);
 
   app.get(
     "/",
@@ -64,8 +65,9 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
 
       await Promise.all([
         cacheService.del(`inventory:${request.user._id}`),
-        cacheService.del(`profile:${request.user._id}`),
+        profileService.invalidateProfile(request.user._id),
       ]);
+
 
       return reply.status(200).send({
         success: true,

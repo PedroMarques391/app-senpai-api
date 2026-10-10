@@ -4,7 +4,7 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 
 export const termsRoutes: FastifyPluginAsyncZod = async (app) => {
   const termsService = ServiceFactory.getTermsService();
-  const cacheService = ServiceFactory.getCacheService(app.redis);
+  const profileService = ServiceFactory.getProfileService(app.redis);
 
   app.post(
     "/",
@@ -16,7 +16,7 @@ export const termsRoutes: FastifyPluginAsyncZod = async (app) => {
     async (request, reply) => {
       const user = await termsService.acceptTerms(request.user._id);
 
-      await cacheService.del(`profile:${request.user._id}`);
+      await profileService.invalidateProfile(request.user._id);
 
       return reply.status(200).send({
         success: true,
@@ -36,7 +36,7 @@ export const termsRoutes: FastifyPluginAsyncZod = async (app) => {
     async (request, reply) => {
       const user = await termsService.acceptTerms(request.user._id);
 
-      await cacheService.del(`profile:${request.user._id}`);
+      await profileService.invalidateProfile(request.user._id);
 
       return reply.status(200).send({
         success: true,
@@ -49,7 +49,7 @@ export const termsRoutes: FastifyPluginAsyncZod = async (app) => {
   app.delete("/", async (request, reply) => {
     const user = await termsService.removeTermsAcceptance(request.user._id);
 
-    await cacheService.del(`profile:${request.user._id}`);
+    await profileService.invalidateProfile(request.user._id);
 
     return reply.status(200).send({
       success: true,
@@ -68,7 +68,7 @@ export const termsRoutes: FastifyPluginAsyncZod = async (app) => {
     async (request, reply) => {
       const user = await termsService.acceptTerms(request.user._id);
 
-      await cacheService.del(`profile:${request.user._id}`);
+      await profileService.invalidateProfile(request.user._id);
 
       return reply.status(200).send({
         success: true,
@@ -88,7 +88,7 @@ export const termsRoutes: FastifyPluginAsyncZod = async (app) => {
     async (request, reply) => {
       const user = await termsService.acceptTerms(request.user._id);
 
-      await cacheService.del(`profile:${request.user._id}`);
+      await profileService.invalidateProfile(request.user._id);
 
       return reply.status(200).send({
         success: true,
@@ -101,7 +101,7 @@ export const termsRoutes: FastifyPluginAsyncZod = async (app) => {
   app.delete("/legal-acceptance", async (request, reply) => {
     const user = await termsService.removeTermsAcceptance(request.user._id);
 
-    await cacheService.del(`profile:${request.user._id}`);
+    await profileService.invalidateProfile(request.user._id);
 
     return reply.status(200).send({
       success: true,
@@ -110,3 +110,4 @@ export const termsRoutes: FastifyPluginAsyncZod = async (app) => {
     });
   });
 };
+

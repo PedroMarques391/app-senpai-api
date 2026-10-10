@@ -4,7 +4,7 @@ import type { FastifyPluginAsync } from "fastify";
 
 export const revenuecatWebhook: FastifyPluginAsync = async (app) => {
   const billingService = ServiceFactory.getBillingService();
-  const cacheService = ServiceFactory.getCacheService(app.redis);
+  const profileService = ServiceFactory.getProfileService(app.redis);
 
   app.post("", async (request, reply) => {
     console.log(
@@ -25,8 +25,9 @@ export const revenuecatWebhook: FastifyPluginAsync = async (app) => {
 
     const userId = payload?.event?.app_user_id;
     if (userId) {
-      await cacheService.del(`profile:${userId}`);
+      await profileService.invalidateProfile(userId);
     }
+
 
     return reply.status(200).send({ success: true });
   });

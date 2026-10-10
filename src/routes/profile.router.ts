@@ -4,23 +4,11 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
 
 export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
-  const profileService = ServiceFactory.getProfileService();
-  const cacheService = ServiceFactory.getCacheService(app.redis);
+  const profileService = ServiceFactory.getProfileService(app.redis);
   const otpService = ServiceFactory.getOtpService(app.redis);
 
   app.get("/", async (request, reply) => {
-    const cacheKey = `profile:${request.user._id}`;
-    const cached = await cacheService.get(cacheKey);
-
-    if (cached) {
-      return reply.status(200).send({
-        success: true,
-        profile: cached,
-      });
-    }
-
     const profile = await profileService.getProfile(request.user._id);
-    await cacheService.set(cacheKey, profile, 60 * 60 * 24);
 
     return reply.status(200).send({
       success: true,
@@ -38,23 +26,9 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
-      const cacheKey = `profile:username:${request.params.username}`;
-      const cached = await cacheService.get(cacheKey);
-
-      if (cached) {
-        return reply.status(200).send({
-          success: true,
-          profile: cached,
-        });
-      }
-
       const profile = await profileService.getProfileByUsername(
         request.params.username,
       );
-
-      if (profile) {
-        await cacheService.set(cacheKey, profile, 60 * 60 * 24);
-      }
 
       return reply.status(200).send({
         success: true,
@@ -76,11 +50,6 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
         request.body,
       );
 
-      await Promise.all([
-        cacheService.del(`profile:${request.user._id}`),
-        cacheService.del(`profile:username:${profile.userName}`),
-      ]);
-
       return reply.status(200).send({
         success: true,
         message: "Cadastro finalizado com sucesso",
@@ -91,11 +60,6 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
 
   app.delete("/", async (request, reply) => {
     const result = await profileService.deleteProfile(request.user._id);
-
-    await Promise.all([
-      cacheService.del(`profile:${request.user._id}`),
-      cacheService.del(`profile:username:${result.userName}`),
-    ]);
 
     return reply.status(200).send({
       success: true,
@@ -117,11 +81,6 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
         request.body,
       );
 
-      await Promise.all([
-        cacheService.del(`profile:${request.user._id}`),
-        cacheService.del(`profile:username:${profile.userName}`),
-      ]);
-
       return reply.status(200).send({
         success: true,
         message: "Perfil atualizado com sucesso",
@@ -129,6 +88,7 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
       });
     },
   );
+
 
   app.post(
     "/email/code/send",
@@ -170,12 +130,10 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
       const { email, code } = request.body;
       const result = await otpService.verifyEmailOtp(email, code);
 
-      await Promise.all([
-        cacheService.del(`profile:${request.user._id}`),
-        request.user.userName
-          ? cacheService.del(`profile:username:${request.user.userName}`)
-          : Promise.resolve(),
-      ]);
+      await profileService.invalidateProfile(
+        request.user._id,
+        request.user.userName,
+      );
 
       return reply.status(200).send(result);
     },

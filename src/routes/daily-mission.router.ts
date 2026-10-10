@@ -4,7 +4,7 @@ import { z } from "zod";
 
 export const dailyMissionRoutes: FastifyPluginAsyncZod = async (app) => {
   const dailyMissionService = ServiceFactory.getDailyMissionService();
-  const cacheService = ServiceFactory.getCacheService(app.redis);
+  const profileService = ServiceFactory.getProfileService(app.redis);
 
   app.get("/daily", async (request, reply) => {
     const overview = await dailyMissionService.getDailyOverview(
@@ -29,12 +29,11 @@ export const dailyMissionRoutes: FastifyPluginAsyncZod = async (app) => {
         request.params.id,
       );
 
-      await Promise.all([
-        cacheService.del(`profile:${request.user._id}`),
-        request.user.userName
-          ? cacheService.del(`profile:username:${request.user.userName}`)
-          : Promise.resolve(),
-      ]);
+      await profileService.invalidateProfile(
+        request.user._id,
+        request.user.userName,
+      );
+
 
       return reply.status(200).send({
         success: true,

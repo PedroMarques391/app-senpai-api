@@ -1,6 +1,5 @@
 import { createStickerDtoSchema, updateStickerDtoSchema } from "@/dtos";
 import { ServiceFactory } from "@/factories";
-import type { User } from "@/models";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
 
@@ -9,7 +8,7 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
   const packService = ServiceFactory.getPackService();
   const cacheService = ServiceFactory.getCacheService(app.redis);
   const creationQuotaService = ServiceFactory.getCreationQuotaService();
-  const profileService = ServiceFactory.getProfileService();
+  const profileService = ServiceFactory.getProfileService(app.redis);
 
   app.get(
     "/",
@@ -66,14 +65,7 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
         request.body,
       );
 
-      const cacheKey = `profile:${request.user._id}`;
-      let profile = await cacheService.get<User>(cacheKey);
-      if (!profile) {
-        profile = await profileService.getProfile(request.user._id);
-        if (profile) {
-          await cacheService.set(cacheKey, profile, 60 * 60 * 24);
-        }
-      }
+      const profile = await profileService.getProfile(request.user._id);
 
       if (!profile?.premium) {
         const pack =
@@ -94,8 +86,9 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
         cacheService.del(`pack:${request.params.packId}`),
         cacheService.delPattern("pack:list:*"),
         cacheService.del(`pack:user:${request.user._id}`),
-        cacheService.del(`profile:${request.user._id}`),
+        profileService.invalidateProfile(request.user._id),
       ]);
+
       return reply.status(201).send({
         success: true,
         message: "Figurinha criada com sucesso",
@@ -171,8 +164,9 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
         cacheService.del(`pack:${deletedSticker.pack_id}`),
         cacheService.delPattern("pack:list:*"),
         cacheService.del(`pack:user:${request.user._id}`),
-        cacheService.del(`profile:${request.user._id}`),
+        profileService.invalidateProfile(request.user._id),
       ]);
+
 
       return reply.status(200).send({
         success: true,

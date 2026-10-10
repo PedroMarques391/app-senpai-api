@@ -1,22 +1,13 @@
 import { ServiceFactory } from "@/factories";
-import type { User } from "@/models";
 import { commitQuotaDtoSchema, reservePackDtoSchema } from "@/schemas";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 
 export const creationQuotaRoutes: FastifyPluginAsyncZod = async (app) => {
   const creationQuotaService = ServiceFactory.getCreationQuotaService();
-  const profileService = ServiceFactory.getProfileService();
-  const cacheService = ServiceFactory.getCacheService(app.redis);
+  const profileService = ServiceFactory.getProfileService(app.redis);
 
   const resolveIsVip = async (userId: string): Promise<boolean> => {
-    const cacheKey = `profile:${userId}`;
-    let profile = await cacheService.get<User>(cacheKey);
-    if (!profile) {
-      profile = await profileService.getProfile(userId);
-      if (profile) {
-        await cacheService.set(cacheKey, profile, 60 * 60 * 24);
-      }
-    }
+    const profile = await profileService.getProfile(userId);
     return profile?.premium === true;
   };
 
