@@ -9,4 +9,10 @@ export interface ICacheService {
   get<T>(key: string): Promise<T | null>;
   del(key: string): Promise<void>;
   delPattern(pattern: string): Promise<void>;
+  getOrSet<T>(
+    key: string,
+    fetcher: () => Promise<T>,
+    ttl?: number,
+  ): Promise<T>;
 }
+

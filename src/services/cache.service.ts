@@ -36,4 +36,27 @@ export class CacheService implements ICacheService {
       await this.redis.del(keys);
     }
   }
+
+  async getOrSet<T>(
+    key: string,
+    fetcher: () => Promise<T>,
+    ttl: number = 60 * 60 * 24,
+  ): Promise<T> {
+    try {
+      const cached = await this.get<T>(key);
+      if (cached !== null && cached !== undefined) {
+        return cached;
+      }
+    } catch {}
+
+    const fresh = await fetcher();
+
+    if (fresh !== null && fresh !== undefined) {
+      try {
+        await this.set(key, fresh, ttl);
+      } catch {}
+    }
+
+    return fresh;
+  }
 }
