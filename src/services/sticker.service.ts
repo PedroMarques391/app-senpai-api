@@ -86,6 +86,8 @@ export class StickerService {
       1,
     );
 
+    await this.packRepository.incrementStickersCount(packObjectId, 1);
+
     const sizeBytes = stickerData.size_bytes ?? 0;
     if (sizeBytes > 0) {
       await this.userRepository.incrementStorageUsedBytes(
@@ -250,6 +252,11 @@ export class StickerService {
     await this.userRepository.incrementStickersCount(
       userObjectId,
       existingSticker.type,
+      -1,
+    );
+
+    await this.packRepository.incrementStickersCount(
+      existingSticker.pack_id,
       -1,
     );
 
