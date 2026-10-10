@@ -1,11 +1,11 @@
 import { MAX_STICKERS_PER_PACK, MIN_STICKERS_PER_PACK } from "@/constants";
-import { PackRulesError } from "@/errors";
 import type {
   CreatePackDto,
   CreateStickerDto,
   PackRepositoryOptions,
   UpdatePackDto,
 } from "@/dtos";
+import { PackRulesError } from "@/errors";
 import type { StickerPack } from "@/models";
 import type {
   PackRepository,
@@ -13,7 +13,11 @@ import type {
   UserRepository,
 } from "@/repositories";
 import type { PaginatedResult, PaginationOptions } from "@/types";
-import { CloudinaryUtils, MongoUtils, PermissionUtils } from "@/utils";
+import {
+  CloudinaryUtils,
+  MongoUtils,
+  PermissionUtils,
+} from "@/utils";
 import type { UploadService } from "./upload.service";
 
 export class PackService {
@@ -53,7 +57,6 @@ export class PackService {
     if (stickers.some((s) => s.type !== firstType)) {
       throw new PackRulesError("type_mismatch");
     }
-
 
     let iconUrlToSave = packFields.icon_url;
     if (
@@ -95,8 +98,9 @@ export class PackService {
 
       await Promise.all(
         stickers.map((stickerData: CreateStickerDto) =>
-          this.stickerRepository!.create({
+          this.stickerRepository.create({
             ...stickerData,
+            author: publisher,
             pack_id: pack._id,
             user_id: userObjectId,
           }),
