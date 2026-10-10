@@ -13,11 +13,7 @@ import type {
   UserRepository,
 } from "@/repositories";
 import type { PaginatedResult, PaginationOptions } from "@/types";
-import {
-  CloudinaryUtils,
-  MongoUtils,
-  PermissionUtils,
-} from "@/utils";
+import { CloudinaryUtils, MongoUtils, PermissionUtils } from "@/utils";
 import type { UploadService } from "./upload.service";
 
 export class PackService {
@@ -83,6 +79,9 @@ export class PackService {
       );
     }
 
+    const user = await this.userRepository.find({ _id: userObjectId });
+    const isVipMaster = user?.subscription?.type === "MESTRE";
+
     if (
       stickers &&
       stickers.length > 0 &&
@@ -100,7 +99,7 @@ export class PackService {
         stickers.map((stickerData: CreateStickerDto) =>
           this.stickerRepository.create({
             ...stickerData,
-            author: publisher,
+            author: isVipMaster && stickerData.author ? stickerData.author : publisher,
             pack_id: pack._id,
             user_id: userObjectId,
           }),
