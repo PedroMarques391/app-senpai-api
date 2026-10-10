@@ -28,8 +28,21 @@ export class PackRepository implements IPackRepository {
       cursor = cursor.limit(limit);
     }
     const stickers = await cursor.toArray();
+
+    let stickersCount = pack.stickers_count;
+    if (typeof stickersCount !== "number") {
+      stickersCount = await this.stickerCollection.countDocuments({
+        pack_id: pack._id,
+      });
+      this.collection.updateOne(
+        { _id: pack._id },
+        { $set: { stickers_count: stickersCount } },
+      );
+    }
+
     return {
       ...pack,
+      stickers_count: stickersCount,
       stickers,
     };
   }
@@ -164,5 +177,12 @@ export class PackRepository implements IPackRepository {
       { $inc: { downloads_count: 1 } },
     );
     return result.matchedCount > 0;
+  }
+
+  async incrementStickersCount(packId: ObjectId, value: number): Promise<void> {
+    await this.collection.updateOne(
+      { _id: packId },
+      { $inc: { stickers_count: value } },
+    );
   }
 }

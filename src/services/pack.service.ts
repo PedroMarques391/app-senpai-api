@@ -72,6 +72,7 @@ export class PackService {
       tags: sanitizedTags,
       user_id: userObjectId,
       publisher,
+      stickers_count: stickers?.length ?? 0,
     });
     if (!pack) {
       throw new Error(

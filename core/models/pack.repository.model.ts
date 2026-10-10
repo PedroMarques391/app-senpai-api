@@ -19,4 +19,5 @@ export interface PackRepository {
   delete(id: ObjectId, userId: ObjectId): Promise<boolean>;
   updateLikesCount(packId: ObjectId, delta: 1 | -1): Promise<void>;
   incrementDownloadsCount(packId: ObjectId): Promise<boolean>;
+  incrementStickersCount(packId: ObjectId, value: number): Promise<void>;
 }
