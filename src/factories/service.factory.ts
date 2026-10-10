@@ -1,13 +1,13 @@
 import {
   ContentRepository,
   CreationQuotaRepository,
+  GroupRepository,
   InventoryRepository,
   PackFavoriteRepository,
   PackRepository,
   StickerRepository,
   StoreRepository,
   UserRepository,
-  GroupRepository,
 } from "@/repositories";
 import {
   AuthService,
@@ -15,6 +15,7 @@ import {
   ContentService,
   CreationQuotaService,
   DailyMissionService,
+  GroupService,
   InventoryService,
   MailService,
   OtpService,
@@ -28,7 +29,6 @@ import {
   TermsService,
   UploadService,
   UserService,
-  GroupService,
 } from "@/services";
 
 import { BillingService } from "@/services/billing.service";
@@ -105,10 +105,14 @@ export class ServiceFactory {
     return this.uploadService;
   }
 
-  static getProfileService(): ProfileService {
+  static getProfileService(redisInstance?: RedisClientType): ProfileService {
     if (!this.profileService) {
-      this.profileService = new ProfileService(new UserRepository());
+      this.profileService = new ProfileService(
+        new UserRepository(),
+        this.getCacheService(redisInstance),
+      );
     }
+
     return this.profileService;
   }
 

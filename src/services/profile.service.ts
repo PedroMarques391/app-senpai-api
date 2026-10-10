@@ -5,62 +5,120 @@ import type {
 } from "@/dtos";
 import type { User } from "@/models";
 import type { UserRepository } from "@/repositories";
+import type { ICacheService } from "@/types";
 import { AuthUtils, MongoUtils, PermissionUtils, UserUtils } from "@/utils";
 
 export class ProfileService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private cacheService?: ICacheService,
+  ) {}
 
+  setCacheService(cacheService: ICacheService): void {
+    this.cacheService = cacheService;
+  }
 
-  async getProfile(id: string): Promise<User | null> {
-    const userObjectId = MongoUtils.toObjectId(id, "ID de usuário inválido");
-    const user = await this.userRepository.find({ _id: userObjectId });
-    if (!user || user.status === "inactive") {
-      throw new Error("Perfil de usuário não encontrado");
-    }
-    PermissionUtils.verifyOwnership(user._id, userObjectId, "Perfil Privado");
+  hasCacheService(): boolean {
+    return Boolean(this.cacheService);
+  }
 
-    const sanitized = UserUtils.applyDefaults(user);
+  async invalidateProfile(userId: string, username?: string): Promise<void> {
+    if (!this.cacheService) return;
 
-    if (user.premium && !sanitized.premium) {
-      await this.userRepository.update(
-        { _id: userObjectId },
-        {
-          premium: false,
-          subscription: {
-            start: null,
-            end: null,
-            plan: null,
-            type: "FREE",
-          },
-        },
+    const deletions: Promise<void>[] = [
+      this.cacheService.del(`profile:${userId}`),
+    ];
+
+    if (username) {
+      deletions.push(
+        this.cacheService.del(
+          `profile:username:${UserUtils.normalizeIdentifier(username)}`,
+        ),
       );
     }
 
-    return sanitized;
+    await Promise.all(deletions);
+  }
+
+  async getProfile(
+    id: string,
+    options?: { skipCache?: boolean },
+  ): Promise<User | null> {
+    const fetchProfile = async (): Promise<User> => {
+      const userObjectId = MongoUtils.toObjectId(id, "ID de usuário inválido");
+      const user = await this.userRepository.find({ _id: userObjectId });
+      if (!user || user.status === "inactive") {
+        throw new Error("Perfil de usuário não encontrado");
+      }
+      PermissionUtils.verifyOwnership(user._id, userObjectId, "Perfil Privado");
+
+      const sanitized = UserUtils.applyDefaults(user);
+
+      if (user.premium && !sanitized.premium) {
+        await this.userRepository.update(
+          { _id: userObjectId },
+          {
+            premium: false,
+            subscription: {
+              start: null,
+              end: null,
+              plan: null,
+              type: "FREE",
+            },
+          },
+        );
+      }
+
+      return sanitized;
+    };
+
+    if (!this.cacheService || options?.skipCache) {
+      return fetchProfile();
+    }
+
+    return this.cacheService.getOrSet(
+      `profile:${id}`,
+      fetchProfile,
+      60 * 60 * 24,
+    );
   }
 
   async getProfileByUsername(
     username: string,
+    options?: { skipCache?: boolean },
   ): Promise<PublicProfileDto | null> {
     const cleanUsername = UserUtils.normalizeIdentifier(username);
-    const user = await this.userRepository.find({ userName: cleanUsername });
-    if (!user || user.status === "inactive") {
-      throw new Error("Perfil de usuário não encontrado");
+
+    const fetchPublicProfile = async (): Promise<PublicProfileDto> => {
+      const user = await this.userRepository.find({ userName: cleanUsername });
+      if (!user || user.status === "inactive") {
+        throw new Error("Perfil de usuário não encontrado");
+      }
+
+      const sanitizedUser = UserUtils.applyDefaults(user);
+
+      return {
+        name: sanitizedUser.name,
+        userName: sanitizedUser.userName,
+        createdAt: sanitizedUser.createdAt,
+        avatar_url: sanitizedUser.avatar_url,
+        banner_url: sanitizedUser.banner_url,
+        bio: sanitizedUser.bio,
+        isVerifiedCreator: sanitizedUser.isVerifiedCreator,
+        subscription: sanitizedUser.subscription,
+        activity: sanitizedUser.activity,
+      };
+    };
+
+    if (!this.cacheService || options?.skipCache) {
+      return fetchPublicProfile();
     }
 
-    const sanitizedUser = UserUtils.applyDefaults(user);
-
-    return {
-      name: sanitizedUser.name,
-      userName: sanitizedUser.userName,
-      createdAt: sanitizedUser.createdAt,
-      avatar_url: sanitizedUser.avatar_url,
-      banner_url: sanitizedUser.banner_url,
-      bio: sanitizedUser.bio,
-      isVerifiedCreator: sanitizedUser.isVerifiedCreator,
-      subscription: sanitizedUser.subscription,
-      activity: sanitizedUser.activity,
-    };
+    return this.cacheService.getOrSet(
+      `profile:username:${cleanUsername}`,
+      fetchPublicProfile,
+      60 * 60 * 24,
+    );
   }
 
   private async ensureUsernameAvailable(
@@ -124,6 +182,11 @@ export class ProfileService {
       throw new Error("Falha ao finalizar o cadastro do usuário");
     }
 
+    await this.invalidateProfile(id, cleanUsername);
+    if (user.userName && user.userName !== cleanUsername) {
+      await this.invalidateProfile(id, user.userName);
+    }
+
     return updatedUser;
   }
 
@@ -141,6 +204,9 @@ export class ProfileService {
     if (!result) {
       throw new Error("Falha ao deletar o perfil do usuário");
     }
+
+    await this.invalidateProfile(id, user.userName);
+
     return result;
   }
 
@@ -178,6 +244,11 @@ export class ProfileService {
 
     if (!updatedUser) {
       throw new Error("Falha ao atualizar o perfil do usuário");
+    }
+
+    await this.invalidateProfile(id, currentUser.userName);
+    if (updateData.userName && updateData.userName !== currentUser.userName) {
+      await this.invalidateProfile(id, updateData.userName);
     }
 
     return updatedUser;
