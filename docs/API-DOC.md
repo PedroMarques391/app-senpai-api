@@ -411,7 +411,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   - **Modo Usuário (`?user=<id>`):** Requer autenticação e valida se o usuário requisitante é o proprietário dos pacotes. Retorna array com todos os pacotes do usuário.
   - **Modo Público Paginado:** Lista pacotes com suporte a busca textual, filtro de tags, categoria e **ordenação parametrizada**.
   - **Otimização de Performance (Sticker Previews):** Na listagem paginada, cada pacote retorna apenas **até 4 figurinhas** para preview (`populateStickers(pack, 4)`), diminuindo drasticamente o payload trafegado no app Flutter. Para obter todas as figurinhas de um pacote, deve-se chamar `GET /pack/:id`.
-  - **Cache Redis:** O cache de listagem inclui a ordenação na chave: `pack:list:${page}:${limit}:${sort}:${order}`.
+  - **Cache Redis:** O cache de listagem inclui a ordenação na chave: `pack:list:${page}:${limit}:${sort}:${order}` (desativado quando há filtros específicos como busca, categoria, tags ou faixa de figurinhas).
 - **Parâmetros de Query:**
   | Parâmetro | Tipo Zod | Tipo Dart | Obrigatório? | Default | Valores Permitidos / Descrição |
   | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -419,8 +419,10 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   | `search` | `z.string()` | `String?` | Não | — | Busca case-insensitive em nome, descrição e publisher. |
   | `tags` | `z.union([z.string(), z.array(z.string())])` | `List<String>?` | Não | — | Filtro por tags. |
   | `category` | `packCategoryEnum` | `String?` | Não | — | `"anime"`, `"memes"`, `"reactions"`, `"gaming"`, `"cute"`, `"utility"`, `"other"`. |
-  | `sort` | `z.enum([...])` | `String?` | Não | `"recent"` | `"recent"` (data), `"popular"` (downloads + likes), `"downloads"`, `"likes"`. |
+  | `sort` | `z.enum([...])` | `String?` | Não | `"recent"` | `"recent"` (data), `"popular"` (downloads + likes), `"downloads"` (mais baixados), `"likes"`. A ordenação usa `_id` como desempate determinístico. |
   | `order` | `z.enum(["asc", "desc"])` | `String?` | Não | `"desc"` | Direção da ordenação (`"desc"` ou `"asc"`). |
+  | `min_stickers` | `z.coerce.number().int()` | `int?` | Não | — | Quantidade mínima de figurinhas no pacote (min 1, max 30). |
+  | `max_stickers` | `z.coerce.number().int()` | `int?` | Não | — | Quantidade máxima de figurinhas no pacote (min 1, max 30). |
   | `page` | `z.coerce.number().int()` | `int` | Não | `1` | Número da página (mínimo 1). |
   | `limit` | `z.coerce.number().int()` | `int` | Não | `20` | Itens por página (máximo 50). |
 - **Respostas:**
