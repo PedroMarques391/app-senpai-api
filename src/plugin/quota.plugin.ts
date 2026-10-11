@@ -111,6 +111,8 @@ async function quotaPlugin(fastify: FastifyInstance) {
         });
       }
 
+      request.profile = profile;
+
       const subscriptionType: VipType = profile.subscription?.type ?? "FREE";
       const limitBytes = StorageQuotaUtils.getLimit(subscriptionType);
       const planTier = StorageQuotaUtils.toPlanTier(subscriptionType);
