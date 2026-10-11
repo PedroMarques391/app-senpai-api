@@ -22,8 +22,18 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
-      const { user, search, tags, category, page, limit, sort, order } =
-        request.query;
+      const {
+        user,
+        search,
+        tags,
+        category,
+        page,
+        limit,
+        sort,
+        order,
+        min_stickers,
+        max_stickers,
+      } = request.query;
 
       if (user) {
         if (!request.user) {
@@ -50,7 +60,11 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
       }
 
       const hasFilters = Boolean(
-        search || category || (tags && tags.length > 0),
+        search ||
+          category ||
+          (tags && tags.length > 0) ||
+          min_stickers !== undefined ||
+          max_stickers !== undefined,
       );
       const cacheKey = !hasFilters
         ? `pack:list:${page || 1}:${limit || 20}:${sort || "recent"}:${order || "desc"}`
@@ -73,6 +87,8 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
           category,
           sort,
           order,
+          min_stickers,
+          max_stickers,
         },
         {
           page,

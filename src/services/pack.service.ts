@@ -152,6 +152,8 @@ export class PackService {
       tags: options.tags?.map((tag) => tag.toLowerCase().trim()),
       sort: options.sort ?? "recent",
       order: options.order ?? "desc",
+      min_stickers: options.min_stickers,
+      max_stickers: options.max_stickers,
     };
 
     const { data, total } = await this.packRepository.findAll(

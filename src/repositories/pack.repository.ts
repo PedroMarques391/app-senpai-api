@@ -66,6 +66,13 @@ export class PackRepository implements IPackRepository {
       ];
     }
 
+    if (options?.min_stickers !== undefined || options?.max_stickers !== undefined) {
+      filter.stickers_count = {
+        ...(options.min_stickers !== undefined ? { $gte: options.min_stickers } : {}),
+        ...(options.max_stickers !== undefined ? { $lte: options.max_stickers } : {}),
+      };
+    }
+
     return filter;
   }
 
@@ -79,14 +86,14 @@ export class PackRepository implements IPackRepository {
     const sortField: Record<string, 1 | -1> = (() => {
       switch (options.sort) {
         case "downloads":
-          return { downloads_count: direction };
+          return { downloads_count: direction, _id: direction };
         case "likes":
-          return { likes_count: direction };
+          return { likes_count: direction, _id: direction };
         case "popular":
-          return { downloads_count: direction, likes_count: direction };
+          return { downloads_count: direction, likes_count: direction, _id: direction };
         case "recent":
         default:
-          return { created_at: direction };
+          return { created_at: direction, _id: direction };
       }
     })();
 
