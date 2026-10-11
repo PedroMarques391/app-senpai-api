@@ -40,6 +40,12 @@ export class MongoInitializer {
       await this.db.collection("stickerPacks").createIndex({ category: 1 });
       await this.db.collection("stickerPacks").createIndex({ tags: 1 });
       await this.db.collection("stickerPacks").createIndex({ created_at: -1 });
+      await this.db
+        .collection("stickerPacks")
+        .createIndex({ downloads_count: -1, _id: -1 });
+      await this.db
+        .collection("stickerPacks")
+        .createIndex({ stickers_count: -1, _id: -1 });
 
       await this.db.collection("stickers").createIndex({ user_id: 1, type: 1 });
       await this.db.collection("stickers").createIndex({ pack_id: 1 });
