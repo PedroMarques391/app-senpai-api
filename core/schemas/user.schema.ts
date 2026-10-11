@@ -6,6 +6,7 @@ export const userRoleEnum = z.enum([
   "admin",
   "moderator",
   "company",
+  "partner",
   "owner",
   "developer",
   "senpai",
