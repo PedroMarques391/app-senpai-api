@@ -36,16 +36,39 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
         });
       }
 
+      const isGif =
+        data.mimetype === "image/gif" ||
+        data.filename.toLowerCase().endsWith(".gif");
+
+      if (request.query.folder === "banner" && isGif) {
+        if (!request.profile?.premium) {
+          return reply.status(403).send({
+            success: false,
+            code: "VIP_REQUIRED",
+            message: "Capa animada é exclusiva para assinantes VIP.",
+          });
+        }
+      }
+
       const { folderPath, filename } = UploadUtils.generateMetadata(
         userName,
         request.query.folder,
       );
 
-      const result = await uploadService.upload(data.file, {
+      const uploadOptions: Record<string, any> = {
         folder: folderPath,
         public_id: filename,
         unique_filename: true,
-      });
+      };
+
+      if (request.query.folder === "banner" && isGif) {
+        uploadOptions.transformation = [
+          { duration: 10, crop: "limit", width: 1200 },
+          { effect: "loop" },
+        ];
+      }
+
+      const result = await uploadService.upload(data.file, uploadOptions);
 
       return reply.status(201).send({
         success: true,
