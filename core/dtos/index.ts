@@ -5,5 +5,6 @@ export * from "./group";
 export * from "./sticker";
 export * from "./pack";
 export * from "./store";
+export * from "./upload";
 export * from "./user";
 

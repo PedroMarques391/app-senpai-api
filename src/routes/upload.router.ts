@@ -1,3 +1,4 @@
+import { uploadSignatureQuerySchema } from "@/dtos";
 import { ServiceFactory } from "@/factories";
 import { UploadUtils } from "@/utils";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
@@ -5,6 +6,43 @@ import z from "zod";
 
 export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
   const uploadService = ServiceFactory.getUploadService();
+
+  app.get(
+    "/signature",
+    {
+      schema: {
+        querystring: uploadSignatureQuerySchema,
+      },
+      preHandler: [app.checkStorageQuota, app.requireVerifiedEmail],
+    },
+    async (request, reply) => {
+      const { userName } = request.user;
+      if (!userName) {
+        return reply.status(401).send({
+          success: false,
+          code: "USER_NAME_REQUIRED",
+          message:
+            "Para realizar o upload é necessário ter um nome de usuário, por favor atualize seu perfil.",
+        });
+      }
+
+      const { folderPath, filename } = UploadUtils.generateMetadata(
+        userName,
+        request.query.folder,
+      );
+
+      const signatureData = uploadService.generateSignature(
+        folderPath,
+        filename,
+      );
+
+      return reply.status(200).send({
+        success: true,
+        ...signatureData,
+        data: signatureData,
+      });
+    },
+  );
 
   app.post(
     "/",

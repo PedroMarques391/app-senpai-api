@@ -1,5 +1,5 @@
 import { UploadError } from "@/errors";
-import type { UploadResult } from "@/types";
+import type { UploadResult, UploadSignatureResponse } from "@/types";
 import { v2 as cloudinary, type UploadApiOptions } from "cloudinary";
 import type { Readable } from "node:stream";
 
@@ -139,5 +139,43 @@ export class UploadService {
     await Promise.allSettled(
       publicIds.map((publicId) => this.deleteQuietly(publicId)),
     );
+  }
+
+  generateSignature(
+    folderPath: string,
+    filename: string,
+  ): UploadSignatureResponse {
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+
+    if (!apiSecret || !apiKey || !cloudName) {
+      throw new UploadError(
+        "Configurações do Cloudinary ausentes no servidor",
+        "CLOUDINARY_CONFIG_MISSING",
+        500,
+      );
+    }
+
+    const timestamp = Math.round(Date.now() / 1000);
+    const paramsToSign = {
+      folder: folderPath,
+      public_id: filename,
+      timestamp,
+    };
+
+    const signature = cloudinary.utils.api_sign_request(
+      paramsToSign,
+      apiSecret,
+    );
+
+    return {
+      signature,
+      timestamp,
+      api_key: apiKey,
+      cloud_name: cloudName,
+      folder: folderPath,
+      public_id: filename,
+    };
   }
 }
