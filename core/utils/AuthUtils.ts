@@ -31,6 +31,14 @@ export class AuthUtils {
     if (!waId) return waId;
     let clean = waId.replace(/\D/g, "");
 
+    if (/^550\d{10,11}$/.test(clean)) {
+      clean = `55${clean.slice(3)}`;
+    }
+
+    if (/^0\d{10,11}$/.test(clean)) {
+      clean = clean.slice(1);
+    }
+
     if (clean.length === 10 || clean.length === 11) {
       clean = `55${clean}`;
     }
