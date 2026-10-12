@@ -787,8 +787,43 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 ### 3.9 Upload de Mídia (`/upload`)
 *(Requer Header `Authorization`)*
 
-#### `POST /upload/?folder=...`
-- **Descrição:** Envia arquivos de imagem/sticker via Multipart Stream diretamente ao Cloudinary, organizando o path em pastas segregadas por usuário (`folder/userName/filename`).
+#### `GET /upload/signature?folder=...` (Recomendado - Signed Direct Upload)
+- **Descrição:** Gera uma assinatura criptográfica temporária autorizada para que o aplicativo cliente (Flutter) envie o arquivo diretamente para os servidores do Cloudinary, sem intermediar binários na API Senpai (economizando 100% de banda de upload no servidor e evitando gargalos de conexões).
+- **Query Params:**
+  - `folder`: `"sticker"` (default), `"banner"`, `"avatar"`.
+- **Validação de Cota:** Possui o preHandler `app.checkStorageQuota` e `app.requireVerifiedEmail`. Se o usuário já tiver atingido a capacidade máxima de armazenamento de sua conta, a requisição é barrada com HTTP `403 Forbidden`.
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "signature": "1a2b3c4d5e6f...",
+      "timestamp": 1728750000,
+      "api_key": "123456789012345",
+      "cloud_name": "senpai-cloud",
+      "folder": "sticker/pedro",
+      "public_id": "pedro_1728750000_a1b2c3d4",
+      "data": {
+        "signature": "1a2b3c4d5e6f...",
+        "timestamp": 1728750000,
+        "api_key": "123456789012345",
+        "cloud_name": "senpai-cloud",
+        "folder": "sticker/pedro",
+        "public_id": "pedro_1728750000_a1b2c3d4"
+      }
+    }
+    ```
+- **Como utilizar no Flutter/Client:**
+  O app envia um `POST multipart/form-data` para `https://api.cloudinary.com/v1_1/<cloud_name>/image/upload` contendo:
+  - `file`: Arquivo local da imagem.
+  - `api_key`: `api_key` recebida.
+  - `timestamp`: `timestamp` recebido.
+  - `signature`: `signature` recebida.
+  - `folder`: `folder` recebido.
+  - `public_id`: `public_id` recebido.
+
+#### `POST /upload/?folder=...` (Legado / Retrocompatível)
+- **Descrição:** Envia arquivos de imagem/sticker via Multipart Stream diretamente ao Cloudinary, organizando o path em pastas segregadas por usuário (`folder/userName/filename`). Mantido para compatibilidade com versões anteriores do aplicativo enquanto as novas versões migram para o *Signed Direct Upload*.
 - **Validação de Cota:** Possui o preHandler `app.checkStorageQuota`. Bloqueia o upload antes de iniciar a transmissão se o tamanho indicado no header `Content-Length` somado ao `storage_used_bytes` do usuário ultrapassar o limite do plano (500 MB Free / 3 GB VIP Pro / 6 GB VIP Mestre).
 - **Limite Máximo por Arquivo (25 MB):** O servidor rejeita imediatamente uploads truncados ou que excedam 25 MB com HTTP `413 Payload Too Large`.
 - **Respostas:**
