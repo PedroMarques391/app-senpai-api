@@ -511,9 +511,18 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 
 #### `PUT /pack/:id`
 *(Requer Header `Authorization`)*
-- **Descrição:** Atualiza campos do pacote (`pack_name`, `description`, `category`, `tags`, `icon_url`, `is_public`). Requer que o usuário seja o dono do pacote. Invalida os caches relacionados.
+- **Descrição & Regras de Negócio:** Atualiza campos do pacote (`pack_name`, `description`, `category`, `tags`, `icon_url`, `is_public`). Requer que o usuário seja o dono do pacote. Invalida os caches relacionados.
+  - **Restrição de Moderação:** Se o pacote possuir denúncias registradas (`reports_count > 0`) ou seu status de moderação não for `'approved'` (`moderation_status === 'pending'` ou `'banned'`), qualquer tentativa de atualizar `is_public` para `true` será barrada com HTTP `400 Bad Request` (`code: 'PACK_REPORTED_CANNOT_BE_PUBLIC'`).
 - **Respostas:**
   - `200 OK`: `{"success": true, "message": "Pacote atualizado com sucesso", "pack": { ...StickerPack }}`
+  - `400 Bad Request` (Pacote bloqueado):
+    ```json
+    {
+      "success": false,
+      "code": "PACK_REPORTED_CANNOT_BE_PUBLIC",
+      "message": "Este pacote possui denúncias pendentes ou está sob moderação e não pode ser tornado público."
+    }
+    ```
 
 #### `DELETE /pack/:id`
 *(Requer Header `Authorization`)*
@@ -551,6 +560,37 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
     }
     ```
   - `404 Not Found`: `{"success": false, "message": "Pacote não encontrado"}`
+
+#### `POST /pack/report`
+*(Requer Header `Authorization`)*
+- **Descrição & Regras de Negócio:**
+  1. Registra a denúncia de um pacote de figurinhas pelo usuário autenticado.
+  2. **Política Híbrida de Bloqueio:** Motivos críticos (`child_exploitation` e `adult_content`) ocultam o pacote imediatamente (`is_public = false`, `moderation_status = "pending"`). Demais motivos acumulam até o limiar de 3 denúncias de usuários distintos antes de ocultar preventivamente.
+  3. **Prevenção de Duplicidade:** O mesmo usuário não pode denunciar o mesmo pacote mais de uma vez (índice único `{ pack_id: 1, reporter_id: 1 }`).
+  4. **Auto-denúncia:** Bloqueada com HTTP `400` (`CANNOT_REPORT_OWN_PACK`).
+  5. **Invalidação Reativa de Cache:** Invalida `pack:<id>`, `pack:user:<ownerId>` e `pack:list:*`.
+  6. **Notificações Assíncronas:** Enfileira e-mail de alerta para a moderação e notificação de segurança para o criador (apenas na transição de visibilidade pública para privada).
+- **Query Parameters (`ReportPackQueryDto`):**
+  | Parâmetro | Tipo | Obrigatório? | Descrição |
+  | :--- | :--- | :--- | :--- |
+  | `id` | `String` (24 hex) | Sim | ObjectId do pacote denunciado. |
+- **Request Body (`ReportPackBodyDto`):**
+  | Campo | Tipo | Obrigatório? | Descrição |
+  | :--- | :--- | :--- | :--- |
+  | `reason` | `enum` | Sim | Código do motivo: `child_exploitation`, `adult_content`, `violence_gore`, `hate_speech`, `harassment`, `copyright`, `spam_misleading`, `other`. |
+  | `description` | `String?` | Não | Justificativa ou detalhes adicionais (máx. 300 caracteres). |
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "message": "Denúncia registrada com sucesso. O pacote foi encaminhado para análise da moderação.",
+      "packId": "6ac8c86331f3c8dbdc5ad86a"
+    }
+    ```
+  - `400 Bad Request` (Auto-denúncia): `{"success": false, "code": "CANNOT_REPORT_OWN_PACK", "message": "Você não pode denunciar o seu próprio pacote de figurinhas."}`
+  - `404 Not Found`: `{"success": false, "code": "PACK_NOT_FOUND", "message": "Pacote não encontrado"}`
+  - `409 Conflict`: `{"success": false, "code": "DUPLICATE_REPORT", "message": "Você já enviou uma denúncia para este pacote anteriormente."}`
 
 ---
 
@@ -904,6 +944,9 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 - `GET /admin/contents/:id`: Detalhes de um comunicado.
 - `PUT /admin/contents/:id`: Atualização de datas, links e imagens de comunicado.
 - `DELETE /admin/contents/:id`: Remoção de comunicado (exclusivo de `admin`).
+- `GET /admin/packs`: Listagem paginada de pacotes para moderação em ordem cronológica (retorna por padrão packs pendentes e banidos). Suporta filtro por `status` (`pending`, `banned`) e busca textual. Exclusivo para `developer`, `owner`, `moderator`.
+- `GET /admin/packs/:id`: Detalhes completos do pacote com a lista de denúncias recebidas (`pack` e `reports`). Exclusivo para `developer`, `owner`, `moderator`.
+- `PATCH /admin/packs/:id/moderation`: Aprovação ou banimento de pacote (`status: "approved" | "banned"`). Ao aprovar, restaura `is_public: true` e zera `reports_count`. Ao banir, fixa `is_public: false`. Invalida os caches relacionados. Exclusivo para `developer`, `owner`, `moderator`.
 
 ---
 

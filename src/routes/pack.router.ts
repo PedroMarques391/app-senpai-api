@@ -1,6 +1,8 @@
 import {
   createPackDtoSchema,
   listPackQuerySchema,
+  reportPackBodySchema,
+  reportPackQuerySchema,
   updatePackDtoSchema,
 } from "@/dtos";
 import { ServiceFactory } from "@/factories";
@@ -10,6 +12,7 @@ import z from "zod";
 export const packRoutes: FastifyPluginAsyncZod = async (app) => {
   const packService = ServiceFactory.getPackService();
   const packFavoriteService = ServiceFactory.getPackFavoriteService();
+  const packReportService = ServiceFactory.getPackReportService(app.redis);
   const cacheService = ServiceFactory.getCacheService(app.redis);
   const creationQuotaService = ServiceFactory.getCreationQuotaService();
   const profileService = ServiceFactory.getProfileService(app.redis);
@@ -277,6 +280,33 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
         success: true,
         message: "Download contabilizado com sucesso",
       });
+    },
+  );
+
+  app.post(
+    "/report",
+    {
+      onRequest: [app.authenticate],
+      config: {
+        rateLimit: {
+          max: 5,
+          timeWindow: 60 * 1000,
+        },
+      },
+      schema: {
+        querystring: reportPackQuerySchema,
+        body: reportPackBodySchema,
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.query;
+      const result = await packReportService.reportPack(
+        id,
+        request.user._id,
+        request.body,
+      );
+
+      return reply.status(200).send(result);
     },
   );
 };
