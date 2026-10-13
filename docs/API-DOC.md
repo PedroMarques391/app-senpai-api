@@ -32,7 +32,7 @@ A API Senpai segue os princípios da **Clean Architecture**, organizada em 3 cam
   - `name`: `String`
   - `userName`: `String`
   - `email`: `String`
-  - `role`: `"user" | "admin" | "moderator" | "company" | "partner" | "owner" | "developer" | "senpai"`
+  - `role`: `"user" | "admin" | "moderator" | "company" | "partner" | "owner" | "developer" | "senpai" | "verified_creator"`
   - `premium`: `boolean` (Define acesso a cotas ilimitadas e recursos VIP)
   - `isNumberVerified`: `boolean`
   - `isEmailVerified`: `boolean` (Indica se o e-mail cadastrado foi autenticado via OTP)
