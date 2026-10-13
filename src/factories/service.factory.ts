@@ -121,7 +121,10 @@ export class ServiceFactory {
 
   static getUserService(): UserService {
     if (!this.userService) {
-      this.userService = new UserService(new UserRepository());
+      this.userService = new UserService(
+        new UserRepository(),
+        this.getEmailService(),
+      );
     }
     return this.userService;
   }

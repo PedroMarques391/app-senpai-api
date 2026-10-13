@@ -1,4 +1,4 @@
-import { MAX_STRIKES } from "@/constants";
+import { EMAIL_SENDERS, MAX_STRIKES } from "@/constants";
 import type {
   AdminAdjustPetalsDto,
   AdminUpdateUserRoleDto,
@@ -9,11 +9,19 @@ import type {
   UserAdminFilterOptions,
 } from "@/dtos";
 import type { User, UserRepository } from "@/models";
+import {
+  renderModerationOutcomeEmailTemplate,
+  renderModerationOutcomeText,
+} from "@/templates";
 import type { PaginatedResult } from "@/types";
 import { AuthUtils, MongoUtils, UserUtils } from "@/utils";
+import type { MailService } from "./mail.service";
 
 export class UserService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly mailService?: MailService,
+  ) {}
 
   async findUserByWAId(rawWaId: string): Promise<User | null> {
     const variants = AuthUtils.getWaIdVariants(rawWaId);
@@ -183,6 +191,9 @@ export class UserService {
       updateFields.strikes = 0;
     }
 
+    const isBecomingRestricted =
+      data.status === "restricted" && user.status !== "restricted";
+
     const updated = await this.userRepository.update(
       { _id: objectId },
       updateFields,
@@ -190,6 +201,40 @@ export class UserService {
     if (!updated) {
       throw new Error("Falha ao atualizar o status do usuário");
     }
+
+    if (
+      !isBecomingRestricted ||
+      !this.mailService ||
+      !updated.email ||
+      !updated.isEmailVerified
+    ) {
+      return updated;
+    }
+
+    const emailProps = {
+      eventType: "ACCOUNT_RESTRICTED" as const,
+      userName: updated.name ?? "Criador",
+      userHandle: updated.userName,
+      currentStrikes: updated.strikes,
+      maxStrikes: MAX_STRIKES,
+    };
+
+    const html = renderModerationOutcomeEmailTemplate(emailProps);
+    const text = renderModerationOutcomeText(emailProps);
+
+    await this.mailService.sendMail(
+      {
+        from: EMAIL_SENDERS.SECURITY,
+        to: updated.email,
+        subject:
+          "Aviso de Segurança: Seu perfil atingiu o limite de strikes e está temporariamente restrito",
+        html,
+        text,
+      },
+      {
+        jobId: `email:account-restricted:${userId}:${Date.now()}`,
+      },
+    );
 
     return updated;
   }
