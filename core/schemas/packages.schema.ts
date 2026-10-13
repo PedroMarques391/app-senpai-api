@@ -12,6 +12,13 @@ export const packCategoryEnum = z.enum([
   "other",
 ]);
 
+export const packModerationStatusEnum = z.enum([
+  "pending",
+  "approved",
+  "banned",
+]);
+export type PackModerationStatus = z.infer<typeof packModerationStatusEnum>;
+
 export const stickerPackSchema = z.object({
   _id: z.instanceof(ObjectId),
   user_id: z.instanceof(ObjectId),
@@ -22,6 +29,8 @@ export const stickerPackSchema = z.object({
   tags: z.array(z.string().min(2).max(20)).max(10).default([]),
   icon_url: z.url().optional(),
   is_public: z.boolean().default(true),
+  reports_count: z.number().default(0),
+  moderation_status: packModerationStatusEnum.default("approved"),
   downloads_count: z.number().default(0),
   likes_count: z.number().default(0),
   stickers_count: z.number().default(0),
@@ -29,3 +38,4 @@ export const stickerPackSchema = z.object({
   created_at: z.coerce.date().default(() => new Date()),
   updated_at: z.coerce.date().default(() => new Date()),
 });
+

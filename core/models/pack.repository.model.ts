@@ -1,5 +1,9 @@
 import type { PackRepositoryOptions } from "@/dtos";
-import type { CreateStickerPackPayload, StickerPack } from "@/models";
+import type {
+  CreateStickerPackPayload,
+  PackModerationStatus,
+  StickerPack,
+} from "@/models";
 import type { PaginationOptions, RepositoryPaginatedResult } from "@/types";
 import type { ObjectId } from "mongodb";
 
@@ -20,4 +24,15 @@ export interface PackRepository {
   updateLikesCount(packId: ObjectId, delta: 1 | -1): Promise<void>;
   incrementDownloadsCount(packId: ObjectId): Promise<boolean>;
   incrementStickersCount(packId: ObjectId, value: number): Promise<void>;
+  incrementReportsCount(
+    packId: ObjectId,
+    shouldHide: boolean,
+  ): Promise<StickerPack | null>;
+  updateModerationStatus(
+    packId: ObjectId,
+    status: PackModerationStatus,
+    isPublic: boolean,
+    resetReports: boolean,
+  ): Promise<StickerPack | null>;
 }
+

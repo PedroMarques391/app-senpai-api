@@ -19,3 +19,6 @@ export * from "./creation-quota.repository.model";
 export * from "./follows.repository.model";
 export * from "./group.model";
 export * from "./group.repository.model";
+export * from "./pack-report.model";
+export * from "./pack-report.repository.model";
+
