@@ -18,3 +18,5 @@ export * from "./terms.service";
 export * from "./upload.service";
 export * from "./user.service";
 export * from "./group.service";
+export * from "./pack-report.service";
+

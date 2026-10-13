@@ -5,7 +5,11 @@ import type {
   PackRepositoryOptions,
   UpdatePackDto,
 } from "@/dtos";
-import { PackRulesError } from "@/errors";
+import {
+  PackNotFoundError,
+  PackReportedCannotBePublicError,
+  PackRulesError,
+} from "@/errors";
 import type { StickerPack } from "@/models";
 import type {
   PackRepository,
@@ -100,7 +104,10 @@ export class PackService {
         stickers.map((stickerData: CreateStickerDto) =>
           this.stickerRepository.create({
             ...stickerData,
-            author: isVipMaster && stickerData.author ? stickerData.author : publisher,
+            author:
+              isVipMaster && stickerData.author
+                ? stickerData.author
+                : publisher,
             pack_id: pack._id,
             user_id: userObjectId,
           }),
@@ -147,6 +154,7 @@ export class PackService {
     const paginationOptions: PaginationOptions = { page, limit };
 
     const repositoryOptions: PackRepositoryOptions = {
+      is_public: true,
       category: options.category,
       search: options.search,
       tags: options.tags?.map((tag) => tag.toLowerCase().trim()),
@@ -216,7 +224,7 @@ export class PackService {
 
     const existingPack = await this.packRepository.findById(packObjectId);
     if (!existingPack) {
-      throw new Error("Pacote não encontrado");
+      throw new PackNotFoundError();
     }
 
     PermissionUtils.verifyOwnership(
@@ -224,6 +232,13 @@ export class PackService {
       userObjectId,
       "pacote",
     );
+
+    if (
+      updateData.is_public === true &&
+      existingPack.moderation_status !== "approved"
+    ) {
+      throw new PackReportedCannotBePublicError();
+    }
 
     const pack = await this.packRepository.update(
       packObjectId,
@@ -248,7 +263,7 @@ export class PackService {
 
     const existingPack = await this.packRepository.findById(packObjectId);
     if (!existingPack) {
-      throw new Error("Pacote não encontrado");
+      throw new PackNotFoundError();
     }
 
     PermissionUtils.verifyOwnership(

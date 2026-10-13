@@ -4,6 +4,7 @@ import {
   GroupRepository,
   InventoryRepository,
   PackFavoriteRepository,
+  PackReportRepository,
   PackRepository,
   StickerRepository,
   StoreRepository,
@@ -20,6 +21,7 @@ import {
   MailService,
   OtpService,
   PackFavoriteService,
+  PackReportService,
   PackService,
   ProfileService,
   PurchaseService,
@@ -56,6 +58,7 @@ export class ServiceFactory {
   private static recoveryService: RecoveryService;
   private static billingService: BillingService;
   private static groupService: GroupService;
+  private static packReportService: PackReportService;
 
   static getInventoryService(): InventoryService {
     if (!this.inventoryService) {
@@ -238,5 +241,20 @@ export class ServiceFactory {
       );
     }
     return this.groupService;
+  }
+
+  static getPackReportService(
+    redisInstance?: RedisClientType,
+  ): PackReportService {
+    if (!this.packReportService) {
+      this.packReportService = new PackReportService(
+        new PackReportRepository(),
+        new PackRepository(),
+        new UserRepository(),
+        this.getEmailService(),
+        this.getCacheService(redisInstance as RedisClientType),
+      );
+    }
+    return this.packReportService;
   }
 }
