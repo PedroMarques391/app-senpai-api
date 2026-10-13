@@ -198,18 +198,29 @@ export class AuthService {
       usernameUser?.status === "inactive"
     ) {
       throw new Error(
-        "Não foi possível concluir o cadastro. Verifique os dados informados ou tente fazer login.",
+        "Esta conta está desativada. Entre em contato com o suporte.",
       );
     }
 
-    if (
-      UserUtils.isFullyRegistered(waUser) ||
-      UserUtils.isDifferentUser(emailUser, waUser) ||
-      UserUtils.isDifferentUser(usernameUser, waUser)
-    ) {
+    if (UserUtils.isFullyRegistered(waUser)) {
       throw new Error(
-        "Não foi possível concluir o cadastro. Verifique os dados informados ou tente fazer login.",
+        "Este número de WhatsApp já possui uma conta cadastrada. Tente fazer login.",
       );
+    }
+
+    const isEmailInUse = UserUtils.isDifferentUser(emailUser, waUser);
+    const isUsernameInUse = UserUtils.isDifferentUser(usernameUser, waUser);
+
+    if (isEmailInUse && isUsernameInUse) {
+      throw new Error("O e-mail e o nome de usuário já estão em uso.");
+    }
+
+    if (isEmailInUse) {
+      throw new Error("Este e-mail já está em uso.");
+    }
+
+    if (isUsernameInUse) {
+      throw new Error("Este nome de usuário já está em uso.");
     }
 
     const hashedPassword = await AuthUtils.hashPassword(data.password);
