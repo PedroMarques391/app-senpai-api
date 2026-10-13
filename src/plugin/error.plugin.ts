@@ -1,5 +1,6 @@
-import { ZodError } from "zod";
+import { AppError } from "@/errors";
 import type { FastifyPluginAsync } from "fastify";
+import { ZodError } from "zod";
 
 export const errorPlugin: FastifyPluginAsync = async (app) => {
   app.setErrorHandler((error, request, reply) => {
@@ -11,12 +12,10 @@ export const errorPlugin: FastifyPluginAsync = async (app) => {
       });
     }
 
-    if (error instanceof Error) {
-      const statusCode = (error as any).statusCode ?? 400;
-      const code: string | undefined = (error as any).code;
-      return reply.status(statusCode).send({
+    if (error instanceof AppError) {
+      return reply.status(error.statusCode).send({
         success: false,
-        code: code ? code : "BAD_REQUEST",
+        code: error.code,
         message: error.message,
       });
     }
