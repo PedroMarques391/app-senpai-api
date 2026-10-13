@@ -954,7 +954,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 
 - `GET /admin/users`: Listagem paginada de todos os usuários cadastrados.
 - `GET /admin/users/:id`: Detalhes completos de um usuário por ID.
-- `PATCH /admin/users/:id/status`: Altera status do usuário (`active`, `inactive` ou `restricted`). Ao reativar uma conta (`active`) que havia atingido o limite de strikes, o contador de strikes é zerado.
+- `PATCH /admin/users/:id/status`: Altera status do usuário (`active`, `inactive` ou `restricted`). Ao reativar uma conta (`active`) que havia atingido o limite de strikes, o contador de strikes é zerado. Caso a conta passe a `restricted`, enfileira notificação formal de restrição por e-mail (`ACCOUNT_RESTRICTED`) ao usuário se possuir e-mail verificado.
 - `PATCH /admin/users/:id/role`: Altera cargo do usuário (exclusivo de `admin`).
 - `POST /admin/users/:id/petals/adjust`: Ajuste manual de saldo de pétalas com justificativa de auditoria (exclusivo de `admin`).
 - `GET /admin/contents/`: Listagem administrativa de campanhas e comunicados.
@@ -964,7 +964,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 - `DELETE /admin/contents/:id`: Remoção de comunicado (exclusivo de `admin`).
 - `GET /admin/packs`: Listagem paginada de pacotes para moderação em ordem cronológica (retorna por padrão packs pendentes e banidos). Suporta filtro por `status` (`pending`, `banned`) e busca textual. Exclusivo para `developer`, `owner`, `moderator`.
 - `GET /admin/packs/:id`: Detalhes completos do pacote com a lista de denúncias recebidas (`pack` e `reports`). Exclusivo para `developer`, `owner`, `moderator`.
-- `PATCH /admin/packs/:id/moderation`: Aprovação ou banimento de pacote (`status: "approved" | "banned"`). Ao aprovar, restaura `is_public: true` e zera `reports_count`. Ao banir, fixa `is_public: false` e, caso o pacote não estivesse previamente banido (transição idempotente), atribui `+1` strike de forma atômica ao criador do pacote (`user.strikes`). Invalida os caches do pacote e perfil. Exclusivo para `developer`, `owner`, `moderator`.
+- `PATCH /admin/packs/:id/moderation`: Aprovação ou banimento de pacote (`status: "approved" | "banned"`, `reset_reports?: boolean`, `notes?: string`). Ao aprovar, restaura `is_public: true`, zera `reports_count` e enfileira e-mail de liberação (`RELEASED`) ao criador com e-mail verificado. Ao banir, fixa `is_public: false` e, caso o pacote não estivesse previamente banido (transição idempotente), atribui `+1` strike de forma atômica ao criador (`user.strikes`) e enfileira e-mail formal de remoção (`BANNED` ou `BANNED_AND_RESTRICTED` se acumular 3 strikes) com observações e justificativas para criadores com e-mail verificado. Invalida os caches do pacote e perfil. Exclusivo para `developer`, `owner`, `moderator`.
 
 ---
 
