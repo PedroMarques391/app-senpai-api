@@ -4,6 +4,7 @@ import {
   insertStickerPackSchema,
   type CreateStickerPackPayload,
   type PackRepository as IPackRepository,
+  type PackModerationStatus,
   type Sticker,
   type StickerPack,
 } from "@/models";
@@ -50,6 +51,16 @@ export class PackRepository implements IPackRepository {
   private buildQuery(options?: PackRepositoryOptions): Filter<StickerPack> {
     const filter: Filter<StickerPack> = {};
 
+    if (options?.is_public !== undefined) {
+      filter.is_public = options.is_public;
+    }
+
+    if (options?.moderation_status) {
+      filter.moderation_status = Array.isArray(options.moderation_status)
+        ? { $in: options.moderation_status }
+        : options.moderation_status;
+    }
+
     if (options?.category) {
       filter.category = options.category;
     }
@@ -66,10 +77,17 @@ export class PackRepository implements IPackRepository {
       ];
     }
 
-    if (options?.min_stickers !== undefined || options?.max_stickers !== undefined) {
+    if (
+      options?.min_stickers !== undefined ||
+      options?.max_stickers !== undefined
+    ) {
       filter.stickers_count = {
-        ...(options.min_stickers !== undefined ? { $gte: options.min_stickers } : {}),
-        ...(options.max_stickers !== undefined ? { $lte: options.max_stickers } : {}),
+        ...(options.min_stickers !== undefined
+          ? { $gte: options.min_stickers }
+          : {}),
+        ...(options.max_stickers !== undefined
+          ? { $lte: options.max_stickers }
+          : {}),
       };
     }
 
@@ -90,7 +108,11 @@ export class PackRepository implements IPackRepository {
         case "likes":
           return { likes_count: direction, _id: direction };
         case "popular":
-          return { downloads_count: direction, likes_count: direction, _id: direction };
+          return {
+            downloads_count: direction,
+            likes_count: direction,
+            _id: direction,
+          };
         case "recent":
         default:
           return { created_at: direction, _id: direction };
@@ -191,5 +213,49 @@ export class PackRepository implements IPackRepository {
       { _id: packId },
       { $inc: { stickers_count: value } },
     );
+  }
+
+  async incrementReportsCount(
+    packId: ObjectId,
+    shouldHide: boolean,
+  ): Promise<StickerPack | null> {
+    const updateFields: { $inc: any; $set?: any } = {
+      $inc: { reports_count: 1 },
+      $set: { updated_at: new Date() },
+    };
+    if (shouldHide) {
+      updateFields.$set.is_public = false;
+      updateFields.$set.moderation_status = "pending";
+    }
+    const result = await this.collection.findOneAndUpdate(
+      { _id: packId },
+      updateFields,
+      { returnDocument: "before" },
+    );
+    return result;
+  }
+
+  async updateModerationStatus(
+    packId: ObjectId,
+    status: PackModerationStatus,
+    isPublic: boolean,
+    resetReports: boolean,
+  ): Promise<StickerPack | null> {
+    const updateFields: { $set: any } = {
+      $set: {
+        moderation_status: status,
+        is_public: isPublic,
+        updated_at: new Date(),
+      },
+    };
+    if (resetReports) {
+      updateFields.$set.reports_count = 0;
+    }
+    const result = await this.collection.findOneAndUpdate(
+      { _id: packId },
+      updateFields,
+      { returnDocument: "after" },
+    );
+    return result;
   }
 }
