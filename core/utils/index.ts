@@ -13,3 +13,4 @@ export * from "./DateUtils";
 export * from "./GeoUtils";
 export * from "./NetworkUtils";
 export * from "./SubscriptionUtils";
+export * from "./StringUtils";
