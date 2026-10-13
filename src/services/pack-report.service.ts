@@ -2,6 +2,7 @@ import {
   CRITICAL_REPORT_REASONS,
   EMAIL_REPLY_TO,
   EMAIL_SENDERS,
+  MAX_STRIKES,
   REPORT_REASONS_DICTIONARY,
   REPORT_THRESHOLD_TO_HIDE,
 } from "@/constants";
@@ -16,15 +17,23 @@ import {
   DuplicateReportError,
   PackNotFoundError,
 } from "@/errors";
-import type { PackModerationStatus, PackReport, StickerPack } from "@/models";
+import type {
+  PackModerationStatus,
+  PackReport,
+  StickerPack,
+  User,
+} from "@/models";
 import type {
   PackReportRepository,
   PackRepository,
   UserRepository,
 } from "@/repositories";
 import {
+  renderModerationOutcomeEmailTemplate,
+  renderModerationOutcomeText,
   renderModerationPackReportTemplate,
   renderPackSecurityWarningTemplate,
+  type ModerationOutcomeTemplateProps,
 } from "@/templates";
 import type { PaginatedResult, PaginationOptions } from "@/types";
 import { MongoUtils } from "@/utils";
@@ -243,6 +252,9 @@ export class PackReportService {
     const isPublic = data.status === "approved";
     const resetReports = data.reset_reports ?? true;
 
+    const existingReports =
+      await this.packReportRepository.findManyByPackId(packObjectId);
+
     const previousPack = await this.packRepository.updateModerationStatus(
       packObjectId,
       data.status,
@@ -256,9 +268,21 @@ export class PackReportService {
 
     const isNewBan =
       previousPack.moderation_status !== "banned" && data.status === "banned";
+    const isNewApproval =
+      previousPack.moderation_status !== "approved" &&
+      data.status === "approved";
+
+    let owner: User | null = null;
+    let updatedUser: User | null = null;
 
     if (isNewBan) {
-      await this.userRepository.incrementStrikes(previousPack.user_id);
+      owner = await this.userRepository.find({ _id: previousPack.user_id });
+      updatedUser = await this.userRepository.incrementStrikes(
+        previousPack.user_id,
+      );
+    }
+    if (isNewApproval) {
+      owner = await this.userRepository.find({ _id: previousPack.user_id });
     }
 
     if (resetReports) {
@@ -272,14 +296,126 @@ export class PackReportService {
       this.cacheService.delPattern("pack:list:*"),
     ]);
 
+    if (isNewBan && owner) {
+      await this.sendBanEmail(
+        previousPack,
+        owner,
+        updatedUser,
+        existingReports,
+        data.notes,
+      );
+    }
+
+    if (isNewApproval && owner) {
+      await this.sendApprovalEmail(previousPack, owner, data.notes);
+    }
+
     const updated: StickerPack = {
       ...previousPack,
       moderation_status: data.status,
       is_public: isPublic,
-      ...(resetReports ? { reports_count: 0 } : {}),
+      reports_count: resetReports ? 0 : previousPack.reports_count,
       updated_at: new Date(),
     };
 
     return updated;
+  }
+
+  private async sendBanEmail(
+    pack: StickerPack,
+    owner: User,
+    updatedUser: User | null,
+    reports: PackReport[],
+    notes?: string,
+  ): Promise<void> {
+    if (!owner.email || !owner.isEmailVerified) {
+      return;
+    }
+
+    const hasCrossedToRestricted =
+      owner.status !== "restricted" && updatedUser?.status === "restricted";
+
+    let eventType: ModerationOutcomeTemplateProps["eventType"] = "BANNED";
+    let subject = `Notificação de Moderação: O pacote "${pack.pack_name}" foi removido da plataforma`;
+
+    if (hasCrossedToRestricted) {
+      eventType = "BANNED_AND_RESTRICTED";
+      subject = `Notificação de Moderação: Pacote "${pack.pack_name}" removido e restrição de perfil aplicada`;
+    }
+
+    const reasonInfo = this.resolveReportReason(reports);
+    const currentStrikes = updatedUser?.strikes ?? owner.strikes + 1;
+
+    const templateProps: ModerationOutcomeTemplateProps = {
+      eventType,
+      userName: owner.name ?? "Criador",
+      userHandle: owner.userName,
+      packName: pack.pack_name,
+      packId: pack._id.toString(),
+      reasonLabel: reasonInfo.label,
+      reasonDescription: reasonInfo.description,
+      currentStrikes,
+      maxStrikes: MAX_STRIKES,
+      moderatorNotes: notes,
+    };
+
+    const html = renderModerationOutcomeEmailTemplate(templateProps);
+    const text = renderModerationOutcomeText(templateProps);
+
+    await this.mailService.sendMail(
+      {
+        from: EMAIL_SENDERS.SECURITY,
+        to: owner.email,
+        subject,
+        html,
+        text,
+      },
+      {
+        jobId: `email:pack-banned:${pack._id.toString()}:${Date.now()}`,
+      },
+    );
+  }
+
+  private async sendApprovalEmail(
+    pack: StickerPack,
+    owner: User,
+    notes?: string,
+  ): Promise<void> {
+    if (!owner.email || !owner.isEmailVerified) {
+      return;
+    }
+
+    const templateProps: ModerationOutcomeTemplateProps = {
+      eventType: "RELEASED",
+      userName: owner.name ?? "Criador",
+      userHandle: owner.userName,
+      packName: pack.pack_name,
+      packId: pack._id.toString(),
+      moderatorNotes: notes,
+    };
+
+    const html = renderModerationOutcomeEmailTemplate(templateProps);
+    const text = renderModerationOutcomeText(templateProps);
+
+    await this.mailService.sendMail(
+      {
+        from: EMAIL_SENDERS.SECURITY,
+        to: owner.email,
+        subject: `Moderação Concluída: Seu pacote "${pack.pack_name}" foi liberado`,
+        html,
+        text,
+      },
+      {
+        jobId: `email:pack-released:${pack._id.toString()}:${Date.now()}`,
+      },
+    );
+  }
+
+  private resolveReportReason(reports: PackReport[]) {
+    const critical = reports.find((r) =>
+      CRITICAL_REPORT_REASONS.includes(r.reason),
+    );
+    const reason = critical?.reason ?? reports[0]?.reason ?? "other";
+    return REPORT_REASONS_DICTIONARY[reason] ?? REPORT_REASONS_DICTIONARY.other;
   }
 }

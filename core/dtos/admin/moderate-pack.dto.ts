@@ -4,6 +4,7 @@ export const moderatePackDtoSchema = z
   .object({
     status: z.enum(["approved", "banned"]),
     reset_reports: z.boolean().default(true),
+    notes: z.string().trim().max(500).optional(),
   })
   .strict();
 
