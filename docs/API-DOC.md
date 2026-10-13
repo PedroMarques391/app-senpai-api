@@ -176,6 +176,12 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
 - **Request Body (`CreateUserDto`):** `wa_id`, `name`, `userName`, `email`, `password`.
 - **Respostas:**
   - `200 OK`: `{"message": "Usuário cadastrado com sucesso.", "user": { ...User }}`
+  - `400 Bad Request`:
+    - WhatsApp já cadastrado: `{"success": false, "code": "BAD_REQUEST", "message": "Este número de WhatsApp já possui uma conta cadastrada. Tente fazer login."}`
+    - E-mail e username em uso: `{"success": false, "code": "BAD_REQUEST", "message": "O e-mail e o nome de usuário já estão em uso."}`
+    - E-mail já em uso: `{"success": false, "code": "BAD_REQUEST", "message": "Este e-mail já está em uso."}`
+    - Username já em uso: `{"success": false, "code": "BAD_REQUEST", "message": "Este nome de usuário já está em uso."}`
+    - Conta inativa: `{"success": false, "code": "BAD_REQUEST", "message": "Esta conta está desativada. Entre em contato com o suporte."}`
 
 #### `POST /auth/password/recovery`
 - **Descrição e Regra de Negócio:** Dispara o fluxo de recuperação de senha por e-mail para usuários cadastrados.
