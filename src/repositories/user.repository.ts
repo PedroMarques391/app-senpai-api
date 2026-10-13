@@ -1,3 +1,4 @@
+import { MAX_STRIKES } from "@/constants";
 import type { UserAdminFilterOptions } from "@/dtos";
 import { MongoInitializer } from "@/init";
 import {
@@ -141,6 +142,40 @@ export class UserRepository implements IUserRepository {
           },
         },
       ],
+    );
+  }
+
+  async incrementStrikes(
+    userId: ObjectId,
+    amount: number = 1,
+  ): Promise<User | null> {
+    return this.collection.findOneAndUpdate(
+      { _id: userId },
+      [
+        {
+          $set: {
+            strikes: { $add: ["$strikes", amount] },
+            updatedAt: new Date(),
+          },
+        },
+        {
+          $set: {
+            status: {
+              $cond: {
+                if: {
+                  $and: [
+                    { $gte: ["$strikes", MAX_STRIKES] },
+                    { $eq: ["$status", "active"] },
+                  ],
+                },
+                then: "restricted",
+                else: "$status",
+              },
+            },
+          },
+        },
+      ],
+      { returnDocument: "after" },
     );
   }
 

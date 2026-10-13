@@ -1,3 +1,4 @@
+import { MAX_STRIKES } from "@/constants";
 import type {
   AdminAdjustPetalsDto,
   AdminUpdateUserRoleDto,
@@ -173,9 +174,18 @@ export class UserService {
       throw new Error("Usuário não encontrado");
     }
 
+    const updateFields: Partial<User> = {
+      status: data.status,
+      updatedAt: new Date(),
+    };
+
+    if (data.status === "active" && user.strikes >= MAX_STRIKES) {
+      updateFields.strikes = 0;
+    }
+
     const updated = await this.userRepository.update(
       { _id: objectId },
-      { status: data.status, updatedAt: new Date() },
+      updateFields,
     );
     if (!updated) {
       throw new Error("Falha ao atualizar o status do usuário");
