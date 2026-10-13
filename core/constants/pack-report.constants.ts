@@ -1,6 +1,7 @@
 import type { ReportReason } from "@/schemas";
 
 export const REPORT_THRESHOLD_TO_HIDE = 3;
+export const MAX_STRIKES = 3;
 
 export const CRITICAL_REPORT_REASONS: readonly ReportReason[] = [
   "child_exploitation",

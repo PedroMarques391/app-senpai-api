@@ -25,4 +25,5 @@ export interface UserRepository {
   incrementPetals(userId: ObjectId, amount: number): Promise<User | null>;
   deductPetals(userId: ObjectId, amount: number): Promise<number | null>;
   incrementStorageUsedBytes(userId: ObjectId, bytes: number): Promise<void>;
+  incrementStrikes(userId: ObjectId, amount?: number): Promise<User | null>;
 }

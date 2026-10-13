@@ -14,7 +14,7 @@ export const userRoleEnum = z.enum([
 ]);
 export type UserRole = z.infer<typeof userRoleEnum>;
 
-export const userStatusEnum = z.enum(["active", "inactive"]);
+export const userStatusEnum = z.enum(["active", "inactive", "restricted"]);
 export type UserStatus = z.infer<typeof userStatusEnum>;
 
 export const vipTypeEnum = z.enum(["FREE", "PRO", "MESTRE"]);
@@ -96,6 +96,7 @@ export const userSchema = z.object({
     .default({ static: 0, dynamic: 0 }),
   storage_used_bytes: z.number().nonnegative().default(0),
   total_xp: z.number().int().nonnegative().default(0),
+  strikes: z.number().int().nonnegative().default(0),
   activity: userActivitySchema.default({
     current_streak: 0,
     weekly_active_days: [],

@@ -3,6 +3,7 @@ export * from "./cannot-report-own-pack.error";
 export * from "./duplicate-report.error";
 export * from "./email-not-verified.error";
 export * from "./master-only-feature.error";
+export * from "./max-strikes-reached.error";
 export * from "./pack-not-found.error";
 export * from "./pack-reported-cannot-be-public.error";
 export * from "./pack-rules.error";
