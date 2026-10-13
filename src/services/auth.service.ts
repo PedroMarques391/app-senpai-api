@@ -1,4 +1,5 @@
 import { createUserDtoSchema, type CreateUserDto } from "@/dtos";
+import { AppError } from "@/errors";
 import type { User, UserRepository } from "@/models";
 import type { WhatsAppQueue } from "@/queues";
 import type { AuthResult, SendOtpResult, ServiceResponse } from "@/types";
@@ -78,20 +79,24 @@ export class AuthService {
     const variants = AuthUtils.getWaIdVariants(rawWaId);
     const user = await this.userRepository.find({ wa_id: { $in: variants } });
     if (!user) {
-      throw new Error(
+      throw new AppError(
         "Conta não encontrada. Verifique seu número de WhatsApp.",
+        404,
+        "USER_NOT_FOUND",
       );
     }
 
     if (user.status === "inactive") {
-      throw new Error("Credenciais inválidas");
+      throw new AppError("Credenciais inválidas", 401, "INVALID_CREDENTIALS");
     }
 
     const isValid = await this.otpService.verifyOtp(user.wa_id, otpCode);
 
     if (!isValid) {
-      throw new Error(
+      throw new AppError(
         "Código de verificação inválido ou expirado. Solicite um novo código.",
+        400,
+        "INVALID_OTP",
       );
     }
 
@@ -128,18 +133,22 @@ export class AuthService {
       user = await this.userRepository.find({ userName: cleanIdentifier });
     }
     if (!user) {
-      throw new Error(
+      throw new AppError(
         "E-mail, usuário ou senha incorretos. Verifique os dados e tente novamente.",
+        401,
+        "INVALID_CREDENTIALS",
       );
     }
 
     if (user.status === "inactive") {
-      throw new Error("Credenciais inválidas");
+      throw new AppError("Credenciais inválidas", 401, "INVALID_CREDENTIALS");
     }
 
     if (!user.email || !user.password) {
-      throw new Error(
+      throw new AppError(
         "Sua conta ainda não possui senha cadastrada. Conclua seu cadastro ou entre pelo WhatsApp.",
+        400,
+        "PASSWORD_NOT_SET",
       );
     }
 
@@ -148,8 +157,10 @@ export class AuthService {
       user.password,
     );
     if (!isMatch) {
-      throw new Error(
+      throw new AppError(
         "E-mail, usuário ou senha incorretos. Verifique os dados e tente novamente.",
+        401,
+        "INVALID_CREDENTIALS",
       );
     }
 
@@ -197,14 +208,18 @@ export class AuthService {
       emailUser?.status === "inactive" ||
       usernameUser?.status === "inactive"
     ) {
-      throw new Error(
+      throw new AppError(
         "Esta conta está desativada. Entre em contato com o suporte.",
+        403,
+        "ACCOUNT_INACTIVE",
       );
     }
 
     if (UserUtils.isFullyRegistered(waUser)) {
-      throw new Error(
+      throw new AppError(
         "Este número de WhatsApp já possui uma conta cadastrada. Tente fazer login.",
+        409,
+        "WA_ID_IN_USE",
       );
     }
 
@@ -212,15 +227,23 @@ export class AuthService {
     const isUsernameInUse = UserUtils.isDifferentUser(usernameUser, waUser);
 
     if (isEmailInUse && isUsernameInUse) {
-      throw new Error("O e-mail e o nome de usuário já estão em uso.");
+      throw new AppError(
+        "O e-mail e o nome de usuário já estão em uso.",
+        409,
+        "EMAIL_AND_USERNAME_IN_USE",
+      );
     }
 
     if (isEmailInUse) {
-      throw new Error("Este e-mail já está em uso.");
+      throw new AppError("Este e-mail já está em uso.", 409, "EMAIL_IN_USE");
     }
 
     if (isUsernameInUse) {
-      throw new Error("Este nome de usuário já está em uso.");
+      throw new AppError(
+        "Este nome de usuário já está em uso.",
+        409,
+        "USERNAME_IN_USE",
+      );
     }
 
     const hashedPassword = await AuthUtils.hashPassword(data.password);
