@@ -29,6 +29,7 @@ export interface SendEmailPayload {
   to: string | string[];
   subject: string;
   html: string;
+  text?: string;
   from?: string;
   replyTo?: string | string[];
 }

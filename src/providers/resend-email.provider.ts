@@ -1,5 +1,5 @@
 import type { EmailProvider, SendEmailPayload } from "@/types";
-import { Resend, type WebhookEventPayload } from "resend";
+import { Resend, type CreateEmailOptions, type WebhookEventPayload } from "resend";
 
 export class ResendEmailProvider implements EmailProvider {
   private readonly resend: Resend;
@@ -17,7 +17,9 @@ export class ResendEmailProvider implements EmailProvider {
     }
 
     if (!this.webhookSecret) {
-      throw new Error("RESEND_WEBHOOK_SECRET não definida nas variáveis de ambiente");
+      throw new Error(
+        "RESEND_WEBHOOK_SECRET não definida nas variáveis de ambiente",
+      );
     }
 
     this.resend = new Resend(apiKey);
@@ -25,20 +27,32 @@ export class ResendEmailProvider implements EmailProvider {
   }
 
   async send(payload: SendEmailPayload): Promise<void> {
-    const { error } = await this.resend.emails.send({
+    const emailOptions: CreateEmailOptions = {
       from: payload.from ?? this.defaultFrom,
       to: payload.to,
       subject: payload.subject,
       html: payload.html,
-      ...(payload.replyTo ? { replyTo: payload.replyTo } : {}),
-    });
+    };
+
+    if (payload.text) {
+      emailOptions.text = payload.text;
+    }
+
+    if (payload.replyTo) {
+      emailOptions.replyTo = payload.replyTo;
+    }
+
+    const { error } = await this.resend.emails.send(emailOptions);
 
     if (error) {
       throw new Error(`[Resend] Falha ao enviar e-mail: ${error.message}`);
     }
   }
 
-  async verifyWebhook(payload: string, headers: Record<string, string>): Promise<WebhookEventPayload> {
+  async verifyWebhook(
+    payload: string,
+    headers: Record<string, string>,
+  ): Promise<WebhookEventPayload> {
     const result = this.resend.webhooks.verify({
       payload,
       headers: {

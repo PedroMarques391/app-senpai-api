@@ -24,7 +24,7 @@ export class EmailWorker {
   }
 
   private async process(job: Job<EmailJobData>): Promise<void> {
-    const { to, subject, html, from, replyTo } = job.data;
+    const { to, subject, html, text, from, replyTo } = job.data;
 
     await this.emailProvider.send({
       from,
@@ -32,6 +32,7 @@ export class EmailWorker {
       to,
       subject,
       html,
+      text,
     });
   }
 
