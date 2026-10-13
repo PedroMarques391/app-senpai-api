@@ -10,6 +10,7 @@ export const userRoleEnum = z.enum([
   "owner",
   "developer",
   "senpai",
+  "verified_creator",
 ]);
 export type UserRole = z.infer<typeof userRoleEnum>;
 
@@ -30,7 +31,9 @@ export const userSubscriptionSchema = z.object({
       if (!val) return "FREE";
       const normalized = String(val).trim().toUpperCase();
       if (normalized === "PREMIUM") return "PRO";
-      return ["FREE", "PRO", "MESTRE"].includes(normalized) ? normalized : "FREE";
+      return ["FREE", "PRO", "MESTRE"].includes(normalized)
+        ? normalized
+        : "FREE";
     }, vipTypeEnum)
     .default("FREE"),
   plan: vipPlanEnum.optional().nullable(),
