@@ -16,11 +16,7 @@ import {
   DuplicateReportError,
   PackNotFoundError,
 } from "@/errors";
-import type {
-  PackModerationStatus,
-  PackReport,
-  StickerPack,
-} from "@/models";
+import type { PackModerationStatus, PackReport, StickerPack } from "@/models";
 import type {
   PackReportRepository,
   PackRepository,
@@ -64,10 +60,11 @@ export class PackReportService {
       throw new CannotReportOwnPackError();
     }
 
-    const existingReport = await this.packReportRepository.findByPackAndReporter(
-      packObjectId,
-      reporterObjectId,
-    );
+    const existingReport =
+      await this.packReportRepository.findByPackAndReporter(
+        packObjectId,
+        reporterObjectId,
+      );
     if (existingReport) {
       throw new DuplicateReportError();
     }
@@ -81,8 +78,9 @@ export class PackReportService {
     });
 
     const isCritical = CRITICAL_REPORT_REASONS.includes(payload.reason);
-    const newReportsCount = (pack.reports_count ?? 0) + 1;
-    const shouldHide = isCritical || newReportsCount >= REPORT_THRESHOLD_TO_HIDE;
+    const newReportsCount = pack.reports_count + 1;
+    const shouldHide =
+      isCritical || newReportsCount >= REPORT_THRESHOLD_TO_HIDE;
 
     const previousPack = await this.packRepository.incrementReportsCount(
       packObjectId,
@@ -117,13 +115,15 @@ export class PackReportService {
     }).format(new Date());
 
     const moderatorEmail =
-      process.env.MODERATOR_EMAIL || EMAIL_REPLY_TO || "botdosenpaicontato@gmail.com";
+      process.env.MODERATOR_EMAIL ||
+      EMAIL_REPLY_TO ||
+      "botdosenpaicontato@gmail.com";
 
     const moderatorHtml = renderModerationPackReportTemplate({
       packName: pack.pack_name,
       packId: pack._id.toString(),
       publisher: pack.publisher,
-      stickersCount: pack.stickers_count ?? 0,
+      stickersCount: pack.stickers_count,
       reportsCount: newReportsCount,
       ownerName: owner?.name ?? "Criador Desconhecido",
       ownerUsername: owner?.userName ?? "sem_username",
@@ -230,7 +230,8 @@ export class PackReportService {
       throw new PackNotFoundError();
     }
 
-    const reports = await this.packReportRepository.findManyByPackId(packObjectId);
+    const reports =
+      await this.packReportRepository.findManyByPackId(packObjectId);
     return { pack, reports };
   }
 
@@ -242,15 +243,22 @@ export class PackReportService {
     const isPublic = data.status === "approved";
     const resetReports = data.reset_reports ?? true;
 
-    const updated = await this.packRepository.updateModerationStatus(
+    const previousPack = await this.packRepository.updateModerationStatus(
       packObjectId,
       data.status,
       isPublic,
       resetReports,
     );
 
-    if (!updated) {
+    if (!previousPack) {
       throw new PackNotFoundError();
+    }
+
+    const isNewBan =
+      previousPack.moderation_status !== "banned" && data.status === "banned";
+
+    if (isNewBan) {
+      await this.userRepository.incrementStrikes(previousPack.user_id);
     }
 
     if (resetReports) {
@@ -259,9 +267,18 @@ export class PackReportService {
 
     await Promise.all([
       this.cacheService.del(`pack:${packId}`),
-      this.cacheService.del(`pack:user:${updated.user_id}`),
+      this.cacheService.del(`pack:user:${previousPack.user_id}`),
+      this.cacheService.del(`profile:${previousPack.user_id}`),
       this.cacheService.delPattern("pack:list:*"),
     ]);
+
+    const updated: StickerPack = {
+      ...previousPack,
+      moderation_status: data.status,
+      is_public: isPublic,
+      ...(resetReports ? { reports_count: 0 } : {}),
+      updated_at: new Date(),
+    };
 
     return updated;
   }

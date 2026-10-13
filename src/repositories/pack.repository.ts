@@ -254,7 +254,7 @@ export class PackRepository implements IPackRepository {
     const result = await this.collection.findOneAndUpdate(
       { _id: packId },
       updateFields,
-      { returnDocument: "after" },
+      { returnDocument: "before" },
     );
     return result;
   }

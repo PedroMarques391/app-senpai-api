@@ -1,4 +1,8 @@
-import { MAX_STICKERS_PER_PACK, MIN_STICKERS_PER_PACK } from "@/constants";
+import {
+  MAX_STICKERS_PER_PACK,
+  MAX_STRIKES,
+  MIN_STICKERS_PER_PACK,
+} from "@/constants";
 import type {
   CreatePackDto,
   CreateStickerDto,
@@ -6,6 +10,7 @@ import type {
   UpdatePackDto,
 } from "@/dtos";
 import {
+  MaxStrikesReachedError,
   PackNotFoundError,
   PackReportedCannotBePublicError,
   PackRulesError,
@@ -40,6 +45,14 @@ export class PackService {
 
     if (!publisher) {
       throw new Error("O nome do criador do pacote é obrigatório.");
+    }
+
+    const user = await this.userRepository.find({ _id: userObjectId });
+    const isRestricted =
+      Boolean(user && (user.strikes >= MAX_STRIKES || user.status === "restricted"));
+
+    if (packData.is_public !== false && isRestricted) {
+      throw new MaxStrikesReachedError();
     }
 
     const sanitizedTags = packData.tags?.map((tag) => tag.toLowerCase().trim());
@@ -84,7 +97,6 @@ export class PackService {
       );
     }
 
-    const user = await this.userRepository.find({ _id: userObjectId });
     const isVipMaster = user?.subscription?.type === "MESTRE";
 
     if (
@@ -233,11 +245,18 @@ export class PackService {
       "pacote",
     );
 
-    if (
-      updateData.is_public === true &&
-      existingPack.moderation_status !== "approved"
-    ) {
-      throw new PackReportedCannotBePublicError();
+    if (updateData.is_public === true) {
+      if (existingPack.moderation_status !== "approved") {
+        throw new PackReportedCannotBePublicError();
+      }
+
+      const user = await this.userRepository.find({ _id: userObjectId });
+      const isRestricted =
+        Boolean(user && (user.strikes >= MAX_STRIKES || user.status === "restricted"));
+
+      if (isRestricted) {
+        throw new MaxStrikesReachedError();
+      }
     }
 
     const pack = await this.packRepository.update(
