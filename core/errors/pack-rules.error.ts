@@ -1,11 +1,9 @@
 import { MAX_STICKERS_PER_PACK, MIN_STICKERS_PER_PACK } from "@/constants";
+import { AppError } from "./app.error";
 
 export type PackRuleViolation = "min" | "max" | "type_mismatch";
 
-export class PackRulesError extends Error {
-  readonly statusCode = 400;
-  readonly code: string;
-
+export class PackRulesError extends AppError {
   constructor(type: PackRuleViolation, message?: string) {
     let resolvedMessage: string;
     let resolvedCode: string;
@@ -30,14 +28,13 @@ export class PackRulesError extends Error {
         resolvedCode = "PACK_TYPE_MISMATCH";
         break;
       default:
-        resolvedMessage = message;
-        resolvedCode = message ?? "PACK_RULES_ERROR";
+        resolvedMessage = message ?? "Erro de validação do pack";
+        resolvedCode = "PACK_RULES_ERROR";
         break;
     }
 
-    super(resolvedMessage);
+    super(resolvedMessage, 400, resolvedCode);
     this.name = "PackRulesError";
-    this.code = resolvedCode;
   }
 
   static min(message?: string): PackRulesError {

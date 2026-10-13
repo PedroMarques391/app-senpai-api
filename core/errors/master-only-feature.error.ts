@@ -1,11 +1,10 @@
-export class MasterOnlyFeatureError extends Error {
-  readonly statusCode = 403;
-  readonly code = "MESTRE_ONLY_FEATURE";
+import { AppError } from "./app.error";
 
+export class MasterOnlyFeatureError extends AppError {
   constructor(
     message = "A funcionalidade de grupos é exclusiva para usuários com plano VIP Mestre.",
   ) {
-    super(message);
+    super(message, 403, "MESTRE_ONLY_FEATURE");
     this.name = "MasterOnlyFeatureError";
   }
 }

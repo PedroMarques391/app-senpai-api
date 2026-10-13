@@ -1,14 +1,8 @@
-export class UploadError extends Error {
-  public code: string;
+import { AppError } from "./app.error";
 
-  constructor(
-    message: string,
-    code: string,
-    public statusCode: number,
-  ) {
-    super(message);
+export class UploadError extends AppError {
+  constructor(message: string, code: string, statusCode: number) {
+    super(message, statusCode, code);
     this.name = "UploadError";
-    this.code = code;
-    this.statusCode = statusCode;
   }
 }
