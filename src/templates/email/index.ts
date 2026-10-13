@@ -4,4 +4,5 @@ export * from "./success-email-template";
 export * from "./moderation-group-email-template";
 export * from "./moderation-pack-email-template";
 export * from "./pack-security-warning-email-template";
+export * from "./moderation-outcome-email-template";
 
