@@ -222,19 +222,14 @@ export class UserService {
     const html = renderModerationOutcomeEmailTemplate(emailProps);
     const text = renderModerationOutcomeText(emailProps);
 
-    await this.mailService.sendMail(
-      {
-        from: EMAIL_SENDERS.SECURITY,
-        to: updated.email,
-        subject:
-          "Aviso de Segurança: Seu perfil atingiu o limite de strikes e está temporariamente restrito",
-        html,
-        text,
-      },
-      {
-        jobId: `email:account-restricted:${userId}:${Date.now()}`,
-      },
-    );
+    await this.mailService.sendMail({
+      from: EMAIL_SENDERS.SECURITY,
+      to: updated.email,
+      subject:
+        "Aviso de Segurança: Seu perfil atingiu o limite de strikes e está temporariamente restrito",
+      html,
+      text,
+    });
 
     return updated;
   }
