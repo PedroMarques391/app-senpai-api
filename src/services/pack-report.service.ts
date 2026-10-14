@@ -362,18 +362,13 @@ export class PackReportService {
     const html = renderModerationOutcomeEmailTemplate(templateProps);
     const text = renderModerationOutcomeText(templateProps);
 
-    await this.mailService.sendMail(
-      {
-        from: EMAIL_SENDERS.SECURITY,
-        to: owner.email,
-        subject,
-        html,
-        text,
-      },
-      {
-        jobId: `email:pack-banned:${pack._id.toString()}:${Date.now()}`,
-      },
-    );
+    await this.mailService.sendMail({
+      from: EMAIL_SENDERS.SECURITY,
+      to: owner.email,
+      subject,
+      html,
+      text,
+    });
   }
 
   private async sendApprovalEmail(
@@ -397,18 +392,13 @@ export class PackReportService {
     const html = renderModerationOutcomeEmailTemplate(templateProps);
     const text = renderModerationOutcomeText(templateProps);
 
-    await this.mailService.sendMail(
-      {
-        from: EMAIL_SENDERS.SECURITY,
-        to: owner.email,
-        subject: `Moderação Concluída: Seu pacote "${pack.pack_name}" foi liberado`,
-        html,
-        text,
-      },
-      {
-        jobId: `email:pack-released:${pack._id.toString()}:${Date.now()}`,
-      },
-    );
+    await this.mailService.sendMail({
+      from: EMAIL_SENDERS.SECURITY,
+      to: owner.email,
+      subject: `Moderação Concluída: Seu pacote "${pack.pack_name}" foi liberado`,
+      html,
+      text,
+    });
   }
 
   private resolveReportReason(reports: PackReport[]) {
