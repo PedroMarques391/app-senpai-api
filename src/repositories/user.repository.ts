@@ -59,6 +59,10 @@ export class UserRepository implements IUserRepository {
       query.role = filters.role;
     }
 
+    if (filters.accountType) {
+      query.accountType = filters.accountType;
+    }
+
     if (filters.status) {
       query.status = filters.status;
     }

@@ -109,6 +109,7 @@ export class ProfileService {
         subscription: sanitizedUser.subscription,
         activity: sanitizedUser.activity,
         role: sanitizedUser.role,
+        accountType: sanitizedUser.accountType,
         equipped_cosmetics: sanitizedUser.equipped_cosmetics,
       };
     };

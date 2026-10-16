@@ -7,7 +7,7 @@ export const adminRouter: FastifyPluginAsync = async (app) => {
   app.addHook("onRequest", app.authenticate);
   app.addHook(
     "preHandler",
-    app.requireAdmin("admin", "moderator", "owner", "developer"),
+    app.requireAdmin("admin", "moderator"),
   );
 
   app.register(adminUserRoutes, { prefix: "/users" });

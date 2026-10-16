@@ -116,6 +116,7 @@ export class AuthService {
       isNumberVerified: fullUser.isNumberVerified,
       isEmailVerified: fullUser.isEmailVerified,
       role: fullUser.role,
+      accountType: fullUser.accountType,
     };
 
     const token = AuthUtils.generateJWT(this.jwtInstance, payload);
@@ -180,6 +181,7 @@ export class AuthService {
       isNumberVerified: fullUser.isNumberVerified,
       isEmailVerified: fullUser.isEmailVerified,
       role: fullUser.role,
+      accountType: fullUser.accountType,
     };
     const token = AuthUtils.generateJWT(this.jwtInstance, payload);
 
