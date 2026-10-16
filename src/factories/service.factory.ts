@@ -241,6 +241,7 @@ export class ServiceFactory {
         new GroupRepository(),
         this.getEmailService(),
         this.getCacheService(redisInstance),
+        new UserRepository(),
       );
     }
     return this.groupService;

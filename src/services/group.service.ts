@@ -1,33 +1,47 @@
-import crypto from "node:crypto";
-import type { CreateGroupDto, UpdateGroupDto, UpdateGroupItemDto } from "@/dtos";
-import type { Group, GroupItem, GroupRepository } from "@/models";
-import { MongoUtils, PermissionUtils } from "@/utils";
 import { EMAIL_SENDERS } from "@/constants";
+import type {
+  CreateGroupDto,
+  GroupModerationRepositoryOptions,
+  ListGroupsAdminQueryDto,
+  ModerateGroupDto,
+  UpdateGroupDto,
+  UpdateGroupItemDto,
+} from "@/dtos";
+import { GroupAlreadyDecidedError, GroupItemNotFoundError } from "@/errors";
+import type {
+  Group,
+  GroupItem,
+  GroupModerationItem,
+  GroupRepository,
+  UserRepository,
+} from "@/models";
 import {
+  renderGroupModerationOutcomeEmailTemplate,
   renderModerationGroupEmailTemplate,
   type ModerationGroupEmailItem,
 } from "@/templates/email";
-import type { MailService } from "./mail.service";
+import type { PaginatedResult, PaginationOptions } from "@/types";
+import { MongoUtils, PermissionUtils } from "@/utils";
 import type { CacheService } from "./cache.service";
-
-export interface GroupModerationTokenPayload {
-  groupId: string;
-  itemId: string;
-  action: "accepted" | "rejected";
-  moderatorEmail: string;
-  createdAt: number;
-}
+import type { MailService } from "./mail.service";
 
 export class GroupService {
   constructor(
     private readonly groupRepository: GroupRepository,
     private readonly mailService: MailService,
     private readonly cacheService: CacheService,
-  ) { }
+    private readonly userRepository?: UserRepository,
+  ) {}
 
-  async findManyGroups(userId: string, subscriptionType?: string): Promise<Group | null> {
+  async findManyGroups(
+    userId: string,
+    subscriptionType?: string,
+  ): Promise<Group | null> {
     PermissionUtils.verifyMasterSubscription(subscriptionType);
-    const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
+    const userObjectId = MongoUtils.toObjectId(
+      userId,
+      "ID do usuário inválido",
+    );
     const groups = await this.groupRepository.find(userObjectId);
     if (!groups) {
       throw new Error("Parece que você ainda não cadastrou nenhum grupo");
@@ -35,9 +49,16 @@ export class GroupService {
     return groups;
   }
 
-  async findGroupById(userId: string, id: string, subscriptionType?: string): Promise<Group> {
+  async findGroupById(
+    userId: string,
+    id: string,
+    subscriptionType?: string,
+  ): Promise<Group> {
     PermissionUtils.verifyMasterSubscription(subscriptionType);
-    const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
+    const userObjectId = MongoUtils.toObjectId(
+      userId,
+      "ID do usuário inválido",
+    );
     const groupObjectId = MongoUtils.toObjectId(id, "ID do grupo inválido");
     const group = await this.groupRepository.findById(groupObjectId);
     if (!group) {
@@ -47,9 +68,102 @@ export class GroupService {
     return group;
   }
 
-  async createGroup(userId: string, email: string, userName: string, data: CreateGroupDto, subscriptionType?: string): Promise<Group> {
+  async findManyGroupsForModeration(
+    query: ListGroupsAdminQueryDto,
+  ): Promise<PaginatedResult<GroupModerationItem>> {
+    const page = query.page > 0 ? query.page : 1;
+    const limit = query.limit > 0 ? Math.min(query.limit, 50) : 20;
+
+    const paginationOptions: PaginationOptions = { page, limit };
+
+    const queryOptions: GroupModerationRepositoryOptions = {
+      status: query.status,
+      order: query.order,
+    };
+
+    const { data, total } = await this.groupRepository.findManyForModeration(
+      queryOptions,
+      paginationOptions,
+    );
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit) || 1,
+    };
+  }
+
+  async moderateGroupItem(
+    groupId: string,
+    itemId: string,
+    data: ModerateGroupDto,
+    moderatorUser: { _id: string; userName: string },
+  ): Promise<{ group: Group; item: GroupItem }> {
+    const groupObjectId = MongoUtils.toObjectId(
+      groupId,
+      "ID do grupo inválido",
+    );
+    const moderatorObjectId = MongoUtils.toObjectId(
+      moderatorUser._id,
+      "ID do moderador inválido",
+    );
+
+    const updatedGroup = await this.groupRepository.updateGroupItemModeration(
+      groupObjectId,
+      itemId,
+      data.action,
+      moderatorObjectId,
+      moderatorUser.userName,
+      data.note,
+    );
+
+    if (!updatedGroup) {
+      const existing = await this.groupRepository.findById(groupObjectId);
+      if (!existing) {
+        throw new GroupItemNotFoundError();
+      }
+
+      const existingItem = existing.groups.find((g) => g.id === itemId);
+      if (!existingItem) {
+        throw new GroupItemNotFoundError();
+      }
+
+      if (existingItem.status !== "pending") {
+        throw new GroupAlreadyDecidedError();
+      }
+
+      throw new GroupItemNotFoundError();
+    }
+
+    const item = updatedGroup.groups.find((g) => g.id === itemId);
+    if (!item) {
+      throw new GroupItemNotFoundError();
+    }
+
+    await this.sendOutcomeEmailToOwner(
+      updatedGroup,
+      item,
+      data.action,
+      data.note,
+    );
+
+    return { group: updatedGroup, item };
+  }
+
+  async createGroup(
+    userId: string,
+    email: string,
+    userName: string,
+    data: CreateGroupDto,
+    subscriptionType?: string,
+  ): Promise<Group> {
     PermissionUtils.verifyMasterSubscription(subscriptionType);
-    const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
+    const userObjectId = MongoUtils.toObjectId(
+      userId,
+      "ID do usuário inválido",
+    );
 
     const existingGroups = await this.groupRepository.find(userObjectId);
     if (existingGroups) {
@@ -68,12 +182,11 @@ export class GroupService {
 
       const addedGroups = updated.groups.slice(existingGroups.groups.length);
       await this.sendModerationEmail(
-        existingGroups._id.toString(),
         email,
         userName,
         "Novo Grupo Cadastrado",
-        "Um usuário cadastrou um novo grupo na plataforma. Analise e aprove ou rejeite o link abaixo.",
-        addedGroups
+        "Um usuário cadastrou um novo grupo na plataforma. A análise e decisão devem ser feitas no aplicativo.",
+        addedGroups,
       );
 
       return updated;
@@ -85,12 +198,11 @@ export class GroupService {
     }
 
     await this.sendModerationEmail(
-      group._id.toString(),
       email,
       userName,
       "Novo Grupo Cadastrado",
-      "Um usuário cadastrou um novo grupo na plataforma. Analise e aprove ou rejeite o link abaixo.",
-      group.groups
+      "Um usuário cadastrou um novo grupo na plataforma. A análise e decisão devem ser feitas no aplicativo.",
+      group.groups,
     );
 
     return group;
@@ -103,7 +215,10 @@ export class GroupService {
     subscriptionType?: string,
   ): Promise<Group> {
     PermissionUtils.verifyMasterSubscription(subscriptionType);
-    const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
+    const userObjectId = MongoUtils.toObjectId(
+      userId,
+      "ID do usuário inválido",
+    );
     const groupObjectId = MongoUtils.toObjectId(id, "ID do grupo inválido");
 
     const existing = await this.groupRepository.findById(groupObjectId);
@@ -129,7 +244,10 @@ export class GroupService {
     subscriptionType?: string,
   ): Promise<Group> {
     PermissionUtils.verifyMasterSubscription(subscriptionType);
-    const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
+    const userObjectId = MongoUtils.toObjectId(
+      userId,
+      "ID do usuário inválido",
+    );
 
     if (data.title === undefined && data.url === undefined) {
       throw new Error("Nenhum dado informado para atualização");
@@ -148,12 +266,11 @@ export class GroupService {
     const updatedItem = updatedGroup.groups.find((item) => item.id === itemId);
     if (updatedItem) {
       await this.sendModerationEmail(
-        updatedGroup._id.toString(),
         email,
         userName,
         "Grupo Atualizado",
-        "As informações de um grupo existente foram atualizadas. Analise e aprove ou rejeite as alterações abaixo.",
-        [updatedItem]
+        "As informações de um grupo existente foram atualizadas. A análise e decisão devem ser feitas no aplicativo.",
+        [updatedItem],
       );
     }
 
@@ -168,7 +285,10 @@ export class GroupService {
     subscriptionType?: string,
   ): Promise<Group> {
     PermissionUtils.verifyMasterSubscription(subscriptionType);
-    const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
+    const userObjectId = MongoUtils.toObjectId(
+      userId,
+      "ID do usuário inválido",
+    );
 
     const existingGroup = await this.groupRepository.find(userObjectId);
     const itemToDelete = existingGroup?.groups.find((i) => i.id === itemId);
@@ -184,22 +304,27 @@ export class GroupService {
 
     if (itemToDelete) {
       await this.sendModerationEmail(
-        undefined,
         email,
         userName,
         "Grupo Removido",
-        "Um grupo foi removido da plataforma pelo usuário. O link abaixo é mantido apenas como registro e referência histórica de auditoria.",
-        [itemToDelete]
+        "Um grupo foi removido da plataforma pelo usuário. Este aviso é mantido apenas como registro histórico de auditoria.",
+        [itemToDelete],
       );
     }
 
     return updatedGroup;
   }
 
-
-  async deleteGroup(userId: string, id: string, subscriptionType?: string): Promise<boolean> {
+  async deleteGroup(
+    userId: string,
+    id: string,
+    subscriptionType?: string,
+  ): Promise<boolean> {
     PermissionUtils.verifyMasterSubscription(subscriptionType);
-    const userObjectId = MongoUtils.toObjectId(userId, "ID do usuário inválido");
+    const userObjectId = MongoUtils.toObjectId(
+      userId,
+      "ID do usuário inválido",
+    );
     const groupObjectId = MongoUtils.toObjectId(id, "ID do grupo inválido");
 
     const existing = await this.groupRepository.findById(groupObjectId);
@@ -216,95 +341,52 @@ export class GroupService {
     return deleted;
   }
 
-  async moderateGroupItem(token: string): Promise<{ group: Group; item: GroupItem; action: string }> {
-    const payload = await this.cacheService.get<GroupModerationTokenPayload>(`moderate:${token}`);
-    if (!payload) {
-      throw new Error("Link de moderação inválido ou já utilizado.");
+  private async sendOutcomeEmailToOwner(
+    group: Group,
+    item: GroupItem,
+    action: "accepted" | "rejected",
+    note?: string,
+  ): Promise<void> {
+    if (!this.userRepository) return;
+
+    const owner = await this.userRepository.find({ _id: group.user_id });
+    if (!owner || !owner.email || !owner.isEmailVerified) {
+      return;
     }
 
-    const groupObjectId = MongoUtils.toObjectId(payload.groupId, "ID do grupo inválido");
-    const updated = await this.groupRepository.updateGroupItemStatus(
-      groupObjectId,
-      payload.itemId,
-      payload.action,
-    );
+    const html = renderGroupModerationOutcomeEmailTemplate({
+      userName: owner.name || owner.userName || "Membro",
+      groupTitle: item.title,
+      action,
+      note,
+    });
 
-    if (!updated) {
-      throw new Error("Grupo ou item não encontrado para moderação.");
-    }
+    const isApproved = action === "accepted";
+    const subject = isApproved
+      ? `[Senpai] Seu grupo "${item.title}" foi aprovado!`
+      : `[Senpai] Atualização sobre seu grupo "${item.title}"`;
 
-    await this.cacheService.del(`moderate:${token}`);
-
-    const updatedItem = updated.groups.find((i) => i.id === payload.itemId);
-    if (!updatedItem) {
-      throw new Error("Item do grupo não encontrado após atualização.");
-    }
-
-    return { group: updated, item: updatedItem, action: payload.action };
+    await this.mailService.sendMail({
+      from: EMAIL_SENDERS.SECURITY,
+      to: owner.email,
+      subject,
+      html,
+    });
   }
 
   private async sendModerationEmail(
-    groupId: string | undefined,
     userEmail: string,
     userName: string,
     eventTitle: string,
     eventDescription: string,
-    items: GroupItem[]
+    items: GroupItem[],
   ) {
-    const baseUrl =
-      process.env.NODE_ENV === "production"
-        ? process.env.PRODUCTION_API_URL
-        : process.env.LOCAL_URL
-
-    const ttl = 60 * 60 * 24 * 7;
-
-    const emailGroups: ModerationGroupEmailItem[] = await Promise.all(
-      items.map(async (item) => {
-        let acceptUrl: string | undefined;
-        let rejectUrl: string | undefined;
-
-        if (groupId) {
-          const acceptToken = crypto.randomBytes(20).toString("hex");
-          const rejectToken = crypto.randomBytes(20).toString("hex");
-
-          await this.cacheService.set<GroupModerationTokenPayload>(
-            `moderate:${acceptToken}`,
-            {
-              groupId,
-              itemId: item.id,
-              action: "accepted",
-              moderatorEmail: process.env.MODERATOR_EMAIL,
-              createdAt: Date.now(),
-            },
-            ttl,
-          );
-
-          await this.cacheService.set<GroupModerationTokenPayload>(
-            `moderate:${rejectToken}`,
-            {
-              groupId,
-              itemId: item.id,
-              action: "rejected",
-              moderatorEmail: process.env.MODERATOR_EMAIL,
-              createdAt: Date.now(),
-            },
-            ttl,
-          );
-
-          acceptUrl = `${baseUrl}/group/moderate?token=${acceptToken}`;
-          rejectUrl = `${baseUrl}/group/moderate?token=${rejectToken}`;
-        }
-
-        return {
-          id: item.id,
-          title: item.title,
-          url: item.url,
-          status: item.status,
-          acceptUrl,
-          rejectUrl,
-        };
-      })
-    );
+    const emailGroups: ModerationGroupEmailItem[] = items.map((item) => ({
+      id: item.id,
+      title: item.title,
+      status: item.status,
+      requestType: item.requestType,
+    }));
 
     const html = renderModerationGroupEmailTemplate({
       eventTitle,
@@ -314,10 +396,11 @@ export class GroupService {
       groups: emailGroups,
     });
 
+    const groupNames = items.map((i) => i.title).join(", ");
     this.mailService.sendMail({
       from: EMAIL_SENDERS.SECURITY,
       to: process.env.MODERATOR_EMAIL,
-      subject: `[Moderação] ${eventTitle}`,
+      subject: `[Moderação] ${eventTitle}: ${groupNames}`,
       html,
     });
   }
