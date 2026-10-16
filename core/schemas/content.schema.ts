@@ -1,26 +1,26 @@
 import { ObjectId } from "mongodb";
 import { z } from "zod";
 
-export const contentTypeEnum = z.enum([
-  "banner",
-  "notification",
-  "announcement",
-]);
+export const contentTypeEnum = z.enum(
+  ["banner", "notification", "announcement"],
+  { message: "Tipo de conteúdo inválido." },
+);
 export type ContentType = z.infer<typeof contentTypeEnum>;
 
-export const contentStatusEnum = z.enum([
-  "draft",
-  "scheduled",
-  "active",
-  "expired",
-  "archived",
-]);
+export const contentStatusEnum = z.enum(
+  ["draft", "scheduled", "active", "expired", "archived"],
+  { message: "Status de conteúdo inválido." },
+);
 export type ContentStatus = z.infer<typeof contentStatusEnum>;
 
-export const contentPlatformEnum = z.enum(["ios", "android", "both", "all"]);
+export const contentPlatformEnum = z.enum(["ios", "android", "both", "all"], {
+  message: "Plataforma inválida.",
+});
 export type ContentPlatform = z.infer<typeof contentPlatformEnum>;
 
-export const announcementSeverityEnum = z.enum(["info", "warning", "critical"]);
+export const announcementSeverityEnum = z.enum(["info", "warning", "critical"], {
+  message: "Nível de severidade inválido.",
+});
 export type AnnouncementSeverity = z.infer<typeof announcementSeverityEnum>;
 
 export const baseContentSchema = z.object({

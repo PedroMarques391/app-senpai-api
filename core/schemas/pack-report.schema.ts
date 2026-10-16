@@ -1,16 +1,19 @@
 import { ObjectId } from "mongodb";
 import { z } from "zod";
 
-export const reportReasonEnum = z.enum([
-  "child_exploitation",
-  "adult_content",
-  "violence_gore",
-  "hate_speech",
-  "harassment",
-  "copyright",
-  "spam_misleading",
-  "other",
-]);
+export const reportReasonEnum = z.enum(
+  [
+    "child_exploitation",
+    "adult_content",
+    "violence_gore",
+    "hate_speech",
+    "harassment",
+    "copyright",
+    "spam_misleading",
+    "other",
+  ],
+  { message: "Motivo de denúncia inválido." },
+);
 
 export type ReportReason = z.infer<typeof reportReasonEnum>;
 

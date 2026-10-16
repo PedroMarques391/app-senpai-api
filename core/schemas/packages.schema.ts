@@ -2,21 +2,15 @@ import { ObjectId } from "mongodb";
 import z from "zod";
 import { stickerSchema } from "./sticker.schema";
 
-export const packCategoryEnum = z.enum([
-  "anime",
-  "memes",
-  "reactions",
-  "gaming",
-  "cute",
-  "utility",
-  "other",
-]);
+export const packCategoryEnum = z.enum(
+  ["anime", "memes", "reactions", "gaming", "cute", "utility", "other"],
+  { message: "Categoria de pacote inválida." },
+);
 
-export const packModerationStatusEnum = z.enum([
-  "pending",
-  "approved",
-  "banned",
-]);
+export const packModerationStatusEnum = z.enum(
+  ["pending", "approved", "banned"],
+  { message: "Status de moderação inválido." },
+);
 export type PackModerationStatus = z.infer<typeof packModerationStatusEnum>;
 
 export const stickerPackSchema = z.object({

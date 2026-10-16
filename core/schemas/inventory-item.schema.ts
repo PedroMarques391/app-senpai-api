@@ -6,6 +6,7 @@ export const inventoryItemSchema = z.object({
   _id: z.instanceof(ObjectId),
   user_id: z.instanceof(ObjectId),
   item_id: z.instanceof(ObjectId),
+  code: z.string(),
   item_type: storeItemTypeEnum,
   acquired_at: z.coerce.date().default(() => new Date()),
 });

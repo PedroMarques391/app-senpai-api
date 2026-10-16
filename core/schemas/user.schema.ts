@@ -1,26 +1,35 @@
 import { ObjectId } from "mongodb";
 import { z } from "zod";
 
-export const userRoleEnum = z.enum([
-  "user",
-  "admin",
-  "moderator",
-  "company",
-  "partner",
-  "owner",
-  "developer",
-  "senpai",
-  "verified_creator",
-]);
+export const userRoleEnum = z.enum(
+  [
+    "user",
+    "admin",
+    "moderator",
+    "company",
+    "partner",
+    "owner",
+    "developer",
+    "senpai",
+    "verified_creator",
+  ],
+  { message: "Cargo de usuário inválido." },
+);
 export type UserRole = z.infer<typeof userRoleEnum>;
 
-export const userStatusEnum = z.enum(["active", "inactive", "restricted"]);
+export const userStatusEnum = z.enum(["active", "inactive", "restricted"], {
+  message: "Status de usuário inválido.",
+});
 export type UserStatus = z.infer<typeof userStatusEnum>;
 
-export const vipTypeEnum = z.enum(["FREE", "PRO", "MESTRE"]);
+export const vipTypeEnum = z.enum(["FREE", "PRO", "MESTRE"], {
+  message: "Tipo de assinatura inválido.",
+});
 export type VipType = z.infer<typeof vipTypeEnum>;
 
-export const vipPlanEnum = z.enum(["VIP_PRO", "VIP_MESTRE"]);
+export const vipPlanEnum = z.enum(["VIP_PRO", "VIP_MESTRE"], {
+  message: "Plano VIP inválido.",
+});
 export type VipPlan = z.infer<typeof vipPlanEnum>;
 
 export const userSubscriptionSchema = z.object({
@@ -55,6 +64,13 @@ export const userActivitySchema = z.object({
   weekly_active_days: z.array(z.string()).default([]),
 });
 export type UserActivity = z.infer<typeof userActivitySchema>;
+
+export const equippedCosmeticsSchema = z.object({
+  card_style: z.string().default("card_style_default"),
+  effect: z.string().default("effect_none"),
+  background: z.string().default("background_default"),
+});
+export type EquippedCosmetics = z.infer<typeof equippedCosmeticsSchema>;
 
 export const userSchema = z.object({
   _id: z.instanceof(ObjectId),
@@ -102,4 +118,11 @@ export const userSchema = z.object({
     weekly_active_days: [],
   }),
   achievements: z.array(userAchievementReferenceSchema).default([]),
+  equipped_cosmetics: z
+    .preprocess((val) => val ?? {}, equippedCosmeticsSchema)
+    .default({
+      card_style: "card_style_default",
+      effect: "effect_none",
+      background: "background_default",
+    }),
 });

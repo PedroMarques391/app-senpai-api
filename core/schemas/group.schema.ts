@@ -2,7 +2,10 @@ import { ObjectId } from "mongodb";
 import { randomUUID } from "node:crypto";
 import z from "zod";
 
-export const groupItemStatusSchema = z.enum(["pending", "accepted", "rejected"]);
+export const groupItemStatusSchema = z.enum(
+  ["pending", "accepted", "rejected"],
+  { message: "Status do grupo inválido." },
+);
 
 export const groupItemSchema = z.object({
     id: z.string().default(() => randomUUID()),

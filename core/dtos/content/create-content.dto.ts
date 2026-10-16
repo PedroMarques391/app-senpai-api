@@ -33,7 +33,7 @@ export const createContentDtoSchema = z
   .refine(
     (data) => !data.end_at || new Date(data.end_at) > new Date(data.start_at),
     {
-      message: "end_at must be after start_at",
+      message: "A data de término deve ser posterior à data de início.",
       path: ["end_at"],
     },
   );
