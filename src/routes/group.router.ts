@@ -11,28 +11,6 @@ export const groupRoutes: FastifyPluginAsyncZod = async (app) => {
   const groupService = ServiceFactory.getGroupService(app.redis);
 
   app.get(
-    "/moderate",
-    {
-      schema: {
-        querystring: z.object({
-          token: z.string().min(1, "Token é obrigatório"),
-        }),
-      },
-    },
-    async (request, reply) => {
-      const { token } = request.query;
-      const result = await groupService.moderateGroupItem(token);
-
-      return reply.status(200).send({
-        success: true,
-        message: `Grupo ${result.item.title} ${result.action === "accepted" ? "aprovado" : "rejeitado"} com sucesso`,
-        group: result.group,
-        item: result.item,
-      });
-    },
-  );
-
-  app.get(
     "/",
     {
       onRequest: [app.authenticate, app.requireMaster],

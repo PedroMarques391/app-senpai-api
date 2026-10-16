@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import { adminContentRoutes } from "./admin-content.router";
+import { adminGroupRoutes } from "./admin-group.router";
 import { adminPackRoutes } from "./admin-pack.router";
 import { adminUserRoutes } from "./admin-user.router";
 
@@ -13,5 +14,6 @@ export const adminRouter: FastifyPluginAsync = async (app) => {
   app.register(adminUserRoutes, { prefix: "/users" });
   app.register(adminContentRoutes, { prefix: "/contents" });
   app.register(adminPackRoutes, { prefix: "/packs" });
+  app.register(adminGroupRoutes, { prefix: "/groups" });
 };
 
