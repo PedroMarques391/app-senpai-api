@@ -88,6 +88,9 @@ export class MongoInitializer {
         .collection("groups")
         .createIndex({ user_id: 1 }, { unique: true });
       await this.db.collection("groups").createIndex({ created_at: -1 });
+      await this.db
+        .collection("groups")
+        .createIndex({ "groups.status": 1, updated_at: 1 });
 
       await this.db
         .collection("pack_reports")
