@@ -46,7 +46,8 @@
     "up:db": "docker compose up -d mongo redis",
     "down": "docker compose down",
     "seed": "tsx --env-file=.env src/seeds/index.ts",
-    "seed:catalog": "tsx --env-file=.env src/seeds/store-catalog.seed.ts"
+    "seed:catalog": "tsx --env-file=.env src/seeds/store-catalog.seed.ts",
+    "seed:users": "tsx --env-file=.env src/seeds/users.seed.ts"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

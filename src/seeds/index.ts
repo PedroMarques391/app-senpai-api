@@ -6,7 +6,6 @@ export async function runAllSeeds(): Promise<void> {
   console.log("🏁 [Master Seed] Todos os seeds foram finalizados com sucesso.");
 }
 
-// Execução direta via CLI
 if (process.argv[1]?.endsWith("seeds/index.ts") || process.argv[1]?.endsWith("seeds")) {
   runAllSeeds()
     .then(() => process.exit(0))
@@ -17,4 +16,6 @@ if (process.argv[1]?.endsWith("seeds/index.ts") || process.argv[1]?.endsWith("se
 }
 
 export * from "./store-catalog.seed";
+export * from "./users.seed";
 export * from "./data/store-items.data";
+export * from "./data/users.data";

@@ -41,7 +41,6 @@ export async function seedStoreCatalog(): Promise<void> {
   console.log(`   - Itens correspondentes: ${result.matchedCount}`);
 }
 
-// Execução direta via CLI
 if (process.argv[1]?.endsWith("store-catalog.seed.ts")) {
   seedStoreCatalog()
     .then(() => process.exit(0))
