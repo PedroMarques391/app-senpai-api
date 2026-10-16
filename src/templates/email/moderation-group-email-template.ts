@@ -1,8 +1,9 @@
 export interface ModerationGroupEmailItem {
   id?: string;
   title: string;
-  url: string;
+  url?: string;
   status?: string;
+  requestType?: string;
   acceptUrl?: string;
   rejectUrl?: string;
 }
@@ -82,13 +83,13 @@ export function renderModerationGroupEmailTemplate({
                 <tr>
                   <td style="padding: 16px 18px;">
                     <p style="margin:0 0 16px 0; font-size: 14px; font-weight: 700; color:#3A2E33; border-bottom: 1px solid #EAE0E3; padding-bottom: 8px;">
-                      Detalhes do Usuário
+                      Detalhes do Solicitante
                     </p>
                     <p style="margin:0 0 6px 0; font-size: 12px; color:#8A7B80;">
                       Username
                     </p>
                     <p style="margin:0 0 14px 0; font-size: 14px; color:#3A2E33; font-weight: 600;">
-                      ${userName}
+                      @${userName.replace(/^@/, '')}
                     </p>
                     <p style="margin:0 0 6px 0; font-size: 12px; color:#8A7B80;">
                       E-mail
@@ -104,7 +105,7 @@ export function renderModerationGroupEmailTemplate({
           
           <!-- Detalhes do Grupo -->
           <tr>
-            <td style="padding: 8px 32px 32px 32px;">
+            <td style="padding: 8px 32px 24px 32px;">
               ${groups.map((group, index) => `
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FDF3F4; border: 1px solid #FF3D82; border-radius: 12px; margin-bottom: ${index < groups.length - 1 ? '16px' : '0'};">
                 <tr>
@@ -113,7 +114,7 @@ export function renderModerationGroupEmailTemplate({
                       <tr>
                         <td align="left">
                           <span style="font-size: 14px; font-weight: 700; color:#3A2E33;">
-                            Detalhes do Grupo ${groups.length > 1 ? `#${index + 1}` : ''}
+                            Grupo ${groups.length > 1 ? `#${index + 1}` : ''}
                           </span>
                         </td>
                         <td align="right">
@@ -123,52 +124,20 @@ export function renderModerationGroupEmailTemplate({
                     </table>
                     
                     <p style="margin:0 0 6px 0; font-size: 12px; color:#8A7B80;">
-                      Título
+                      Título do Grupo
                     </p>
-                    <p style="margin:0 0 16px 0; font-size: 14px; color:#3A2E33; font-weight: 600;">
+                    <p style="margin:0 0 16px 0; font-size: 15px; color:#3A2E33; font-weight: 700;">
                       ${group.title}
                     </p>
-                    
-                    <p style="margin:0 0 6px 0; font-size: 12px; color:#8A7B80;">
-                      Link do Grupo
-                    </p>
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td style="padding-bottom: 12px;">
-                          <a href="${group.url}" target="_blank" style="display:inline-block; padding:12px 24px; background-color:#3A2E33; color:#FFFFFF; text-decoration:none; border-radius:8px; font-size:14px; font-weight:600; width:100%; text-align:center; box-sizing:border-box;">
-                            Acessar / Analisar Grupo
-                          </a>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding-bottom: ${group.acceptUrl && group.rejectUrl ? '16px' : '0'};">
-                          <div style="background-color: #F4D5DF; padding: 12px; border-radius: 6px; word-break: break-all; font-family: monospace; font-size: 12px; color: #5C2A33; text-align: center;">
-                            ${group.url}
-                          </div>
-                        </td>
-                      </tr>
-                      ${group.acceptUrl && group.rejectUrl ? `
-                      <tr>
-                        <td>
-                          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                            <tr>
-                              <td width="48%" align="center">
-                                <a href="${group.acceptUrl}" style="display:inline-block; width:100%; padding:12px 16px; background-color:#10B981; color:#FFFFFF; text-decoration:none; border-radius:8px; font-size:14px; font-weight:700; text-align:center; box-sizing:border-box;">
-                                  ✓ Aprovar
-                                </a>
-                              </td>
-                              <td width="4%"></td>
-                              <td width="48%" align="center">
-                                <a href="${group.rejectUrl}" style="display:inline-block; width:100%; padding:12px 16px; background-color:#EF4444; color:#FFFFFF; text-decoration:none; border-radius:8px; font-size:14px; font-weight:700; text-align:center; box-sizing:border-box;">
-                                  ✕ Rejeitar
-                                </a>
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-                      ` : ''}
-                    </table>
+
+                    <div style="background-color: #FFF0F5; border: 1px dashed #FF3D82; border-radius: 8px; padding: 14px; text-align: center;">
+                      <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 700; color: #3A2E33;">
+                        🛡️ Moderação no Aplicativo
+                      </p>
+                      <p style="margin: 0; font-size: 12px; color: #5C4C52; line-height: 1.5;">
+                        Para analisar o link e aprovar ou rejeitar este grupo, abra o <strong>App Senpai &gt; Perfil &gt; Painel de Moderação</strong>.
+                      </p>
+                    </div>
                   </td>
                 </tr>
               </table>
