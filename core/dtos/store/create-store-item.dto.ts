@@ -1,4 +1,4 @@
-import { storeItemSchema } from "core/schemas";
+import { storeItemSchema, storeItemStatusEnum } from "core/schemas";
 import type { z } from "zod";
 
 export const createStoreItemDtoSchema = storeItemSchema
@@ -7,8 +7,11 @@ export const createStoreItemDtoSchema = storeItemSchema
     created_at: true,
     updated_at: true,
     purchases_count: true,
-    status: true,
+  })
+  .extend({
+    status: storeItemStatusEnum.optional().default("active"),
   })
   .strict();
 
+export const CreateStoreItemSchema = createStoreItemDtoSchema;
 export type CreateStoreItemDto = z.infer<typeof createStoreItemDtoSchema>;

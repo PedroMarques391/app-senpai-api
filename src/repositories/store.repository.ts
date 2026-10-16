@@ -4,6 +4,7 @@ import {
   type CreateStoreItemPayload,
   type StoreRepository as IStoreRepository,
   type StoreItem,
+  type StoreItemIdentifier,
   type StoreItemStatus,
 } from "@/models";
 import type { ObjectId } from "mongodb";
@@ -13,6 +14,10 @@ export class StoreRepository implements IStoreRepository {
     return MongoInitializer.getDb().collection<StoreItem>("store_items");
   }
 
+  async find(filter: StoreItemIdentifier): Promise<StoreItem | null> {
+    return this.collection.findOne(filter);
+  }
+
   async findAll(status?: StoreItemStatus): Promise<StoreItem[]> {
     const filter = status ? { status } : {};
     const items = await this.collection.find(filter).toArray();
@@ -20,8 +25,7 @@ export class StoreRepository implements IStoreRepository {
   }
 
   async findById(id: ObjectId): Promise<StoreItem | null> {
-    const item = await this.collection.findOne({ _id: id });
-    return item;
+    return this.find({ _id: id });
   }
 
   async create(data: CreateStoreItemPayload): Promise<StoreItem> {

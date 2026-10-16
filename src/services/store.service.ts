@@ -14,7 +14,15 @@ export class StoreService {
       id,
       "ID do item da loja inválido",
     );
-    const item = await this.storeRepository.findById(storeObjectId);
+    const item = await this.storeRepository.find({ _id: storeObjectId });
+    if (!item) throw new Error("Item da loja não encontrado");
+    return item;
+  }
+
+  async findStoreItemByCode(code: string): Promise<StoreItem> {
+    const item = await this.storeRepository.find({
+      code: code.trim().toLowerCase(),
+    });
     if (!item) throw new Error("Item da loja não encontrado");
     return item;
   }

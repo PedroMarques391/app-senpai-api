@@ -11,5 +11,6 @@ export interface InventoryRepository {
     userId: ObjectId,
     itemId: ObjectId,
     itemType: StoreItemType,
+    code: string,
   ): Promise<InventoryItem>;
 }

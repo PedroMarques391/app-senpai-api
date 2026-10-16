@@ -58,22 +58,22 @@ export const storeRoutes: FastifyPluginAsyncZod = async (app) => {
     "/:id/purchase",
     { onRequest: [app.authenticate], schema: { params: z.object({ id: z.string() }) } },
     async (request, reply) => {
-      const { item, newBalance } = await purchaseService.execute(
+      const result = await purchaseService.execute(
         request.user._id,
         request.params.id,
       );
 
-      await Promise.all([
-        cacheService.del(`inventory:${request.user._id}`),
-        profileService.invalidateProfile(request.user._id),
-      ]);
-
+      await profileService.invalidateProfile(request.user._id);
 
       return reply.status(200).send({
         success: true,
         message: "Item adquirido com sucesso",
-        item,
-        newBalance,
+        ...result,
+        item: {
+          code: result.code,
+          name: result.name,
+          price_in_petals: result.price_in_petals,
+        },
       });
     },
   );

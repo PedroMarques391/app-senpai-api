@@ -14,7 +14,9 @@ export type StoreItem = z.infer<typeof storeItemSchema>;
 export type CreateStoreItemPayload = z.input<typeof insertStoreItemSchema>;
 
 export interface PurchaseResult {
-  item: InventoryItem;
+  code: string;
+  name: string;
+  price_in_petals: number;
   newBalance: number;
 }
 

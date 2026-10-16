@@ -29,10 +29,12 @@ export class InventoryRepository implements IInventoryRepository {
     userId: ObjectId,
     itemId: ObjectId,
     itemType: StoreItemType,
+    code: string,
   ): Promise<InventoryItem> {
     const newItem: Omit<InventoryItem, "_id"> = {
       user_id: userId,
       item_id: itemId,
+      code,
       item_type: itemType,
       acquired_at: new Date(),
     };
