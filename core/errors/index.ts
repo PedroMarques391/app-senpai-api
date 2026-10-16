@@ -2,6 +2,8 @@ export * from "./app.error";
 export * from "./cannot-report-own-pack.error";
 export * from "./duplicate-report.error";
 export * from "./email-not-verified.error";
+export * from "./group-already-decided.error";
+export * from "./group-item-not-found.error";
 export * from "./master-only-feature.error";
 export * from "./max-strikes-reached.error";
 export * from "./pack-not-found.error";
