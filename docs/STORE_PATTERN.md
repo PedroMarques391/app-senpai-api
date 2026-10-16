@@ -13,15 +13,16 @@ Definido em [`core/schemas/store.schema.ts`](core/schemas/store.schema.ts):
 ```typescript
 storeItemSchema = z.object({
   _id               : ObjectId,
-  name              : string  (3–50 chars),
+  code              : string (obrigatório, único, lowercase/underlines, regex /^[a-z0-9_]+$/),
+  name              : string,
   description       : string,
   type              : StoreItemType,     // enum — ver abaixo
   price_in_petals   : number  (int >= 0),
   purchases_count   : number  (int, default: 0),
-  thumbnail_cloudinary_id : string,
-  thumbnail_url     : url (string),
+  thumbnail_cloudinary_id : string (opcional),
+  thumbnail_url     : string (opcional),
   file_cloudinary_id : string  (opcional),
-  file_url          : url (string, opcional),
+  file_url          : string (opcional),
   status            : StoreItemStatus,  // enum — ver abaixo
   created_at        : Date,
   updated_at        : Date,
@@ -32,10 +33,10 @@ storeItemSchema = z.object({
 
 | Enum | Valores possíveis |
 |---|---|
-| `StoreItemType` | `"wallpaper"`, `"gift"`, `"badge"`, `"border"`, `"profile_frame"`, `"profile_picture"`, `"premium_subscription"`, `"other"` |
-| `StoreItemStatus` | `"active"`, `"inactive"` |
+| `StoreItemType` | `"wallpaper"`, `"gift"`, `"badge"`, `"border"`, `"profile_frame"`, `"profile_picture"`, `"premium_subscription"`, `"effect"`, `"other"` |
+| `StoreItemStatus` | `"active"`, `"inactive"`, `"archived"` |
 
-> **Nota:** Os tipos do `StoreItemType` do backend **não correspondem** diretamente aos cosméticos do Flutter (`"effect"`, `"background"`, `"card_style"`). A sincronização futura precisará mapear esses valores ou unificar os enums.
+> **Nota:** O campo `code` fornece o vínculo semântico determinístico entre o app Flutter (ex: `effect_sakura_real`, `card_style_templo_samurai`, `background_sakura`) e o catálogo do servidor, eliminando dependências de tradução ou nomes visuais.
 
 ---
 
@@ -125,7 +126,7 @@ Orquestra a compra de um item em 5 passos sequenciais:
 5. Cria InventoryItem + incrementa purchases_count (sequencial)
 ```
 
-**Retorno atual:** `PurchaseResult { item: InventoryItem, newBalance: number }`
+**Retorno atual:** `PurchaseResult { code: string, name: string, price_in_petals: number, newBalance: number }`
 
 ---
 

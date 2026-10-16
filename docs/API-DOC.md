@@ -691,9 +691,24 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 ### 3.6 Loja & Transações de Pétalas (`/store`)
 
 #### `GET /store/` e `GET /store/:id`
-- **Descrição:** Lista itens cosméticos disponíveis na loja (molduras, emblemas, wallpapers, planos VIP) com filtro opcional por `?status=active|inactive`.
+- **Descrição:** Lista itens cosméticos disponíveis na loja (molduras, emblemas, wallpapers, efeitos, planos VIP) com filtro opcional por `?status=active|inactive|archived`. Cada item possui um `code` semântico único obrigatório (ex: `effect_sakura_real`, `card_style_templo_samurai`, `background_sakura`).
 - **Respostas:**
-  - `200 OK`: `{"success": true, "items": [ ...StoreItem ]}`
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "items": [
+        {
+          "_id": "6acfcfc9aca7b528c5e371c7",
+          "code": "effect_sakura_real",
+          "name": "Sakura Real",
+          "type": "effect",
+          "price_in_petals": 1500,
+          "status": "active"
+        }
+      ]
+    }
+    ```
 
 #### `POST /store/:id/purchase`
 *(Requer Header `Authorization`)*
@@ -702,22 +717,23 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   2. Verifica se o usuário já possui o item no seu inventário (impede compras duplicadas).
   3. Compara o saldo de pétalas do usuário (`petals_balance`) com o preço do item (`price_in_petals`).
   4. Executa dedução atômica das pétalas do usuário (`$inc: { petals_balance: -price }`).
-  5. Adiciona o item ao inventário (`inventory` collection) e incrementa `purchases_count` na loja.
-  6. **Retorno do Novo Saldo:** Retorna `newBalance` diretamente no JSON de resposta, permitindo que o Flutter atualize instantaneamente o saldo na interface sem disparar uma nova requisição para `/profile`.
+  5. Adiciona o item ao inventário (`user_items` collection) e incrementa `purchases_count` na loja.
+  6. **Retorno do Novo Saldo e Item com `code`:** Retorna `newBalance` e `item` com `code` diretamente no JSON de resposta, permitindo que o Flutter atualize instantaneamente a interface e o estado local sem disparar novas requisições.
 - **Respostas:**
   - `200 OK`:
     ```json
     {
       "success": true,
       "message": "Item adquirido com sucesso",
+      "code": "card_style_coracoes_brilhantes",
+      "name": "Corações Brilhantes",
+      "price_in_petals": 780,
+      "newBalance": 250,
       "item": {
-        "_id": "66dec987a123b456c7890199",
-        "name": "Moldura Dourada",
-        "type": "border",
-        "price_in_petals": 50,
-        "asset_url": "https://res.cloudinary.com/.../border.png"
-      },
-      "newBalance": 250
+        "code": "card_style_coracoes_brilhantes",
+        "name": "Corações Brilhantes",
+        "price_in_petals": 780
+      }
     }
     ```
   - `400 Bad Request` (Saldo insuficiente ou item já adquirido):
@@ -762,7 +778,12 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
         "banner_url": "https://...",
         "bio": "Criador de figurinhas e fã de animes",
         "isVerifiedCreator": true,
-        "createdAt": "2026-09-01T12:00:00.000Z"
+        "createdAt": "2026-09-01T12:00:00.000Z",
+        "equipped_cosmetics": {
+          "card_style": "card_style_neon",
+          "effect": "effect_none",
+          "background": "background_default"
+        }
       }
     }
     ```
@@ -772,21 +793,32 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 - **Request Body (`CompleteRegistrationDto`):** `name`, `userName`, `email`, `password`.
 
 #### `PUT /profile/`
-- **Descrição:** Atualiza dados cadastrais e preferências do perfil do próprio usuário autenticado (`UpdateUserDto`).
-- **Campos Aceitos (`UpdateUserDto` - Parciais e estritos):**
+- **Descrição:** Atualiza dados cadastrais e preferências do perfil do próprio usuário autenticado (`UpdateUserDto`). A alteração de cosméticos equipados é realizada exclusivamente via `PATCH /profile/cosmetics`.
+- **Campos Aceitos (`UpdateUserDto` - Parciais e flexíveis):**
   | Campo | Tipo Zod | Tipo Dart | Constraints / Descrição |
   | :--- | :--- | :--- | :--- |
   | `name` | `z.string()` | `String?` | Nome do usuário. |
   | `userName` | `z.string()` | `String?` | Nome de usuário único (letras minúsculas/sem espaços). |
   | `email` | `z.string().email()` | `String?` | E-mail do usuário (único no sistema). |
-  | `bio` | `z.string()` | `String?` | Biografia do usuário (máximo 120 caracteres). |
-  | `avatar_url` | `z.url()` | `String?` | URL do avatar hospedado. |
-  | `banner_url` | `z.url()` | `String?` | URL do banner do perfil. |
-  | `preferred_payment` | `z.string()` | `String?` | Identificador de pagamento preferencial. |
-- **Campos Protegidos do Sistema:** O schema omite intencionalmente campos como `premium`, `petals_balance`, `role`, `status`, `subscription`, `stickers_count`, `daily_missions`, etc., garantindo que alterações no perfil nunca afetem a assinatura VIP ou o saldo do usuário.
+  | `bio` | `z.string()` | `String?` | Biografia do usuário (máximo 120 caracteres, aceita `null` para limpar). |
+  | `avatar_url` | `z.string()` | `String?` | URL do avatar hospedado (aceita `null` para limpar). |
+  | `banner_url` | `z.string()` | `String?` | URL do banner do perfil (aceita `null` para limpar). |
+  | `preferred_payment` | `z.string()` | `String?` | Identificador de pagamento preferencial (aceita `null` para limpar). |
 - **Invalidação de Cache:** Invalida automaticamente `profile:<userId>` e `profile:username:<userName>`.
 - **Respostas:**
   - `200 OK`: `{"success": true, "message": "Perfil atualizado com sucesso", "profile": { ...User }}`
+
+#### `PATCH /profile/cosmetics`
+- **Descrição:** Endpoint dedicado para equipar ou atualizar cosméticos (`card_style`, `effect`, `background`) de forma rápida e atômica, sem passar por validações de e-mail, username ou outros campos do perfil.
+- **Request Body (`UpdateEquippedCosmeticsDto`):**
+  | Campo | Tipo Zod | Tipo Dart | Constraints / Descrição |
+  | :--- | :--- | :--- | :--- |
+  | `card_style` | `z.string().optional()` | `String?` | Código do estilo de card equipado (ex: `"card_style_templo_samurai"`). |
+  | `effect` | `z.string().optional()` | `String?` | Código do efeito equipado (ex: `"effect_sakura_real"`). |
+  | `background` | `z.string().optional()` | `String?` | Código do fundo equipado (ex: `"background_sakura"`). |
+- **Invalidação de Cache:** Invalida automaticamente as chaves `profile:<userId>` e `profile:username:<userName>` no Redis.
+- **Respostas:**
+  - `200 OK`: `{"success": true, "message": "Cosméticos atualizados com sucesso", "profile": { ...User }}`
 
 #### `DELETE /profile/`
 - **Descrição:** Desativa o perfil do usuário autenticado (soft-delete: `status = "inactive"`, define `deletedAt`).
