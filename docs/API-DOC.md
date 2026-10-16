@@ -7,11 +7,13 @@ Esta documentação serve como a **fonte única de verdade** (Single Source of T
 ## 1. Visão Geral da Arquitetura & Infraestrutura
 
 A API Senpai segue os princípios da **Clean Architecture**, organizada em 3 camadas principais:
+
 1. **Router (`src/routes`)**: Validação de rotas com **Zod** (`fastify-type-provider-zod`), hooks de autenticação/permissão e serialização.
 2. **Services (`src/services`)**: Regras de negócio, verificação de propriedade, cálculo de cotas e side-effects.
 3. **Repositories (`src/repositories`)**: Interação exclusiva com coleções do banco de dados MongoDB.
 
 ### Infraestrutura
+
 - **Node.js + Fastify + TypeScript**: Core da API de alta performance e tipagem estrita com Host binding `0.0.0.0` e CORS configurado.
 - **MongoDB Atlas**: Banco de dados NoSQL principal.
 - **Redis (`ioredis`)**: Cache de alta velocidade para leituras (TTL padrão de 24h), invalidação reativa em mutações e rate limit temporizado de OTP.
@@ -25,6 +27,7 @@ A API Senpai segue os princípios da **Clean Architecture**, organizada em 3 cam
 ## 2. Convenções Globais & Contratos Base
 
 ### 2.1 Padrão de Autenticação
+
 - **Header Obrigatório (Rotas Protegidas):** `Authorization: Bearer <jwt_token>`
 - **Payload do Token JWT (`request.user`):**
   - `_id`: `String` (Hex de 24 caracteres do ObjectId)
@@ -40,22 +43,24 @@ A API Senpai segue os princípios da **Clean Architecture**, organizada em 3 cam
   - `subscription`: `object` contendo `type: "FREE" | "PRO" | "MESTRE"` (Permite validação de plano e cota diretamente em memória sem chamada ao banco de dados)
 
 ### 2.2 Estrutura Padronizada de Respostas de Erro
+
 A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins). O cliente Flutter deve tratar os seguintes status HTTP e formatos:
 
-| Status HTTP | Código / Contexto | Payload Retornado (Exemplo Real) |
-| :--- | :--- | :--- |
-| **400 Bad Request** | Erro de validação Zod nos campos. | `{"success": false, "message": "Dados de requisição inválidos", "errors": {"pack_name": ["Required"]}}` |
-| **400 Bad Request** | Erro de regra de negócio ou formato de ID. | `{"success": false, "message": "ID do pacote inválido"}` |
-| **401 Unauthorized** | Token ausente, inválido ou expirado. | `{"success": false, "message": "Sua sessão expirou ou é inválida. Por favor, faça login novamente."}` |
-| **403 Forbidden** | Cota diária excedida (Plano Free). | `{"success": false, "code": "QUOTA_EXCEEDED", "message": "Você já usou sua criação grátis de hoje. Volte amanhã ou assine o VIP para criar sem limites!"}` |
-| **403 Forbidden** | Cota de armazenamento excedida (`plan_tier: "free" \| "vip_pro" \| "vip_master"`). | `{"success": false, "code": "STORAGE_LIMIT_EXCEEDED", "message": "Limite de armazenamento atingido (500 MB para plano Free)...", "storage": {"used_bytes": 536870912, "limit_bytes": 536870912, "plan_tier": "free", "is_vip": false}}` |
-| **403 Forbidden** | Rate limit do OTP (espera necessária). | `{"success": false, "userExists": true, "retryAfter": 45, "message": "Por favor, aguarde 45 segundos antes de solicitar um novo código."}` |
-| **403 Forbidden** | Falha de permissão / RBAC ou propriedade. | `{"success": false, "message": "Operação não permitida: você não pode excluir arquivos de outro usuário"}` |
-| **404 Not Found** | Recurso não localizado no banco de dados. | `{"success": false, "message": "Pacote não encontrado"}` |
-| **413 Payload Too Large** | Arquivo enviado no upload excede o limite máximo. | `{"success": false, "message": "O arquivo excede o limite máximo permitido de 25 MB."}` |
-| **500 Internal** | Exceção não tratada no servidor. | `{"success": false, "message": "Erro interno do servidor"}` |
+| Status HTTP               | Código / Contexto                                                                  | Payload Retornado (Exemplo Real)                                                                                                                                                                                                        |
+| :------------------------ | :--------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **400 Bad Request**       | Erro de validação Zod nos campos.                                                  | `{"success": false, "message": "Dados de requisição inválidos", "errors": {"pack_name": ["Required"]}}`                                                                                                                                 |
+| **400 Bad Request**       | Erro de regra de negócio ou formato de ID.                                         | `{"success": false, "message": "ID do pacote inválido"}`                                                                                                                                                                                |
+| **401 Unauthorized**      | Token ausente, inválido ou expirado.                                               | `{"success": false, "message": "Sua sessão expirou ou é inválida. Por favor, faça login novamente."}`                                                                                                                                   |
+| **403 Forbidden**         | Cota diária excedida (Plano Free).                                                 | `{"success": false, "code": "QUOTA_EXCEEDED", "message": "Você já usou sua criação grátis de hoje. Volte amanhã ou assine o VIP para criar sem limites!"}`                                                                              |
+| **403 Forbidden**         | Cota de armazenamento excedida (`plan_tier: "free" \| "vip_pro" \| "vip_master"`). | `{"success": false, "code": "STORAGE_LIMIT_EXCEEDED", "message": "Limite de armazenamento atingido (500 MB para plano Free)...", "storage": {"used_bytes": 536870912, "limit_bytes": 536870912, "plan_tier": "free", "is_vip": false}}` |
+| **403 Forbidden**         | Rate limit do OTP (espera necessária).                                             | `{"success": false, "userExists": true, "retryAfter": 45, "message": "Por favor, aguarde 45 segundos antes de solicitar um novo código."}`                                                                                              |
+| **403 Forbidden**         | Falha de permissão / RBAC ou propriedade.                                          | `{"success": false, "message": "Operação não permitida: você não pode excluir arquivos de outro usuário"}`                                                                                                                              |
+| **404 Not Found**         | Recurso não localizado no banco de dados.                                          | `{"success": false, "message": "Pacote não encontrado"}`                                                                                                                                                                                |
+| **413 Payload Too Large** | Arquivo enviado no upload excede o limite máximo.                                  | `{"success": false, "message": "O arquivo excede o limite máximo permitido de 25 MB."}`                                                                                                                                                 |
+| **500 Internal**          | Exceção não tratada no servidor.                                                   | `{"success": false, "message": "Erro interno do servidor"}`                                                                                                                                                                             |
 
 ### 2.3 Guia de Integração para Flutter (Dart)
+
 - **MongoDB ObjectId (`_id`, `user_id`, `pack_id`):** Retornados como `String` (hex de 24 chars). No Dart, mapear como `String`.
 - **Datas (`createdAt`, `cycle_start`, `created_at`):** Serializadas como strings ISO 8601 UTC. No Dart, fazer o parse via `DateTime.parse(json['createdAt']).toLocal()` para exibição correta no fuso local.
 - **Campos Opcionais e Nullable:** Tratar campos que podem vir ausentes ou como `null` usando tipos anuláveis (`String?`, `int?`).
@@ -68,6 +73,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
 ### 3.0 Monitoramento & Liveness (`/health`)
 
 #### `GET /health`
+
 - **Descrição e Regra:** Endpoint público de monitoramento e verificação de saúde da instância (Liveness/Readiness probe para Kubernetes ou Docker Compose).
 - **Headers:** Nenhum (Aberto/Público).
 - **Respostas:**
@@ -84,6 +90,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
 ### 3.1 Autenticação & Identidade (`/auth`, `/me`)
 
 #### `POST /auth/login/otp`
+
 - **Descrição e Regra de Negócio:** Envia código OTP de 6 dígitos via WhatsApp.
   1. **Normalização e Busca por Variantes:** O backend normaliza o número via `AuthUtils.normalizeWaId` (adicionando prefixo `55` se ausente) e localiza a conta utilizando variantes com e sem o 9º dígito (`AuthUtils.getWaIdVariants`), garantindo que tanto números de 12 quanto de 13 dígitos encontrem o cadastro correto. O OTP é registrado sob o `wa_id` exato armazenado no perfil do usuário.
   2. **Proteção de Usuário Inativo:** Se a conta estiver com `status: "inactive"`, a API retorna mensagem genérica com `userExists: true` para evitar enumeração de status por terceiros.
@@ -122,6 +129,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
     ```
 
 #### `POST /auth/login/verify`
+
 - **Descrição e Regra de Negócio:** Valida o código OTP de 6 dígitos e efetua o login.
   - O número `wa_id` é normalizado antes da checagem.
   - Verifica se o usuário está ativo; se inativo, lança erro `"Credenciais inválidas"`.
@@ -163,6 +171,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
     ```
 
 #### `POST /auth/login/loginWithIdentifier`
+
 - **Descrição:** Login clássico com identificador (e-mail ou nome de usuário) e senha com verificação via Bcrypt. O campo `identifier` é normalizado automaticamente (`trim().toLowerCase()`). Emite JWT no header `Authorization`.
 - **Request Body:**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
@@ -173,6 +182,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
   - `200 OK`: `{"success": true, "message": "Login realizado com sucesso.", "user": { ...User }}` + `Authorization` Header.
 
 #### `POST /auth/register`
+
 - **Descrição:** Cadastro completo inicial de usuário. Realiza hash da senha e validação de unicidade de `wa_id`, `userName` e `email`.
 - **Request Body (`CreateUserDto`):** `wa_id`, `name`, `userName`, `email`, `password`.
 - **Respostas:**
@@ -186,6 +196,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
     - Username já em uso: `{"success": false, "code": "USERNAME_IN_USE", "message": "Este nome de usuário já está em uso."}`
 
 #### `POST /auth/password/recovery`
+
 - **Descrição e Regra de Negócio:** Dispara o fluxo de recuperação de senha por e-mail para usuários cadastrados.
   1. **Normalização e Validação do E-mail:** O payload recebe `email`, que passa por validação com Zod (`z.string().trim().toLowerCase().email()`) e sanitização via `UserUtils.normalizeIdentifier`.
   2. **Verificação de Existência e Status:** O backend localiza o usuário no MongoDB. Se o usuário não existir, estiver com `status: "inactive"` ou não possuir e-mail cadastrado, retorna erro genérico amigável (`"Erro ao tentar redefinir a senha. Tente novamente."`) para evitar enumeração de contas por terceiros.
@@ -221,6 +232,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
     ```
 
 #### `POST /auth/reset-password`
+
 - **Descrição e Regra de Negócio:** Redefine a senha da conta utilizando o token criptográfico recebido por e-mail e dispara alerta de segurança.
   1. **Validação do Token no Redis:** Consulta a chave `reset:<token>`. Se o token for inexistente ou estiver expirado (após 10 minutos), rejeita a requisição com erro `"Token inválido ou expirado."`.
   2. **Verificação da Conta:** Localiza a conta vinculada ao e-mail retornado pelo token no Redis e valida se a conta não possui status `inactive`.
@@ -265,6 +277,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
     ```
 
 #### `GET /me`
+
 - **Descrição:** Retorna a identidade e claims do usuário autenticado diretamente a partir da validação do JWT.
 - **Headers:** `Authorization: Bearer <token>`
 - **Respostas:**
@@ -273,11 +286,13 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
 ---
 
 ### 3.2 Cotas Diárias de Criação (`/creation/quota`)
-*(Requer Header `Authorization`)*
+
+_(Requer Header `Authorization`)_
 
 O sistema de cotas diárias controla a criação de pacotes e figurinhas para usuários do plano **Free**, incentivando o upgrade para **VIP (PRO/MESTRE)**.
 
 #### Regras de Negócio do Ciclo de Cotas:
+
 1. **Fuso Horário de Reset:** O ciclo diário é baseado no horário de Brasília (UTC-3) e **reinicia todos os dias às 06:00 BRT** (09:00 UTC).
 2. **Limite Diário Grátis:** Usuários Free podem criar até **1 pacote** e até **6 figurinhas por dia** (`QuotaUtils.FREE_DAILY_STICKER_LIMIT = 6`).
 3. **Bloqueio de Pacote Ativo:** Ao criar ou reservar o primeiro pacote do dia, todas as criações subsequentes daquele dia devem pertencer ao mesmo pacote até que a cota de 6 figurinhas se esgote.
@@ -289,6 +304,7 @@ O sistema de cotas diárias controla a criação de pacotes e figurinhas para us
 > **Atualizado em 07/10/2026:** Limites de armazenamento revisados para suportar 3 tiers de plano (Free: 500 MB, VIP Pro: 3 GB e VIP Mestre: 6 GB). O contrato da resposta de erro `STORAGE_LIMIT_EXCEEDED` passa a adotar a propriedade canônica `plan_tier`.
 
 Além das cotas diárias de criação, a plataforma monitora e limita o consumo total de armazenamento de mídias (`storage_used_bytes`) de cada usuário conforme o tier de plano:
+
 1. **Limite Plano Free:** **500 MB** (`536.870.912` bytes).
 2. **Limite Plano VIP Pro (`plan_tier: "vip_pro"`):** **3 GB** (`3.221.225.472` bytes).
 3. **Limite Plano VIP Mestre (`plan_tier: "vip_master"`):** **6 GB** (`6.442.450.944` bytes).
@@ -298,6 +314,7 @@ Além das cotas diárias de criação, a plataforma monitora e limita o consumo 
    - Ao excluir figurinhas (`DELETE /sticker/:id`) ou pacotes (`DELETE /pack/:id`), o espaço ocupado é decrementado automaticamente da cota do usuário.
 
 #### `GET /creation/quota/`
+
 - **Descrição:** Consulta o status atual da cota diária do usuário.
 - **Respostas:**
   - `200 OK` (Usuário Free):
@@ -326,6 +343,7 @@ Além das cotas diárias de criação, a plataforma monitora e limita o consumo 
     ```
 
 #### `POST /creation/quota/reserve-pack`
+
 - **Descrição:** Reserva o nome do pacote que o usuário Free usará no ciclo diário atual antes de concluir o envio dos arquivos.
 - **Request Body:**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Constraints |
@@ -343,6 +361,7 @@ Além das cotas diárias de criação, a plataforma monitora e limita o consumo 
     ```
 
 #### `POST /creation/quota/commit`
+
 - **Descrição:** Confirma e incrementa a contagem de figurinhas criadas no ciclo diário do usuário.
 - **Request Body:**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Constraints |
@@ -369,11 +388,13 @@ Além das cotas diárias de criação, a plataforma monitora e limita o consumo 
 ---
 
 ### 3.3 Termos de Uso & Aceite Legal (`/terms`)
-*(Requer Header `Authorization`)*
+
+_(Requer Header `Authorization`)_
 
 Endpoints para gerenciamento do consentimento legal e termos de serviço do usuário.
 
 #### `POST /terms/` e `PUT /terms/`
+
 - **Descrição:** Registra a aceitação dos termos de uso pelo usuário autenticado. Atualiza `termsAccepted: true` no banco e invalida o cache de perfil no Redis.
 - **Request Body (`termsDtoSchema` - opcional):**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
@@ -394,6 +415,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
     ```
 
 #### `DELETE /terms/`
+
 - **Descrição:** Revoga o consentimento dos termos de uso do usuário logado (`termsAccepted: false`) e invalida o cache do perfil.
 - **Respostas:**
   - `200 OK`:
@@ -406,6 +428,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
     ```
 
 #### Rotas Alias de Compatibilidade:
+
 - `POST /terms/legal-acceptance` (Equivalente ao `POST /terms/`)
 - `PUT /terms/legal-acceptance` (Equivalente ao `PUT /terms/`)
 - `DELETE /terms/legal-acceptance` (Equivalente ao `DELETE /terms/`)
@@ -415,6 +438,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 ### 3.4 Pacotes de Figurinhas (`/pack`)
 
 #### `GET /pack/`
+
 - **Descrição & Regras de Negócio:**
   - **Modo Usuário (`?user=<id>`):** Requer autenticação e valida se o usuário requisitante é o proprietário dos pacotes. Retorna array com todos os pacotes do usuário.
   - **Modo Público Paginado:** Lista pacotes com suporte a busca textual, filtro de tags, categoria e **ordenação parametrizada**.
@@ -473,16 +497,18 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
     ```
 
 #### `POST /pack/`
-*(Requer Header `Authorization`)*
+
+_(Requer Header `Authorization`)_
+
 - **Descrição & Regras de Negócio:**
   1. **PreHandler de E-mail Verificado (`requireVerifiedEmail`):** Exige que o usuário tenha o e-mail verificado (`isEmailVerified === true`). Se não tiver, retorna HTTP `403 Forbidden` (`code: "EMAIL_NOT_VERIFIED"`).
   2. **PreHandler de Cota Diária:** Executa `checkPackCreationQuota`. Se o usuário for Free e exceder o limite de 1 pacote/dia ou o total de 6 figurinhas/dia, a requisição é barrada com HTTP `403 QUOTA_EXCEEDED`.
   3. **Criação de Figurinhas em Lote Embutidas:** O body aceita a propriedade `stickers: CreateStickerDto[]` (mínimo de 3 e máximo de 30 figurinhas). Um pack nunca pode ser criado com menos de 3 figurinhas (`PACK_MIN_STICKERS`). Todas as figurinhas do lote devem ter o mesmo tipo (`type: "static"` ou `"dynamic"`); misturar tipos retorna erro HTTP `400` (`PACK_TYPE_MISMATCH`). Todas as figurinhas enviadas são criadas e vinculadas ao pacote na mesma operação atômica, incrementando o `stickers_count` do usuário (`static` ou `dynamic`) e acumulando `storage_used_bytes` com base na soma dos `size_bytes` de cada figurinha.
-  3. **Geração Automática do `icon_url`:** Se o campo `icon_url` não for informado no payload, mas o array `stickers` contiver ao menos uma figurinha com URL válida do Cloudinary, o backend gera automaticamente o `icon_url` aplicando a transformação de otimização `c_fill,w_256,h_256,f_webp,q_auto`.
-  4. **Campos Opcionais com Defaults:** `description` é opcional (default `"Sem descrição"`), e `tags` é opcional (default `[]`).
-  5. **Registro de Cota:** Grava o consumo da cota em `creation_quotas` para usuários Free.
-  6. **Invalidação Reativa de Cache:** Limpa as listagens cacheadas (`pack:list:*`), os pacotes do usuário (`pack:user:<userId>`) e o cache de perfil (`profile:<userId>`).
-  7. **Restrição por Limite de Strikes (`MAX_STRIKES = 3`):** Se o usuário possuir 3 ou mais strikes (`user.strikes >= 3`) acumulados por infrações e tentar criar um pacote público (`is_public !== false`), a criação é bloqueada com HTTP `403 Forbidden` (`code: 'MAX_STRIKES_REACHED'`). Usuários com limite atingido só podem criar pacotes privados (`is_public: false`).
+  4. **Geração Automática do `icon_url`:** Se o campo `icon_url` não for informado no payload, mas o array `stickers` contiver ao menos uma figurinha com URL válida do Cloudinary, o backend gera automaticamente o `icon_url` aplicando a transformação de otimização `c_fill,w_256,h_256,f_webp,q_auto`.
+  5. **Campos Opcionais com Defaults:** `description` é opcional (default `"Sem descrição"`), e `tags` é opcional (default `[]`).
+  6. **Registro de Cota:** Grava o consumo da cota em `creation_quotas` para usuários Free.
+  7. **Invalidação Reativa de Cache:** Limpa as listagens cacheadas (`pack:list:*`), os pacotes do usuário (`pack:user:<userId>`) e o cache de perfil (`profile:<userId>`).
+  8. **Restrição por Limite de Strikes (`MAX_STRIKES = 3`):** Se o usuário possuir 3 ou mais strikes (`user.strikes >= 3`) acumulados por infrações e tentar criar um pacote público (`is_public !== false`), a criação é bloqueada com HTTP `403 Forbidden` (`code: 'MAX_STRIKES_REACHED'`). Usuários com limite atingido só podem criar pacotes privados (`is_public: false`).
 - **Request Body (`CreatePackDto`):**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Default / Constraints | Descrição |
   | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -514,13 +540,16 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
     ```
 
 #### `GET /pack/:id`
+
 - **Descrição:** Retorna o pacote detalhado com **todas** as suas figurinhas vinculadas (com cache Redis de 24h).
 - **Respostas:**
   - `200 OK`: `{"success": true, "pack": { ...StickerPack, "stickers": [ ...Sticker ] }}`
   - `404 Not Found`: `{"success": false, "message": "Pacote não encontrado"}`
 
 #### `PUT /pack/:id`
-*(Requer Header `Authorization`)*
+
+_(Requer Header `Authorization`)_
+
 - **Descrição & Regras de Negócio:** Atualiza campos do pacote (`pack_name`, `description`, `category`, `tags`, `icon_url`, `is_public`). Requer que o usuário seja o dono do pacote. Invalida os caches relacionados.
   - **Restrição de Moderação:** Se o pacote possuir denúncias registradas (`reports_count > 0`) ou seu status de moderação não for `'approved'` (`moderation_status === 'pending'` ou `'banned'`), qualquer tentativa de atualizar `is_public` para `true` será barrada com HTTP `400 Bad Request` (`code: 'PACK_REPORTED_CANNOT_BE_PUBLIC'`).
   - **Restrição por Limite de Strikes (`MAX_STRIKES = 3`):** Se o usuário tentar atualizar `is_public` para `true` e possuir 3 ou mais strikes (`user.strikes >= 3`), a requisição será barrada com HTTP `403 Forbidden` (`code: 'MAX_STRIKES_REACHED'`).
@@ -544,7 +573,9 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
     ```
 
 #### `DELETE /pack/:id`
-*(Requer Header `Authorization`)*
+
+_(Requer Header `Authorization`)_
+
 - **Descrição & Regras de Negócio:**
   1. **Validação de Propriedade:** Requer que o usuário seja o proprietário do pacote.
   2. **Exclusão Transacional no Banco:** Deleta o pacote e todas as suas figurinhas associadas no MongoDB (`packRepository.delete`).
@@ -555,7 +586,9 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   - `200 OK`: `{"success": true, "message": "Pacote deletado com sucesso"}`
 
 #### `POST /pack/:id/favorite`
-*(Requer Header `Authorization`)*
+
+_(Requer Header `Authorization`)_
+
 - **Descrição & Regra de Negócio:** Alterna o estado de favorito (Toggle Like) do pacote para o usuário autenticado.
   - Se o usuário já favoritou: remove o favorito da coleção `pack_favorites` e **decrementa atômica e confiavelmente** o contador `likes_count` do pacote (`-1`).
   - Se ainda não favoritou: insere na coleção `pack_favorites` e **incrementa atomicamente** o contador `likes_count` do pacote (`+1`).
@@ -581,7 +614,9 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   - `404 Not Found`: `{"success": false, "message": "Pacote não encontrado"}`
 
 #### `POST /pack/report`
-*(Requer Header `Authorization`)*
+
+_(Requer Header `Authorization`)_
+
 - **Descrição & Regras de Negócio:**
   1. Registra a denúncia de um pacote de figurinhas pelo usuário autenticado.
   2. **Política Híbrida de Bloqueio:** Motivos críticos (`child_exploitation` e `adult_content`) ocultam o pacote imediatamente (`is_public = false`, `moderation_status = "pending"`). Demais motivos acumulam até o limiar de 3 denúncias de usuários distintos antes de ocultar preventivamente.
@@ -614,9 +649,11 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 ---
 
 ### 3.5 Figurinhas Individuais (`/sticker`)
-*(Requer Header `Authorization` para mutações)*
+
+_(Requer Header `Authorization` para mutações)_
 
 #### `GET /sticker/`
+
 - **Descrição:** Lista figurinhas de acordo com o query param informado:
   - `?user=<userId>`: Lista figurinhas do usuário autenticado (valida propriedade).
   - `?pack=<packId>`: Lista figurinhas de um pacote específico (com cache Redis `stickers:pack:${packId}`).
@@ -625,13 +662,16 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   - `200 OK`: `{"success": true, "stickers": [ ...Sticker ]}`
 
 #### `GET /sticker/:id`
+
 - **Descrição:** Retorna os dados completos de uma figurinha isolada.
 - **Respostas:**
   - `200 OK`: `{"success": true, "sticker": { ...Sticker }}`
   - `404 Not Found`: `{"success": false, "message": "Figurinha não encontrada"}`
 
 #### `POST /sticker/:packId`
-*(Requer Header `Authorization`)*
+
+_(Requer Header `Authorization`)_
+
 - **Descrição & Regras de Negócio:**
   1. **Validação de Cota:** Executa `checkStickerCreationQuota`. Se o usuário Free já tiver criado 6 figurinhas no ciclo diário, retorna `403 QUOTA_EXCEEDED`.
   2. **Validação de Limite Máximo por Pacote (30 figurinhas):** Verifica a quantidade atual de figurinhas pertencentes ao pacote no banco. Se o pacote já contiver 30 figurinhas, a criação é bloqueada com HTTP `400 Bad Request` (`"O pacote já atingiu o limite máximo permitido de 30 figurinhas."`).
@@ -661,9 +701,10 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
     ```
   - `403 Forbidden` (Cota excedida): `{"success": false, "code": "QUOTA_EXCEEDED", "message": "..."}`
 
-
 #### `PUT /sticker/:id`
-*(Requer Header `Authorization`)*
+
+_(Requer Header `Authorization`)_
+
 - **Descrição & Regra de Negócio:** Permite ao criador da figurinha atualizar seu nome, autor e emojis vinculados. Valida a posse da figurinha pelo usuário logado e invalida o cache da figurinha e do pacote correspondente.
 - **Request Body (`UpdateStickerDto` - estrito):**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Constraints |
@@ -677,7 +718,9 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   - `404 Not Found`: `{"success": false, "message": "Figurinha não encontrada"}`
 
 #### `DELETE /sticker/:id`
-*(Requer Header `Authorization`)*
+
+_(Requer Header `Authorization`)_
+
 - **Descrição & Regras de Negócio:**
   1. **Validação de Propriedade:** Requer que o usuário autenticado seja o proprietário da figurinha.
   2. **Exclusão no Banco de Dados:** Remove o registro da figurinha no MongoDB via `stickerRepository.delete`.
@@ -692,6 +735,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 ### 3.6 Loja & Transações de Pétalas (`/store`)
 
 #### `GET /store/` e `GET /store/:id`
+
 - **Descrição:** Lista itens cosméticos disponíveis na loja (molduras, emblemas, wallpapers, efeitos, planos VIP) com filtro opcional por `?status=active|inactive|archived`. Cada item possui um `code` semântico único obrigatório (ex: `effect_sakura_real`, `card_style_templo_samurai`, `background_sakura`).
 - **Respostas:**
   - `200 OK`:
@@ -712,7 +756,9 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
     ```
 
 #### `POST /store/:id/purchase`
-*(Requer Header `Authorization`)*
+
+_(Requer Header `Authorization`)_
+
 - **Descrição & Regras de Negócio:**
   1. Verifica se o item está ativo (`status: "active"`).
   2. Verifica se o usuário já possui o item no seu inventário (impede compras duplicadas).
@@ -748,9 +794,11 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 ---
 
 ### 3.7 Inventário (`/inventory`)
-*(Requer Header `Authorization`)*
+
+_(Requer Header `Authorization`)_
 
 #### `GET /inventory/`
+
 - **Descrição:** Retorna a lista completa de itens cosméticos adquiridos pelo usuário logado, ordenados do mais recente para o mais antigo (com cache Redis invalidado automaticamente a cada nova compra).
 - **Respostas:**
   - `200 OK`: `{"success": true, "items": [ ...InventoryItem ]}`
@@ -758,14 +806,17 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 ---
 
 ### 3.8 Perfil do Usuário (`/profile`)
-*(Todas as rotas exigem Header `Authorization`)*
+
+_(Todas as rotas exigem Header `Authorization`)_
 
 #### `GET /profile/`
+
 - **Descrição:** Retorna os dados completos do perfil autenticado, incluindo saldo de pétalas, contadores de stickers, status VIP (`premium`), datas de assinatura (`subscription`) e consentimento de termos (`termsAccepted`).
 - **Respostas:**
   - `200 OK`: `{"success": true, "profile": { ...User }}`
 
 #### `GET /profile/:username`
+
 - **Descrição:** Retorna o perfil público (sanitizado) de outro usuário pelo nome de usuário (`userName`).
 - **Respostas:**
   - `200 OK`:
@@ -790,10 +841,12 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
     ```
 
 #### `PATCH /profile/complete-registration`
+
 - **Descrição:** Permite finalizar o cadastro de um usuário após login inicial via OTP.
 - **Request Body (`CompleteRegistrationDto`):** `name`, `userName`, `email`, `password`.
 
 #### `PUT /profile/`
+
 - **Descrição:** Atualiza dados cadastrais e preferências do perfil do próprio usuário autenticado (`UpdateUserDto`). A alteração de cosméticos equipados é realizada exclusivamente via `PATCH /profile/cosmetics`.
 - **Campos Aceitos (`UpdateUserDto` - Parciais e flexíveis):**
   | Campo | Tipo Zod | Tipo Dart | Constraints / Descrição |
@@ -810,6 +863,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   - `200 OK`: `{"success": true, "message": "Perfil atualizado com sucesso", "profile": { ...User }}`
 
 #### `PATCH /profile/cosmetics`
+
 - **Descrição:** Endpoint dedicado para equipar ou atualizar cosméticos (`card_style`, `effect`, `background`) de forma rápida e atômica, sem passar por validações de e-mail, username ou outros campos do perfil.
 - **Request Body (`UpdateEquippedCosmeticsDto`):**
   | Campo | Tipo Zod | Tipo Dart | Constraints / Descrição |
@@ -822,9 +876,11 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   - `200 OK`: `{"success": true, "message": "Cosméticos atualizados com sucesso", "profile": { ...User }}`
 
 #### `DELETE /profile/`
+
 - **Descrição:** Desativa o perfil do usuário autenticado (soft-delete: `status = "inactive"`, define `deletedAt`).
 
 #### `POST /profile/email/code/send`
+
 - **Descrição e Regra de Negócio:** Dispara o envio de um código de verificação OTP de 6 dígitos para o endereço de e-mail informado. Disponível para **qualquer usuário autenticado** (não requer plano Premium).
   1. **Enfileiramento Assíncrono:** O envio é processado via fila `email` no **BullMQ**, consumida pelo `EmailWorker` com template HTML responsivo estilizado.
   2. **Verificação de Conta Ativa:** Identifica o usuário logado (`request.user._id`) e bloqueia solicitações caso a conta possua status `inactive`.
@@ -856,6 +912,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
     ```
 
 #### `POST /profile/email/code/verify`
+
 - **Descrição e Regra de Negócio:** Valida o código OTP de 6 dígitos e confirma o e-mail da conta do usuário autenticado.
   1. **Validação do Código:** Compara o código informado com o token armazenado no Redis via `OtpService.verifyOtp`. Lança erro caso o código seja inválido ou já tenha expirado.
   2. **Atualização no Banco de Dados:** Atualiza o usuário com `isEmailVerified: true` de forma atômica no MongoDB.
@@ -883,9 +940,11 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 ---
 
 ### 3.9 Upload de Mídia (`/upload`)
-*(Requer Header `Authorization`)*
+
+_(Requer Header `Authorization`)_
 
 #### `GET /upload/signature?folder=...` (Recomendado - Signed Direct Upload)
+
 - **Descrição:** Gera uma assinatura criptográfica temporária autorizada para que o aplicativo cliente (Flutter) envie o arquivo diretamente para os servidores do Cloudinary, sem intermediar binários na API Senpai (economizando 100% de banda de upload no servidor e evitando gargalos de conexões).
 - **Query Params:**
   - `folder`: `"sticker"` (default), `"banner"`, `"avatar"`.
@@ -921,7 +980,8 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
   - `public_id`: `public_id` recebido.
 
 #### `POST /upload/?folder=...` (Legado / Retrocompatível)
-- **Descrição:** Envia arquivos de imagem/sticker via Multipart Stream diretamente ao Cloudinary, organizando o path em pastas segregadas por usuário (`folder/userName/filename`). Mantido para compatibilidade com versões anteriores do aplicativo enquanto as novas versões migram para o *Signed Direct Upload*.
+
+- **Descrição:** Envia arquivos de imagem/sticker via Multipart Stream diretamente ao Cloudinary, organizando o path em pastas segregadas por usuário (`folder/userName/filename`). Mantido para compatibilidade com versões anteriores do aplicativo enquanto as novas versões migram para o _Signed Direct Upload_.
 - **Validação de Cota:** Possui o preHandler `app.checkStorageQuota`. Bloqueia o upload antes de iniciar a transmissão se o tamanho indicado no header `Content-Length` somado ao `storage_used_bytes` do usuário ultrapassar o limite do plano (500 MB Free / 3 GB VIP Pro / 6 GB VIP Mestre).
 - **Limite Máximo por Arquivo (25 MB):** O servidor rejeita imediatamente uploads truncados ou que excedam 25 MB com HTTP `413 Payload Too Large`.
 - **Respostas:**
@@ -953,6 +1013,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
     }
     ```
     > **Variações de Mensagem por Tier:**
+    >
     > - **Free (`plan_tier: "free"`):** `"Limite de armazenamento atingido (500 MB para plano Free). Faça upgrade para VIP e desbloqueie até 6 GB!"`
     > - **VIP Pro (`plan_tier: "vip_pro"`):** `"Limite de armazenamento atingido (3 GB para plano VIP Pro). Faça upgrade para VIP Mestre e desbloqueie 6 GB!"`
     > - **VIP Mestre (`plan_tier: "vip_master"`):** `"Limite de armazenamento atingido (6 GB para plano VIP Mestre). Libere espaço excluindo figurinhas ou mídias antigas."`
@@ -966,6 +1027,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
     ```
 
 #### `DELETE /upload/?public_id=...`
+
 - **Descrição:** Exclui um asset do Cloudinary. Valida com rigor se o `public_id` contém o `userName` do usuário requisitante para prevenir deleção de arquivos de outros usuários. Suporta exclusão transparente tanto de imagens quanto de vídeos com fallback automático de tipo de recurso (`image` / `video`) na camada resiliente do `UploadService`.
 
 ---
@@ -973,6 +1035,7 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 ### 3.10 Conteúdos & Campanhas In-App (`/content`)
 
 #### `GET /content/`
+
 - **Descrição:** Consulta banners, comunicados e notificações ativas da plataforma (`start_at <= agora <= end_at`).
 - **Query Params:**
   - `type`: `"banner" | "notification" | "announcement"`
@@ -983,7 +1046,8 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 ---
 
 ### 3.11 Módulo Administrativo (`/admin/*`)
-*(Requer Header `Authorization` de usuário com cargo `admin` ou `moderator`)*
+
+_(Requer Header `Authorization` de usuário com cargo `admin` ou `moderator`)_
 
 - `GET /admin/users`: Listagem paginada de todos os usuários cadastrados.
 - `GET /admin/users/:id`: Detalhes completos de um usuário por ID.
@@ -1002,11 +1066,13 @@ Endpoints para gerenciamento do consentimento legal e termos de serviço do usu�
 ---
 
 ### 3.12 Missões Diárias, Níveis & Atividade (`/missions`)
-*(Requer Header `Authorization`)*
+
+_(Requer Header `Authorization`)_
 
 O módulo de gamificação do Senpai estimula a retenção e o engajamento diário dos usuários através de missões com objetivos práticos, acúmulo de experiência (**XP**), progressão de **Nível (1 ao 100)**, ofensivas (**Streaks**) e bonificação em **Pétalas**.
 
 #### Regras de Negócio e Mecânicas de Gamificação:
+
 1. **Ciclo Diário Sincronizado:** O ciclo diário de missões é rigorosamente alinhado ao fuso de Brasília (`QuotaUtils.getCycleInfo()`), com virada todos os dias às **06:00 BRT** (09:00 UTC), gerando a chave de ciclo `YYYY-MM-DD` (ex: `"2026-09-18"`).
 2. **Ciclo Semanal ISO & Dias Ativos:** Acompanha os dias em que o usuário esteve ativo na semana corrente (`DateUtils.getIsoWeekIdentifier`, ex: `"2026-W38"`). Ao virar a semana ISO, o array `weekly_active_days` é reiniciado com o novo dia.
 3. **Ofensiva Diária (Streak):**
@@ -1016,9 +1082,9 @@ O módulo de gamificação do Senpai estimula a retenção e o engajamento diár
 4. **Sistema Progressivo de Níveis & XP (`LevelUtils`):**
    - **Nível Máximo:** `100`.
    - **Fórmula de XP Necessário:** `xpForLevel(level) = 1000 + (level - 1) * 80`.
-     - *Nível 1:* 1.000 XP
-     - *Nível 2:* 1.080 XP
-     - *Nível 3:* 1.160 XP ...
+     - _Nível 1:_ 1.000 XP
+     - _Nível 2:_ 1.080 XP
+     - _Nível 3:_ 1.160 XP ...
    - O cálculo decompõe o `total_xp` acumulado, calculando o nível atual, o progresso percentual (`progress` de `0.0` a `1.0`), o XP no nível (`xpInLevel`) e o XP faltante para o próximo nível (`xpNeeded`).
 5. **Missões Estáticas Diárias:**
    - `daily_checkin` ("Presença Diária"): Abrir o app no dia. Concluída automaticamente ao consultar o overview diário. Recompensa: `+40 XP`, `+5 Pétalas`.
@@ -1037,6 +1103,7 @@ O módulo de gamificação do Senpai estimula a retenção e o engajamento diár
 ---
 
 #### `GET /missions/daily`
+
 - **Descrição:** Retorna o panorama completo de missões do dia, progresso do usuário, nível, XP, streak e histórico semanal de presença. Ao chamar este endpoint, a presença diária (`daily_checkin`) é automaticamente completada e a atividade é atualizada.
 - **Headers:** `Authorization: Bearer <token>`
 - **Respostas:**
@@ -1129,6 +1196,7 @@ O módulo de gamificação do Senpai estimula a retenção e o engajamento diár
 ---
 
 #### `POST /missions/:id/claim`
+
 - **Descrição:** Reivindica as recompensas (XP e Pétalas) de uma missão diária concluída.
 - **Headers:** `Authorization: Bearer <token>`
 - **URL Params:**
@@ -1145,7 +1213,7 @@ O módulo de gamificação do Senpai estimula a retenção e o engajamento diár
         "level": 3,
         "xpInLevel": 500,
         "xpNeeded": 1160,
-        "progress": 0.4310
+        "progress": 0.431
       }
     }
     ```
@@ -1169,6 +1237,7 @@ O módulo de gamificação do Senpai estimula a retenção e o engajamento diár
 Módulo responsável pelo processamento de eventos de compras in-app e assinaturas de planos VIP (VIP Pro e VIP Mestre) através da integração com **RevenueCat**.
 
 #### `POST /webhooks/revenuecat`
+
 - **Descrição & Regras de Negócio:**
   1. **Autenticação por Secret:** Requer header `Authorization: Bearer <REVENUECAT_WEBHOOK_SECRET>`. Requisições com token inválido ou ausente são rejeitadas com HTTP `401 Unauthorized`.
   2. **Identificação do Usuário:** O RevenueCat envia o campo `event.app_user_id`, que deve corresponder ao `_id` do usuário no MongoDB (Hex de 24 caracteres).
@@ -1213,6 +1282,7 @@ Módulo responsável pela gestão de grupos e canais privados vinculados ao perf
 O módulo combina rotas **privadas** protegidas por JWT (`onRequest: app.authenticate`) para as operações de CRUD do usuário e uma rota **pública** (`GET /group/moderate`) utilizada exclusivamente pelos moderadores da plataforma através dos links de ação recebidos por e-mail.
 
 #### `GET /group/moderate`
+
 - **Descrição e Regra de Negócio:** Endpoint público acionado quando o moderador clica no botão ou link de aprovação/rejeição recebido no e-mail de moderação.
   1. **Validação do Token de Moderação:** Lê o token temporário passado na querystring (`?token=<token>`). Consulta o payload salvo no Redis (`moderate:<token>`). Caso o token não exista ou já tenha expirado/sido consumido, rejeita com `400 Bad Request` (`"Link de moderação inválido ou já utilizado."`).
   2. **Consumo Único (Single-Use Token):** O token gerado no momento do envio do e-mail é um hash criptográfico de 20 bytes em formato hex (`crypto.randomBytes(20).toString("hex")`) com TTL de 7 dias (604.800 segundos). Ao ser acionado com sucesso, a chave é imediatamente removida do Redis (`cacheService.del`), impedindo reutilização.
@@ -1263,14 +1333,13 @@ O módulo combina rotas **privadas** protegidas por JWT (`onRequest: app.authent
       "success": false,
       "message": "Dados de requisição inválidos",
       "errors": {
-        "token": [
-          "Token é obrigatório"
-        ]
+        "token": ["Token é obrigatório"]
       }
     }
     ```
 
 #### `GET /group/`
+
 - **Descrição:** Retorna o registro de grupos do usuário autenticado.
 - **Headers:** `Authorization: Bearer <token>` (Obrigatório).
 - **Respostas:**
@@ -1310,6 +1379,7 @@ O módulo combina rotas **privadas** protegidas por JWT (`onRequest: app.authent
   - `401 Unauthorized`: Sessão expirada ou token ausente.
 
 #### `GET /group/:id`
+
 - **Descrição:** Busca um registro de grupos pelo seu `_id`.
 - **Headers:** `Authorization: Bearer <token>` (Obrigatório).
 - **Parâmetros de Rota:**
@@ -1342,6 +1412,7 @@ O módulo combina rotas **privadas** protegidas por JWT (`onRequest: app.authent
   - `404 Not Found`: `{"success": false, "message": "Grupo não encontrado"}`
 
 #### `POST /group/`
+
 - **Descrição:** Cria o registro de grupos para o usuário autenticado ou adiciona novo item ao documento existente.
 - **Headers:** `Authorization: Bearer <token>` (Obrigatório).
 - **Regras de Negócio:**
@@ -1404,6 +1475,7 @@ O módulo combina rotas **privadas** protegidas por JWT (`onRequest: app.authent
   - `400 Bad Request`: `{"success": false, "message": "Você já atingiu o limite de 2 grupos"}`
 
 #### `PUT /group/:id`
+
 - **Descrição:** Atualiza os dados ou links de grupos do registro do usuário autenticado por completo.
 - **Headers:** `Authorization: Bearer <token>` (Obrigatório).
 - **Parâmetros de Rota:** `id` (ObjectId do registro de grupo).
@@ -1438,6 +1510,7 @@ O módulo combina rotas **privadas** protegidas por JWT (`onRequest: app.authent
   - `404 Not Found`: `{"success": false, "message": "Grupo não encontrado"}`
 
 #### `PATCH /group/item/:itemId`
+
 - **Descrição:** Atualiza pontualmente um item específico dentro do array `groups` do usuário autenticado (atualiza apenas `title` e/ou `url`), preservando os outros itens do array sem sobrescrevê-los.
 - **Headers:** `Authorization: Bearer <token>` (Obrigatório).
 - **Parâmetros de Rota:**
@@ -1490,6 +1563,7 @@ O módulo combina rotas **privadas** protegidas por JWT (`onRequest: app.authent
   - `401 Unauthorized`: Sessão expirada ou token ausente.
 
 #### `DELETE /group/item/:itemId`
+
 - **Descrição:** Remove um item de grupo específico pelo seu `itemId` dentro do array `groups` do usuário autenticado. Se for o único grupo restante do usuário, remove o item e exclui o documento limpo.
 - **Headers:** `Authorization: Bearer <token>` (Obrigatório).
 - **Parâmetros de Rota:**
@@ -1523,6 +1597,7 @@ O módulo combina rotas **privadas** protegidas por JWT (`onRequest: app.authent
   - `401 Unauthorized`: Sessão expirada ou token ausente.
 
 #### `DELETE /group/:id`
+
 - **Descrição:** Remove o registro de grupos do usuário autenticado.
 - **Headers:** `Authorization: Bearer <token>` (Obrigatório).
 - **Parâmetros de Rota:** `id` (ObjectId do registro de grupo).
@@ -1545,6 +1620,7 @@ O módulo combina rotas **privadas** protegidas por JWT (`onRequest: app.authent
 Módulo responsável por receber e processar eventos transacionais de e-mail disparados pelo **Resend** (provedor oficial integrado via `ResendEmailProvider`). Permite rastreamento de entregas, cliques em links e controle de reputação de e-mails da aplicação.
 
 #### `POST /webhooks/resend`
+
 - **Descrição e Regra de Negócio:**
   1. **Validação Criptográfica de Assinatura Svix:** O webhook do Resend utiliza o padrão Svix para autenticidade. O endpoint extrai os cabeçalhos obrigatórios `svix-id`, `svix-timestamp` e `svix-signature` e valida a integridade do payload bruto (`request.rawBody`) via `app.mailer.verifyWebhook(...)` utilizando a chave secreta `RESEND_WEBHOOK_SECRET`.
   2. **Configuração de Raw Body:** A rota é configurada explicitamente com `{ config: { rawBody: true } }` através do plugin `fastify-raw-body`, garantindo que a assinatura seja conferida exatamente contra o payload original recebido sem transformações de serialização.
@@ -1567,9 +1643,7 @@ Módulo responsável por receber e processar eventos transacionais de e-mail dis
     "data": {
       "email_id": "49a3999c-0ce1-4ea6-ab68-afcd6dc2e794",
       "from": "Senpai Security <security@senpaiapp.com>",
-      "to": [
-        "user@example.com"
-      ],
+      "to": ["user@example.com"],
       "subject": "Redefinição de Senha",
       "click": {
         "link": "https://senpaiapp.com/pt/reset-password?token=6f8a...",
@@ -1608,11 +1682,13 @@ Módulo responsável por receber e processar eventos transacionais de e-mail dis
 Módulo de Inteligência Artificial conversacional oficial do **Bot do Senpai**, alimentado pelo Google Gemini via Vercel AI SDK (`@ai-sdk/google`). O assistente é **especializado exclusivamente no produto**, oferecendo suporte ao usuário sobre funcionalidades, criação de figurinhas (estáticas e dinâmicas/vídeos/GIFs), pacotes, limites de planos, personalização e economia de pétalas.
 
 #### Diretrizes e Guardrails do Chatbot
+
 1. **Escopo Estrito:** Perguntas fora do tema do Senpai (política, celebridades, receitas, código genérico, notícias) são redirecionadas educada e brevemente.
 2. **Anti-Alucinação:** Não inventa informações não existentes na base oficial. Caso não encontre a resposta, informa com transparência e oferece suporte sobre os recursos e planos disponíveis.
 3. **Conversão para Assinatura:** Detalha benefícios dos planos Free, VIP Pro e VIP Mestre e direciona para o site [https://botdosenpai.com.br](https://botdosenpai.com.br) ou compras no app.
 
 #### `POST /chat/`
+
 - **Descrição e Regra de Negócio:**
   1. **Autenticação Obrigatória:** O endpoint exige token JWT válido no header `Authorization: Bearer <jwt_token>`.
   2. **Entrada Flexível (Pergunta Única ou Histórico Multi-turn):** Aceita tanto uma pergunta simples em `prompt` quanto a lista de histórico em `messages`, permitindo chats contínuos e contextuais no Flutter.
@@ -1634,6 +1710,7 @@ Módulo de Inteligência Artificial conversacional oficial do **Bot do Senpai**,
   | `content` | `String` | Texto não vazio (`min(1)`) | Conteúdo textual da mensagem enviada ou recebida. |
 
 - **Exemplo de Request Body (Pergunta simples / 1 mensagem):**
+
   ```json
   {
     "messages": [
@@ -1646,6 +1723,7 @@ Módulo de Inteligência Artificial conversacional oficial do **Bot do Senpai**,
   ```
 
 - **Exemplo de Request Body (Histórico de conversa / Multi-turn contínuo):**
+
   ```json
   {
     "messages": [
@@ -1707,6 +1785,7 @@ Módulo de Inteligência Artificial conversacional oficial do **Bot do Senpai**,
 ## 4. Modelos e Enums do Domínio
 
 ### Enums
+
 ```typescript
 // Roles de Autorização do Usuário (RBAC)
 export type UserRole = "user" | "admin" | "moderator";
@@ -1774,6 +1853,7 @@ export type GroupItemStatus = "pending" | "accepted" | "rejected";
 ```
 
 ### Modelos de Gamificação & Missões
+
 ```typescript
 export interface MissionReward {
   xp: number;
@@ -1822,6 +1902,7 @@ export interface ClaimMissionResult {
 ```
 
 ### Assinatura VIP do Usuário (`UserSubscription`)
+
 ```typescript
 export interface UserSubscription {
   start?: Date | string;
@@ -1832,6 +1913,7 @@ export interface UserSubscription {
 ```
 
 ### Perfil Público do Usuário (`PublicProfileDto`)
+
 ```typescript
 export interface PublicProfileDto {
   name: string;
@@ -1847,16 +1929,18 @@ export interface PublicProfileDto {
 ```
 
 ### Snapshot de Cota (`QuotaSnapshotDto`)
+
 ```typescript
 export interface QuotaSnapshotDto {
-  cycleStart: string;              // ISO 8601 UTC (início do ciclo diário atual)
-  packName: string | null;         // Nome do pacote ativo vinculado no dia
-  createdStickerCount: number;     // Figurinhas criadas hoje no ciclo (0 a 3 no Free)
-  isUnlimited: boolean;            // true para usuários VIP
+  cycleStart: string; // ISO 8601 UTC (início do ciclo diário atual)
+  packName: string | null; // Nome do pacote ativo vinculado no dia
+  createdStickerCount: number; // Figurinhas criadas hoje no ciclo (0 a 3 no Free)
+  isUnlimited: boolean; // true para usuários VIP
 }
 ```
 
 ### Modelo de Grupos e Moderação (`Group`, `GroupItem`)
+
 ```typescript
 export interface GroupItem {
   id: string;                      // UUID gerado automaticamente
@@ -1880,8 +1964,10 @@ export interface GroupModerationTokenPayload {
   moderatorEmail: string;
   createdAt: number;               // Epoch timestamp em milissegundos
 }
+```
 
 ### DTOs do Chat de IA (`ChatMessageDto`, `ChatBodyDto`)
+
 ```typescript
 export type ChatRole = "user" | "assistant" | "system";
 
@@ -1949,6 +2035,7 @@ export interface ChatBodyDto {
     - **CRÍTICO - Não use `http.post` com `await`:** O método `http.post(...)` padrão do pacote `http` espera toda a resposta ser concluída antes de retornar a string inteira, o que destrói a experiência de streaming em tempo real.
     - **Como consumir corretamente:** Utilize `http.Request` + `client.send(request)` + `response.stream.transform(utf8.decoder)`. Dessa forma, cada pequeno pedaço (chunk) emitido pelo Gemini no backend chega imediatamente ao Flutter, permitindo renderizar o texto sendo digitado na tela instantaneamente.
     - **Exemplo completo de Service no Flutter (`ChatService.dart`):**
+
       ```dart
       import 'dart:async';
       import 'dart:convert';
@@ -2007,7 +2094,9 @@ export interface ChatBodyDto {
         }
       }
       ```
+
     - **Exemplo de uso na View do Flutter (`ChatScreenState`):**
+
       ```dart
       StreamSubscription<String>? _streamSub;
 
@@ -2049,6 +2138,7 @@ export interface ChatBodyDto {
         super.dispose();
       }
       ```
+
     - **Vantagens para a Experiência do Usuário (UX):**
       1. **Latência percebida quase zero:** O usuário começa a ler a resposta em menos de 1 segundo.
       2. **Econômico em memória e CPU:** O stream decodifica diretamente em pedaços de texto leve.
