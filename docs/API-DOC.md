@@ -1062,6 +1062,11 @@ _(Requer Header `Authorization` de usuário com cargo `admin` ou `moderator`)_
 - `GET /admin/packs`: Listagem paginada de pacotes para moderação em ordem cronológica (retorna por padrão packs pendentes e banidos). Suporta filtro por `status` (`pending`, `banned`) e busca textual. Exclusivo para `developer`, `owner`, `moderator`.
 - `GET /admin/packs/:id`: Detalhes completos do pacote com a lista de denúncias recebidas (`pack` e `reports`). Exclusivo para `developer`, `owner`, `moderator`.
 - `PATCH /admin/packs/:id/moderation`: Aprovação ou banimento de pacote (`status: "approved" | "banned"`, `reset_reports?: boolean`, `notes?: string`). Ao aprovar, restaura `is_public: true`, zera `reports_count` e enfileira e-mail de liberação (`RELEASED`) ao criador com e-mail verificado. Ao banir, fixa `is_public: false` e, caso o pacote não estivesse previamente banido (transição idempotente), atribui `+1` strike de forma atômica ao criador (`user.strikes`) e enfileira e-mail formal de remoção (`BANNED` ou `BANNED_AND_RESTRICTED` se acumular 3 strikes) com observações e justificativas para criadores com e-mail verificado. Invalida os caches do pacote e perfil. Exclusivo para `developer`, `owner`, `moderator`.
+- `GET /admin/groups`: Listagem paginada de itens de grupos para moderação (desenrolados via aggregation `$unwind`). Suporta filtro objetivo por `status` (`pending`, `accepted`, `rejected` — padrão `pending`), ordenação temporal `order` (`desc` para mais recentes, `asc` para mais antigos — padrão `desc`), e paginação (`page`, `limit`). Exclusivo para `admin`, `moderator`. Retorna `{ success: true, items: [...], total, page, limit, totalPages }`, onde cada item possui `groupId`, `userId`, `username`, `userEmail`, `userRole`, `itemId`, `title`, `url`, `status`, `requestType` (`created`, `updated`, `deleted`), `requested_at`, `decided_at`, `decided_by_username` e `moderation_note`.
+- `PATCH /admin/groups/:groupId/items/:itemId/moderation`: Aprovação ou rejeição atômica de item de grupo pendente (`action: "accepted" | "rejected"`, `note?: string` opcional de até 180 caracteres). Exclusivo para `admin`, `moderator`.
+  - **Atomicidade & Concorrência:** A atualização no MongoDB é condicional ao predicado `groups.status: "pending"`. Caso o item já tenha sido decidido por outro moderador concorrente, retorna imediatamente `409 Conflict` (`"Este item de grupo já foi moderado anteriormente."`).
+  - **Auditoria:** Grava no subdocumento do item o status final, timestamp de decisão (`decided_at`), ID e username do moderador (`decided_by`, `decided_by_username`) e a justificativa opcional (`moderation_note`).
+  - **Notificação ao Proprietário:** Caso o usuário criador do grupo possua e-mail verificado (`isEmailVerified: true`), dispara e-mail transacional estilizado (`group-moderation-outcome-email-template`) comunicando a decisão (aprovação ou rejeição com o motivo informado pelo moderador).
 
 ---
 
@@ -1279,64 +1284,7 @@ Módulo responsável pelo processamento de eventos de compras in-app e assinatur
 
 Módulo responsável pela gestão de grupos e canais privados vinculados ao perfil do usuário autenticado (como links de grupos do WhatsApp ou comunidades). Cada usuário possui no máximo **1** registro de grupos associado à sua conta, contendo até 2 links.
 
-O módulo combina rotas **privadas** protegidas por JWT (`onRequest: app.authenticate`) para as operações de CRUD do usuário e uma rota **pública** (`GET /group/moderate`) utilizada exclusivamente pelos moderadores da plataforma através dos links de ação recebidos por e-mail.
-
-#### `GET /group/moderate`
-
-- **Descrição e Regra de Negócio:** Endpoint público acionado quando o moderador clica no botão ou link de aprovação/rejeição recebido no e-mail de moderação.
-  1. **Validação do Token de Moderação:** Lê o token temporário passado na querystring (`?token=<token>`). Consulta o payload salvo no Redis (`moderate:<token>`). Caso o token não exista ou já tenha expirado/sido consumido, rejeita com `400 Bad Request` (`"Link de moderação inválido ou já utilizado."`).
-  2. **Consumo Único (Single-Use Token):** O token gerado no momento do envio do e-mail é um hash criptográfico de 20 bytes em formato hex (`crypto.randomBytes(20).toString("hex")`) com TTL de 7 dias (604.800 segundos). Ao ser acionado com sucesso, a chave é imediatamente removida do Redis (`cacheService.del`), impedindo reutilização.
-  3. **Atualização Atômica de Status:** Executa a atualização atômica do status do item específico no MongoDB (`updateGroupItemStatus`) utilizando o operador posicional `groups.$.status`, atribuindo `"accepted"` ou `"rejected"` e atualizando `updated_at`.
-- **Headers:** Nenhum (Aberto/Público).
-- **Query Parameters:**
-  | Parâmetro | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
-  | :--- | :--- | :--- | :--- | :--- |
-  | `token` | `z.string().min(1)` | `String` | Sim | Token temporário de uso único gerado no disparo do e-mail de moderação. |
-- **Respostas:**
-  - `200 OK`:
-    ```json
-    {
-      "success": true,
-      "message": "Grupo Comunidade Oficial aprovado com sucesso",
-      "group": {
-        "_id": "67f1a2b3c4d5e6f7a8b9c0d1",
-        "user_id": "66dec987a123b456c7890123",
-        "groups": [
-          {
-            "id": "e4b10b88-197e-4869-a1b7-99b50db15d42",
-            "title": "Comunidade Oficial",
-            "url": "https://chat.whatsapp.com/Exemplo1",
-            "status": "accepted"
-          }
-        ],
-        "created_at": "2026-09-26T18:00:00.000Z",
-        "updated_at": "2026-09-27T19:00:00.000Z"
-      },
-      "item": {
-        "id": "e4b10b88-197e-4869-a1b7-99b50db15d42",
-        "title": "Comunidade Oficial",
-        "url": "https://chat.whatsapp.com/Exemplo1",
-        "status": "accepted"
-      }
-    }
-    ```
-  - `400 Bad Request` (Token inválido ou expirado):
-    ```json
-    {
-      "success": false,
-      "message": "Link de moderação inválido ou já utilizado."
-    }
-    ```
-  - `400 Bad Request` (Token ausente na query):
-    ```json
-    {
-      "success": false,
-      "message": "Dados de requisição inválidos",
-      "errors": {
-        "token": ["Token é obrigatório"]
-      }
-    }
-    ```
+O módulo é composto exclusivamente por rotas protegidas por JWT (`onRequest: app.authenticate`) para as operações de CRUD do usuário autenticado. A decisão de aprovação ou rejeição de itens de grupos é realizada no painel administrativo do aplicativo (`/admin/groups`) por usuários com cargo `admin` ou `moderator`. O e-mail de notificação disparado ao moderador possui caráter estritamente informativo (sem links de ação direta e sem a URL externa).
 
 #### `GET /group/`
 
@@ -1420,7 +1368,7 @@ O módulo combina rotas **privadas** protegidas por JWT (`onRequest: app.authent
   2. **Limite Máximo de 2 Grupos:** A soma total de grupos vinculados à conta não pode exceder 2 itens. Se o usuário já tiver 2 grupos cadastrados (ou tentar enviar uma quantidade que exceda o limite), a requisição é rejeitada com `400 Bad Request`.
   3. **Identificador Automático:** Se o campo `id` não for informado no payload de cada item, um identificador UUID único é gerado automaticamente pelo servidor (`crypto.randomUUID()`).
   4. **Status Padrão e Ciclo de Moderação:** Todo novo grupo ou item cadastrado recebe automaticamente o status `"pending"`.
-  5. **Disparo do E-mail de Moderação:** O backend gera dois tokens hexadecimais seguros de 20 bytes com validade de 7 dias no Redis (um para aprovar com `action: "accepted"` e outro para rejeitar com `action: "rejected"`). Um e-mail transacional estilizado é disparado para `MODERATOR_EMAIL` com os dados do usuário criador, títulos, URLs e botões/links de ação direta apontando para `${API_URL}/group/moderate?token=<token>`.
+  5. **Disparo do E-mail de Notificação de Moderação:** Um e-mail transacional informativo é disparado para `MODERATOR_EMAIL` com os dados do solicitante, nome do grupo, tipo de solicitação (`created`) e data/hora, orientando o moderador a acessar a tela de moderação no aplicativo Senpai. O e-mail não contém links externos nem botões de aprovação/rejeição.
 - **Request Body (`createGroupDtoSchema`):**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
   | :--- | :--- | :--- | :--- | :--- |
@@ -1519,7 +1467,7 @@ O módulo combina rotas **privadas** protegidas por JWT (`onRequest: app.authent
   | `itemId` | `String` (UUID do item) | Identificador único do item a ser atualizado. |
 - **Regras de Negócio:**
   1. **Reset Automático para Pending:** Qualquer alteração no título ou na URL do item redefine atômica e compulsoriamente seu status para `"pending"` (`groups.$.status = "pending"`), garantindo que alterações em links já aprovados passem novamente pelo crivo da moderação.
-  2. **Novo Ciclo de Moderação:** Um novo e-mail de moderação com links seguros de aprovação e rejeição de uso único é disparado para `MODERATOR_EMAIL`.
+  2. **Notificação de Moderação:** Um novo e-mail informativo é disparado para `MODERATOR_EMAIL` com os dados da atualização (`updated`), orientando a moderação dentro do aplicativo Senpai.
 - **Request Body (`updateGroupItemDtoSchema`):**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
   | :--- | :--- | :--- | :--- | :--- |
