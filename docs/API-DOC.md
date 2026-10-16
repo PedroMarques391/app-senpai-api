@@ -32,7 +32,8 @@ A API Senpai segue os princípios da **Clean Architecture**, organizada em 3 cam
   - `name`: `String`
   - `userName`: `String`
   - `email`: `String`
-  - `role`: `"user" | "admin" | "moderator" | "company" | "partner" | "owner" | "developer" | "senpai" | "verified_creator"`
+  - `role`: `"user" | "admin" | "moderator"`
+  - `accountType`: `"member" | "senpai" | "developer" | "owner" | "partner" | "company"` (Tipo de conta/persona, default `"member"`)
   - `premium`: `boolean` (Define acesso a cotas ilimitadas e recursos VIP)
   - `isNumberVerified`: `boolean`
   - `isEmailVerified`: `boolean` (Indica se o e-mail cadastrado foi autenticado via OTP)
@@ -1707,8 +1708,17 @@ Módulo de Inteligência Artificial conversacional oficial do **Bot do Senpai**,
 
 ### Enums
 ```typescript
-// Roles do Usuário
-export type UserRole = "user" | "admin" | "moderator" | "company" | "partner" | "owner" | "developer" | "senpai";
+// Roles de Autorização do Usuário (RBAC)
+export type UserRole = "user" | "admin" | "moderator";
+
+// Tipo / Identidade da Conta (Persona)
+export type UserAccountType =
+  | "member"
+  | "senpai"
+  | "developer"
+  | "owner"
+  | "partner"
+  | "company";
 
 // Status da Conta
 export type UserStatus = "active" | "inactive" | "restricted";
@@ -1831,6 +1841,8 @@ export interface PublicProfileDto {
   banner_url?: string;
   bio?: string;
   isVerifiedCreator: boolean;
+  role: UserRole;
+  accountType: UserAccountType;
 }
 ```
 
