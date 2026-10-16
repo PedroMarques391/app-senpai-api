@@ -1,21 +1,23 @@
 import { ObjectId } from "mongodb";
 import { z } from "zod";
 
-export const userRoleEnum = z.enum(
-  [
-    "user",
-    "admin",
-    "moderator",
-    "company",
-    "partner",
-    "owner",
-    "developer",
-    "senpai",
-    "verified_creator",
-  ],
-  { message: "Cargo de usuário inválido." },
-);
+export const userRoleEnum = z.enum(["user", "admin", "moderator"], {
+  message: "Cargo de usuário inválido.",
+});
 export type UserRole = z.infer<typeof userRoleEnum>;
+
+export const userAccountTypeEnum = z.enum(
+  [
+    "member",
+    "senpai",
+    "developer",
+    "owner",
+    "partner",
+    "company",
+  ],
+  { message: "Tipo de conta inválido." },
+);
+export type UserAccountType = z.infer<typeof userAccountTypeEnum>;
 
 export const userStatusEnum = z.enum(["active", "inactive", "restricted"], {
   message: "Status de usuário inválido.",
@@ -82,6 +84,9 @@ export const userSchema = z.object({
   bio: z.string().max(120).optional(),
   premium: z.boolean().default(false),
   role: userRoleEnum.default("user"),
+  accountType: z
+    .preprocess((val) => val ?? "member", userAccountTypeEnum)
+    .default("member"),
   createdAt: z.coerce.date().default(() => new Date()),
   updatedAt: z.coerce.date().default(() => new Date()),
   deletedAt: z.coerce.date().optional(),

@@ -4,6 +4,10 @@ import {
   type EquippedCosmetics,
   type VipType,
   vipTypeEnum,
+  userAccountTypeEnum,
+  type UserAccountType,
+  userRoleEnum,
+  type UserRole,
 } from "core/schemas";
 import { z } from "zod";
 
@@ -15,4 +19,8 @@ export {
   type EquippedCosmetics,
   type VipType,
   vipTypeEnum,
+  userAccountTypeEnum,
+  type UserAccountType,
+  userRoleEnum,
+  type UserRole,
 };

@@ -1,5 +1,5 @@
 import type { StickerPack, User } from "@/models";
-import type { UserRole } from "@/schemas";
+import type { UserAccountType, UserRole } from "@/schemas";
 import type { EmailProvider } from "@/types";
 import "@fastify/jwt";
 import "fastify";
@@ -47,6 +47,7 @@ declare module "@fastify/jwt" {
       userName: string;
       email: string;
       role: UserRole;
+      accountType: UserAccountType;
     };
   }
 }
