@@ -1,17 +1,16 @@
-import { userSchema } from "core/schemas";
-import type { z } from "zod";
+import { z } from "zod";
 
-export const updateUserDtoSchema = userSchema
-  .pick({
-    name: true,
-    userName: true,
-    email: true,
-    bio: true,
-    avatar_url: true,
-    banner_url: true,
-    preferred_payment: true,
+export const updateUserDtoSchema = z
+  .object({
+    name: z.string().optional(),
+    userName: z.string().optional(),
+    email: z.string().optional(),
+    bio: z.string().max(120).nullish(),
+    avatar_url: z.string().nullish(),
+    banner_url: z.string().nullish(),
+    preferred_payment: z.string().nullish(),
   })
-  .partial()
-  .strict();
+  .loose();
 
+export const UpdateUserSchema = updateUserDtoSchema;
 export type UpdateUserDto = z.infer<typeof updateUserDtoSchema>;

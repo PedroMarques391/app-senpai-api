@@ -1,6 +1,7 @@
 import type {
   CompleteRegistrationDto,
   PublicProfileDto,
+  UpdateEquippedCosmeticsDto,
   UpdateUserDto,
 } from "@/dtos";
 import type { User } from "@/models";
@@ -108,6 +109,7 @@ export class ProfileService {
         subscription: sanitizedUser.subscription,
         activity: sanitizedUser.activity,
         role: sanitizedUser.role,
+        equipped_cosmetics: sanitizedUser.equipped_cosmetics,
       };
     };
 
@@ -240,7 +242,7 @@ export class ProfileService {
 
     const updatedUser = await this.userRepository.update(
       { _id: userObjectId },
-      updateData,
+      updateData as Partial<User>,
     );
 
     if (!updatedUser) {
@@ -252,6 +254,49 @@ export class ProfileService {
       await this.invalidateProfile(id, updateData.userName);
     }
 
-    return updatedUser;
+    return UserUtils.applyDefaults(updatedUser);
+  }
+
+  async updateEquippedCosmetics(
+    id: string,
+    data: UpdateEquippedCosmeticsDto,
+  ): Promise<User | null> {
+    const userObjectId = MongoUtils.toObjectId(id, "ID de usuário inválido");
+    const currentUser = await this.userRepository.find({ _id: userObjectId });
+
+    if (!currentUser) {
+      throw new Error("Perfil de usuário não encontrado");
+    }
+
+    const currentCosmetics = currentUser.equipped_cosmetics ?? {
+      card_style: "card_style_default",
+      effect: "effect_none",
+      background: "background_default",
+    };
+
+    const updatedCosmetics = {
+      card_style:
+        data.card_style ??
+        currentCosmetics.card_style ??
+        "card_style_default",
+      effect: data.effect ?? currentCosmetics.effect ?? "effect_none",
+      background:
+        data.background ??
+        currentCosmetics.background ??
+        "background_default",
+    };
+
+    const updatedUser = await this.userRepository.update(
+      { _id: userObjectId },
+      { equipped_cosmetics: updatedCosmetics },
+    );
+
+    if (!updatedUser) {
+      throw new Error("Falha ao atualizar os cosméticos do usuário");
+    }
+
+    await this.invalidateProfile(id, currentUser.userName);
+
+    return UserUtils.applyDefaults(updatedUser);
   }
 }

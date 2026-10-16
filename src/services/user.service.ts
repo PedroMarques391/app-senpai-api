@@ -50,7 +50,7 @@ export class UserService {
     updateData: UpdateUserDto,
   ): Promise<User | null> {
     const waId = AuthUtils.normalizeWaId(rawWaId);
-    return this.userRepository.update({ wa_id: waId }, updateData);
+    return this.userRepository.update({ wa_id: waId }, updateData as Partial<User>);
   }
 
   async deleteUser(rawWaId: string): Promise<void> {

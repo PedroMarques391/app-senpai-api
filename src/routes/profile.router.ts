@@ -1,4 +1,8 @@
-import { completeRegistrationDtoSchema, updateUserDtoSchema } from "@/dtos";
+import {
+  completeRegistrationDtoSchema,
+  updateEquippedCosmeticsDtoSchema,
+  updateUserDtoSchema,
+} from "@/dtos";
 import { ServiceFactory } from "@/factories";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
@@ -84,6 +88,27 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
       return reply.status(200).send({
         success: true,
         message: "Perfil atualizado com sucesso",
+        profile,
+      });
+    },
+  );
+
+  app.patch(
+    "/cosmetics",
+    {
+      schema: {
+        body: updateEquippedCosmeticsDtoSchema,
+      },
+    },
+    async (request, reply) => {
+      const profile = await profileService.updateEquippedCosmetics(
+        request.user._id,
+        request.body,
+      );
+
+      return reply.status(200).send({
+        success: true,
+        message: "Cosméticos atualizados com sucesso",
         profile,
       });
     },
