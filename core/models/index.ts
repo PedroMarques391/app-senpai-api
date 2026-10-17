@@ -16,6 +16,7 @@ export * from "./user.model";
 export * from "./user.repository.model";
 export * from "./creation-quota.model";
 export * from "./creation-quota.repository.model";
+export * from "./follows.model";
 export * from "./follows.repository.model";
 export * from "./group.model";
 export * from "./group.repository.model";

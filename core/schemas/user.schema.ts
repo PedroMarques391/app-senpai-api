@@ -119,6 +119,8 @@ export const userSchema = z.object({
       dynamic: z.number().default(0),
     })
     .default({ static: 0, dynamic: 0 }),
+  followers_count: z.number().int().nonnegative().default(0),
+  following_count: z.number().int().nonnegative().default(0),
   storage_used_bytes: z.number().nonnegative().default(0),
   total_xp: z.number().int().nonnegative().default(0),
   strikes: z.number().int().nonnegative().default(0),
