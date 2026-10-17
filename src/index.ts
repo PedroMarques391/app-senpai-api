@@ -103,7 +103,7 @@ server.register(
   { prefix: "/webhooks" },
 );
 
-server.get("/health", (request, reply) => {
+server.get("/health", (_request, reply) => {
   return reply.status(200).send({
     message: "Server is running",
     success: true,
@@ -131,7 +131,7 @@ server.register(async (app) => {
   app.register(chatRoutes, { prefix: "/chat" });
 });
 
-server.get("/", async (request, reply) => {
+server.get("/", async (_request, reply) => {
   return reply.status(200).send({
     message: "Server is running, but you probably shouldn't be here. Go away.",
     success: true,
