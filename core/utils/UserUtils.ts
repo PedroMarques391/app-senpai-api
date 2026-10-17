@@ -1,3 +1,4 @@
+import { MAX_STRIKES } from "@/constants";
 import type { User } from "@/models";
 import { userSchema } from "@/schemas";
 
@@ -15,6 +16,13 @@ export class UserUtils {
 
   static isFullyRegistered(user: User | null | undefined): boolean {
     return Boolean(user?.email && user?.password);
+  }
+
+  static isRestricted(
+    user: Pick<User, "strikes" | "status"> | null | undefined,
+  ): boolean {
+    if (!user) return false;
+    return Boolean(user.strikes >= MAX_STRIKES || user.status === "restricted");
   }
 
   static applyDefaults(user: Partial<User>): User {

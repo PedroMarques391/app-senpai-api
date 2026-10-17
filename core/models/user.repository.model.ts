@@ -6,6 +6,7 @@ import type {
   UserIdentifier,
 } from "@/types";
 import { ObjectId } from "mongodb";
+import type { StickerType } from "./sticker.model";
 import type { CreateUserPayload, User } from "./user.model";
 
 export interface UserRepository {
@@ -19,7 +20,7 @@ export interface UserRepository {
   ): Promise<RepositoryPaginatedResult<User>>;
   incrementStickersCount(
     userId: ObjectId,
-    type: "static" | "dynamic",
+    type: StickerType,
     amount?: number,
   ): Promise<void>;
   incrementPetals(userId: ObjectId, amount: number): Promise<User | null>;

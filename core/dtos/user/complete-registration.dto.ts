@@ -1,4 +1,4 @@
-import { userSchema } from "core/schemas";
+import { userSchema } from "@/schemas";
 import type { z } from "zod";
 
 export const completeRegistrationDtoSchema = userSchema

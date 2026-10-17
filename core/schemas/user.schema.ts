@@ -1,35 +1,39 @@
 import { ObjectId } from "mongodb";
 import { z } from "zod";
 
-export const userRoleEnum = z.enum(["user", "admin", "moderator"], {
+export const USER_ROLES = ["user", "admin", "moderator"] as const;
+export const userRoleEnum = z.enum(USER_ROLES, {
   message: "Cargo de usuário inválido.",
 });
 export type UserRole = z.infer<typeof userRoleEnum>;
 
-export const userAccountTypeEnum = z.enum(
-  [
-    "member",
-    "senpai",
-    "developer",
-    "owner",
-    "partner",
-    "company",
-  ],
-  { message: "Tipo de conta inválido." },
-);
+export const USER_ACCOUNT_TYPES = [
+  "member",
+  "senpai",
+  "developer",
+  "owner",
+  "partner",
+  "company",
+] as const;
+export const userAccountTypeEnum = z.enum(USER_ACCOUNT_TYPES, {
+  message: "Tipo de conta inválido.",
+});
 export type UserAccountType = z.infer<typeof userAccountTypeEnum>;
 
-export const userStatusEnum = z.enum(["active", "inactive", "restricted"], {
+export const USER_STATUSES = ["active", "inactive", "restricted"] as const;
+export const userStatusEnum = z.enum(USER_STATUSES, {
   message: "Status de usuário inválido.",
 });
 export type UserStatus = z.infer<typeof userStatusEnum>;
 
-export const vipTypeEnum = z.enum(["FREE", "PRO", "MESTRE"], {
+export const VIP_TYPES = ["FREE", "PRO", "MESTRE"] as const;
+export const vipTypeEnum = z.enum(VIP_TYPES, {
   message: "Tipo de assinatura inválido.",
 });
 export type VipType = z.infer<typeof vipTypeEnum>;
 
-export const vipPlanEnum = z.enum(["VIP_PRO", "VIP_MESTRE"], {
+export const VIP_PLANS = ["VIP_PRO", "VIP_MESTRE"] as const;
+export const vipPlanEnum = z.enum(VIP_PLANS, {
   message: "Plano VIP inválido.",
 });
 export type VipPlan = z.infer<typeof vipPlanEnum>;
@@ -42,8 +46,8 @@ export const userSubscriptionSchema = z.object({
       if (!val) return "FREE";
       const normalized = String(val).trim().toUpperCase();
       if (normalized === "PREMIUM") return "PRO";
-      return ["FREE", "PRO", "MESTRE"].includes(normalized)
-        ? normalized
+      return (VIP_TYPES as readonly string[]).includes(normalized)
+        ? (normalized as VipType)
         : "FREE";
     }, vipTypeEnum)
     .default("FREE"),

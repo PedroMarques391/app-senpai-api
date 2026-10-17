@@ -8,6 +8,11 @@ import type {
   UpdateUserDto,
   UserAdminFilterOptions,
 } from "@/dtos";
+import {
+  AppError,
+  InsufficientPetalsError,
+  UserNotFoundError,
+} from "@/errors";
 import type { User, UserRepository } from "@/models";
 import {
   renderModerationOutcomeEmailTemplate,
@@ -27,7 +32,7 @@ export class UserService {
     const variants = AuthUtils.getWaIdVariants(rawWaId);
     const user = await this.userRepository.find({ wa_id: { $in: variants } });
     if (!user) {
-      throw new Error("Usuário não encontrado.");
+      throw new UserNotFoundError();
     }
     return UserUtils.applyDefaults(user);
   }
@@ -36,7 +41,7 @@ export class UserService {
     const variants = AuthUtils.getWaIdVariants(userData.wa_id);
     const user = await this.userRepository.find({ wa_id: { $in: variants } });
     if (user) {
-      throw new Error("Já existe uma conta cadastrada com este número.");
+      throw new AppError("Já existe uma conta cadastrada com este número.", 409, "USER_ALREADY_EXISTS");
     }
 
     return this.userRepository.create({
@@ -60,7 +65,7 @@ export class UserService {
 
   async addPetals(userId: string, amount: number): Promise<User> {
     if (amount <= 0) {
-      throw new Error("A quantidade de pétalas a adicionar deve ser positiva");
+      throw new AppError("A quantidade de pétalas a adicionar deve ser positiva", 400, "INVALID_PETALS_AMOUNT");
     }
     const userObjectId = MongoUtils.toObjectId(
       userId,
@@ -72,14 +77,14 @@ export class UserService {
       amount,
     );
     if (!updatedUser) {
-      throw new Error("Usuário não encontrado");
+      throw new UserNotFoundError();
     }
     return updatedUser;
   }
 
   async deductPetals(userId: string, amount: number): Promise<User> {
     if (amount <= 0) {
-      throw new Error("A quantidade de pétalas a deduzir deve ser positiva");
+      throw new AppError("A quantidade de pétalas a deduzir deve ser positiva", 400, "INVALID_PETALS_AMOUNT");
     }
     const userObjectId = MongoUtils.toObjectId(
       userId,
@@ -91,21 +96,21 @@ export class UserService {
       amount,
     );
     if (newBalance === null) {
-      throw new Error(
+      throw new InsufficientPetalsError(
         "Saldo de pétalas insuficiente ou usuário não encontrado",
       );
     }
 
     const user = await this.userRepository.find({ _id: userObjectId });
     if (!user) {
-      throw new Error("Usuário não encontrado");
+      throw new UserNotFoundError();
     }
     return user;
   }
 
   async adjustPetals(userId: string, amount: number): Promise<User> {
     if (amount === 0) {
-      throw new Error("O valor de ajuste não pode ser zero");
+      throw new AppError("O valor de ajuste não pode ser zero", 400, "INVALID_PETALS_ADJUSTMENT");
     }
     return amount > 0
       ? this.addPetals(userId, amount)
@@ -139,7 +144,7 @@ export class UserService {
     const objectId = MongoUtils.toObjectId(userId, "ID de usuário inválido");
     const user = await this.userRepository.find({ _id: objectId });
     if (!user) {
-      throw new Error("Usuário não encontrado");
+      throw new UserNotFoundError();
     }
     return UserUtils.applyDefaults(user);
   }
@@ -150,15 +155,17 @@ export class UserService {
     data: AdminUpdateUserRoleDto,
   ): Promise<User> {
     if (adminId === userId) {
-      throw new Error(
+      throw new AppError(
         "Não é permitido alterar o próprio cargo de administrador",
+        403,
+        "CANNOT_CHANGE_OWN_ROLE",
       );
     }
 
     const objectId = MongoUtils.toObjectId(userId, "ID de usuário inválido");
     const user = await this.userRepository.find({ _id: objectId });
     if (!user) {
-      throw new Error("Usuário não encontrado");
+      throw new UserNotFoundError();
     }
 
     const updated = await this.userRepository.update(
@@ -166,7 +173,7 @@ export class UserService {
       { role: data.role, updatedAt: new Date() },
     );
     if (!updated) {
-      throw new Error("Falha ao atualizar o cargo do usuário");
+      throw new AppError("Falha ao atualizar o cargo do usuário", 500, "USER_ROLE_UPDATE_FAILED");
     }
 
     return updated;
@@ -179,7 +186,7 @@ export class UserService {
     const objectId = MongoUtils.toObjectId(userId, "ID de usuário inválido");
     const user = await this.userRepository.find({ _id: objectId });
     if (!user) {
-      throw new Error("Usuário não encontrado");
+      throw new UserNotFoundError();
     }
 
     const updateFields: Partial<User> = {
@@ -199,7 +206,7 @@ export class UserService {
       updateFields,
     );
     if (!updated) {
-      throw new Error("Falha ao atualizar o status do usuário");
+      throw new AppError("Falha ao atualizar o status do usuário", 500, "USER_STATUS_UPDATE_FAILED");
     }
 
     if (

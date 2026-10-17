@@ -4,6 +4,7 @@ import { MongoInitializer } from "@/init";
 import {
   insertUserSchema,
   type CreateUserPayload,
+  type StickerType,
   type UserRepository as IUserRepository,
   type User,
 } from "@/models";
@@ -90,7 +91,7 @@ export class UserRepository implements IUserRepository {
 
   async incrementStickersCount(
     userId: ObjectId,
-    type: "static" | "dynamic",
+    type: StickerType,
     amount: number = 1,
   ): Promise<void> {
     await this.collection.updateOne(
