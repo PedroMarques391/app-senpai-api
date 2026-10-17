@@ -6,6 +6,7 @@ export * from "./sticker.repository";
 export * from "./store.repository";
 export * from "./user.repository";
 export * from "./creation-quota.repository";
+export * from "./follows.repository";
 export * from "./group.repository";
 export * from "./pack-report.repository";
 
