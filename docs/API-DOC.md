@@ -833,6 +833,8 @@ _(Todas as rotas exigem Header `Authorization`)_
         "bio": "Criador de figurinhas e fã de animes",
         "isVerifiedCreator": true,
         "createdAt": "2026-09-01T12:00:00.000Z",
+        "followers_count": 128,
+        "following_count": 42,
         "equipped_cosmetics": {
           "card_style": "card_style_neon",
           "effect": "effect_none",
@@ -1884,6 +1886,8 @@ export interface PublicProfileDto {
   isVerifiedCreator: boolean;
   role: UserRole;
   accountType: UserAccountType;
+  followers_count: number;
+  following_count: number;
 }
 ```
 
