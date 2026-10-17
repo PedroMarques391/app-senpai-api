@@ -2,15 +2,21 @@ import { ObjectId } from "mongodb";
 import { randomUUID } from "node:crypto";
 import z from "zod";
 
-export const groupItemStatusSchema = z.enum(
-  ["pending", "accepted", "rejected"],
-  { message: "Status do grupo inválido." },
-);
+export const GROUP_ITEM_STATUSES = [
+  "pending",
+  "accepted",
+  "rejected",
+] as const;
+export const groupItemStatusSchema = z.enum(GROUP_ITEM_STATUSES, {
+  message: "Status do grupo inválido.",
+});
+export type GroupItemStatus = z.infer<typeof groupItemStatusSchema>;
 
-export const groupRequestTypeSchema = z.enum(
-  ["new", "updated"],
-  { message: "Tipo de solicitação inválido." },
-);
+export const GROUP_REQUEST_TYPES = ["new", "updated"] as const;
+export const groupRequestTypeSchema = z.enum(GROUP_REQUEST_TYPES, {
+  message: "Tipo de solicitação inválido.",
+});
+export type GroupRequestType = z.infer<typeof groupRequestTypeSchema>;
 
 export const groupItemSchema = z.object({
   id: z.string().default(() => randomUUID()),

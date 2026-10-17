@@ -1,4 +1,4 @@
-import { groupSchema } from "core/schemas";
+import { groupSchema } from "@/schemas";
 import type { z } from "zod";
 
 export const createGroupDtoSchema = groupSchema

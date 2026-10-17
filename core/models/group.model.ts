@@ -1,17 +1,27 @@
 import {
+  GROUP_ITEM_STATUSES,
+  GROUP_REQUEST_TYPES,
   groupItemSchema,
   groupItemStatusSchema,
   groupRequestTypeSchema,
   groupSchema,
+  type GroupItemStatus,
+  type GroupRequestType,
 } from "@/schemas";
 import z from "zod";
 
 export const insertGroupSchema = groupSchema.omit({ _id: true });
 export type Group = z.infer<typeof groupSchema>;
 export type GroupItem = z.infer<typeof groupItemSchema>;
-export type GroupItemStatus = z.infer<typeof groupItemStatusSchema>;
-export type GroupRequestType = z.infer<typeof groupRequestTypeSchema>;
 export type CreateGroupPayload = z.input<typeof insertGroupSchema>;
+export {
+  GROUP_ITEM_STATUSES,
+  GROUP_REQUEST_TYPES,
+  groupItemStatusSchema,
+  groupRequestTypeSchema,
+  type GroupItemStatus,
+  type GroupRequestType,
+};
 
 export interface GroupModerationItem {
   groupId: string;

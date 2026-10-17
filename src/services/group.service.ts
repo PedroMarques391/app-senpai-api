@@ -1,4 +1,4 @@
-import { EMAIL_SENDERS } from "@/constants";
+import { EMAIL_SENDERS, MODERATOR_EMAIL } from "@/constants";
 import type {
   CreateGroupDto,
   GroupModerationRepositoryOptions,
@@ -7,7 +7,13 @@ import type {
   UpdateGroupDto,
   UpdateGroupItemDto,
 } from "@/dtos";
-import { GroupAlreadyDecidedError, GroupItemNotFoundError } from "@/errors";
+import {
+  AppError,
+  GroupAlreadyDecidedError,
+  GroupItemNotFoundError,
+  GroupLimitReachedError,
+  GroupNotFoundError,
+} from "@/errors";
 import type {
   Group,
   GroupItem,
@@ -22,14 +28,12 @@ import {
 } from "@/templates/email";
 import type { PaginatedResult, PaginationOptions } from "@/types";
 import { MongoUtils, PermissionUtils } from "@/utils";
-import type { CacheService } from "./cache.service";
 import type { MailService } from "./mail.service";
 
 export class GroupService {
   constructor(
     private readonly groupRepository: GroupRepository,
     private readonly mailService: MailService,
-    private readonly cacheService: CacheService,
     private readonly userRepository?: UserRepository,
   ) {}
 
@@ -44,7 +48,7 @@ export class GroupService {
     );
     const groups = await this.groupRepository.find(userObjectId);
     if (!groups) {
-      throw new Error("Parece que você ainda não cadastrou nenhum grupo");
+      throw new GroupNotFoundError("Parece que você ainda não cadastrou nenhum grupo");
     }
     return groups;
   }
@@ -62,7 +66,7 @@ export class GroupService {
     const groupObjectId = MongoUtils.toObjectId(id, "ID do grupo inválido");
     const group = await this.groupRepository.findById(groupObjectId);
     if (!group) {
-      throw new Error("Grupo não encontrado");
+      throw new GroupNotFoundError();
     }
     PermissionUtils.verifyOwnership(group.user_id, userObjectId, "grupo");
     return group;
@@ -71,9 +75,7 @@ export class GroupService {
   async findManyGroupsForModeration(
     query: ListGroupsAdminQueryDto,
   ): Promise<PaginatedResult<GroupModerationItem>> {
-    const page = query.page > 0 ? query.page : 1;
-    const limit = query.limit > 0 ? Math.min(query.limit, 50) : 20;
-
+    const { page, limit } = query;
     const paginationOptions: PaginationOptions = { page, limit };
 
     const queryOptions: GroupModerationRepositoryOptions = {
@@ -168,7 +170,7 @@ export class GroupService {
     const existingGroups = await this.groupRepository.find(userObjectId);
     if (existingGroups) {
       if (existingGroups.groups.length + data.groups.length > 2) {
-        throw new Error("Você já atingiu o limite de 2 grupos");
+        throw new GroupLimitReachedError();
       }
 
       const updatedGroups = [...existingGroups.groups, ...data.groups];
@@ -177,7 +179,7 @@ export class GroupService {
       });
 
       if (!updated) {
-        throw new Error("Não foi possível adicionar o novo grupo");
+        throw new AppError("Não foi possível adicionar o novo grupo", 500, "GROUP_UPDATE_FAILED");
       }
 
       const addedGroups = updated.groups.slice(existingGroups.groups.length);
@@ -194,7 +196,7 @@ export class GroupService {
 
     const group = await this.groupRepository.create(userObjectId, data);
     if (!group) {
-      throw new Error("Não foi possível criar o grupo");
+      throw new AppError("Não foi possível criar o grupo", 500, "GROUP_CREATE_FAILED");
     }
 
     await this.sendModerationEmail(
@@ -223,14 +225,14 @@ export class GroupService {
 
     const existing = await this.groupRepository.findById(groupObjectId);
     if (!existing) {
-      throw new Error("Grupo não encontrado");
+      throw new GroupNotFoundError();
     }
 
     PermissionUtils.verifyOwnership(existing.user_id, userObjectId, "grupo");
 
     const updated = await this.groupRepository.update(groupObjectId, data);
     if (!updated) {
-      throw new Error("Falha ao atualizar grupo");
+      throw new AppError("Falha ao atualizar grupo", 500, "GROUP_UPDATE_FAILED");
     }
     return updated;
   }
@@ -250,7 +252,7 @@ export class GroupService {
     );
 
     if (data.title === undefined && data.url === undefined) {
-      throw new Error("Nenhum dado informado para atualização");
+      throw new AppError("Nenhum dado informado para atualização", 400, "NO_DATA_PROVIDED");
     }
 
     const updatedGroup = await this.groupRepository.updateGroupItem(
@@ -260,7 +262,7 @@ export class GroupService {
     );
 
     if (!updatedGroup) {
-      throw new Error("Item do grupo não encontrado");
+      throw new GroupItemNotFoundError();
     }
 
     const updatedItem = updatedGroup.groups.find((item) => item.id === itemId);
@@ -299,7 +301,7 @@ export class GroupService {
     );
 
     if (!updatedGroup) {
-      throw new Error("Item do grupo não encontrado");
+      throw new GroupItemNotFoundError();
     }
 
     if (itemToDelete) {
@@ -329,14 +331,14 @@ export class GroupService {
 
     const existing = await this.groupRepository.findById(groupObjectId);
     if (!existing) {
-      throw new Error("Grupo não encontrado");
+      throw new GroupNotFoundError();
     }
 
     PermissionUtils.verifyOwnership(existing.user_id, userObjectId, "grupo");
 
     const deleted = await this.groupRepository.delete(groupObjectId);
     if (!deleted) {
-      throw new Error("Falha ao remover grupo");
+      throw new AppError("Falha ao remover grupo", 500, "GROUP_DELETE_FAILED");
     }
     return deleted;
   }
@@ -399,7 +401,7 @@ export class GroupService {
     const groupNames = items.map((i) => i.title).join(", ");
     this.mailService.sendMail({
       from: EMAIL_SENDERS.SECURITY,
-      to: process.env.MODERATOR_EMAIL,
+      to: MODERATOR_EMAIL,
       subject: `[Moderação] ${eventTitle}: ${groupNames}`,
       html,
     });

@@ -6,7 +6,6 @@ import type {
 } from "@/dtos";
 import type {
   Group,
-  GroupItem,
   GroupItemStatus,
   GroupModerationItem,
 } from "./group.model";
