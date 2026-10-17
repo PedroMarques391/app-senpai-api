@@ -5,7 +5,7 @@ import type {
   UpdateUserDto,
 } from "@/dtos";
 import type { User } from "@/models";
-import type { UserRepository } from "@/repositories";
+import type { FollowsRepository, UserRepository } from "@/repositories";
 import type { ICacheService } from "@/types";
 import { AuthUtils, MongoUtils, PermissionUtils, UserUtils } from "@/utils";
 
@@ -13,6 +13,7 @@ export class ProfileService {
   constructor(
     private readonly userRepository: UserRepository,
     private cacheService?: ICacheService,
+    private readonly followsRepository?: FollowsRepository,
   ) {}
 
   setCacheService(cacheService: ICacheService): void {
@@ -54,6 +55,15 @@ export class ProfileService {
       PermissionUtils.verifyOwnership(user._id, userObjectId, "Perfil Privado");
 
       const sanitized = UserUtils.applyDefaults(user);
+
+      if (this.followsRepository) {
+        const [followersCount, followingCount] = await Promise.all([
+          this.followsRepository.totalFollowers(user._id),
+          this.followsRepository.totalFollowing(user._id),
+        ]);
+        sanitized.followers_count = followersCount;
+        sanitized.following_count = followingCount;
+      }
 
       if (user.premium && !sanitized.premium) {
         await this.userRepository.update(
@@ -98,6 +108,16 @@ export class ProfileService {
 
       const sanitizedUser = UserUtils.applyDefaults(user);
 
+      let followersCount = sanitizedUser.followers_count ?? 0;
+      let followingCount = sanitizedUser.following_count ?? 0;
+
+      if (this.followsRepository) {
+        [followersCount, followingCount] = await Promise.all([
+          this.followsRepository.totalFollowers(user._id),
+          this.followsRepository.totalFollowing(user._id),
+        ]);
+      }
+
       return {
         name: sanitizedUser.name,
         userName: sanitizedUser.userName,
@@ -111,6 +131,8 @@ export class ProfileService {
         role: sanitizedUser.role,
         accountType: sanitizedUser.accountType,
         equipped_cosmetics: sanitizedUser.equipped_cosmetics,
+        followers_count: followersCount,
+        following_count: followingCount,
       };
     };
 

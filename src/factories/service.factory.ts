@@ -1,6 +1,7 @@
 import {
   ContentRepository,
   CreationQuotaRepository,
+  FollowsRepository,
   GroupRepository,
   InventoryRepository,
   PackFavoriteRepository,
@@ -114,6 +115,7 @@ export class ServiceFactory {
       this.profileService = new ProfileService(
         new UserRepository(),
         this.getCacheService(redisInstance),
+        new FollowsRepository(),
       );
     }
 
