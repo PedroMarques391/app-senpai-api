@@ -34,6 +34,8 @@ export async function seedAnimeUsers(): Promise<void> {
             total_xp: 1500,
             strikes: 0,
             stickers_count: { static: 12, dynamic: 5 },
+            followers_count: 0,
+            following_count: 0,
             activity: {
               current_streak: 7,
               weekly_active_days: [

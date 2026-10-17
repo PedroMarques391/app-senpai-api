@@ -12,6 +12,8 @@ export type SeedUserData = Omit<
   | "total_xp"
   | "strikes"
   | "stickers_count"
+  | "followers_count"
+  | "following_count"
   | "activity"
   | "achievements"
 > & {
