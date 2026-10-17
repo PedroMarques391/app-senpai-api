@@ -22,3 +22,5 @@ export * from "./group.repository.model";
 export * from "./pack-report.model";
 export * from "./pack-report.repository.model";
 
+export * from "./pack-moderation-log.model";
+export * from "./pack-moderation-log.repository.model";

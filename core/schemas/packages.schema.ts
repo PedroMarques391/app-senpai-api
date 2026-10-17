@@ -1,17 +1,44 @@
+import { MAX_STICKERS_PER_PACK } from "@/constants";
 import { ObjectId } from "mongodb";
 import z from "zod";
 import { stickerSchema } from "./sticker.schema";
 
-export const packCategoryEnum = z.enum(
-  ["anime", "memes", "reactions", "gaming", "cute", "utility", "other"],
-  { message: "Categoria de pacote inválida." },
-);
+export const PACK_CATEGORIES = [
+  "anime",
+  "memes",
+  "reactions",
+  "gaming",
+  "cute",
+  "utility",
+  "other",
+] as const;
+export const packCategoryEnum = z.enum(PACK_CATEGORIES, {
+  message: "Categoria de pacote inválida.",
+});
+export type PackCategory = z.infer<typeof packCategoryEnum>;
 
-export const packModerationStatusEnum = z.enum(
-  ["pending", "approved", "banned"],
-  { message: "Status de moderação inválido." },
-);
+export const PACK_MODERATION_STATUSES = [
+  "pending",
+  "approved",
+  "restricted",
+  "banned",
+] as const;
+export const packModerationStatusEnum = z.enum(PACK_MODERATION_STATUSES, {
+  message: "Status de moderação inválido.",
+});
 export type PackModerationStatus = z.infer<typeof packModerationStatusEnum>;
+
+export const PACK_MODERATION_ACTIONS = [
+  "APPROVE",
+  "RESTRICT",
+  "BAN",
+  "DELETE_WITH_STRIKE",
+  "DELETE_NO_STRIKE",
+] as const;
+export const packModerationActionEnum = z.enum(PACK_MODERATION_ACTIONS, {
+  message: "Ação de moderação inválida.",
+});
+export type PackModerationAction = z.infer<typeof packModerationActionEnum>;
 
 export const stickerPackSchema = z.object({
   _id: z.instanceof(ObjectId),
@@ -28,7 +55,7 @@ export const stickerPackSchema = z.object({
   downloads_count: z.number().default(0),
   likes_count: z.number().default(0),
   stickers_count: z.number().default(0),
-  stickers: z.array(stickerSchema).max(30).optional().default([]),
+  stickers: z.array(stickerSchema).max(MAX_STICKERS_PER_PACK).optional().default([]),
   created_at: z.coerce.date().default(() => new Date()),
   updated_at: z.coerce.date().default(() => new Date()),
 });

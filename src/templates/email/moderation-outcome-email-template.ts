@@ -1,10 +1,14 @@
+import { MAX_STRIKES } from "@/constants";
 import { StringUtils } from "@/utils";
 
 export type ModerationOutcomeType =
   | "BANNED"
   | "RELEASED"
   | "ACCOUNT_RESTRICTED"
-  | "BANNED_AND_RESTRICTED";
+  | "BANNED_AND_RESTRICTED"
+  | "PACK_RESTRICTED"
+  | "PACK_DELETED_WITH_STRIKE"
+  | "PACK_DELETED_WITH_STRIKE_RESTRICTED";
 
 export interface ModerationOutcomeTemplateProps {
   eventType: ModerationOutcomeType;
@@ -35,7 +39,7 @@ export function renderModerationOutcomeEmailTemplate(
     reasonLabel,
     reasonDescription,
     currentStrikes = 0,
-    maxStrikes = 3,
+    maxStrikes = MAX_STRIKES,
     moderatorNotes,
     eventDate = new Intl.DateTimeFormat("pt-BR", {
       dateStyle: "short",
@@ -79,6 +83,18 @@ export function renderModerationOutcomeEmailTemplate(
     title = "Notificação de Moderação e Restrição";
     subtitle = `Pacote "${safePackName}" removido e restrição de perfil aplicada`;
     introMessage = `Informamos que o pacote de figurinhas <strong>"${safePackName}"</strong> foi analisado e removido definitivamente da plataforma por violação das Diretrizes da Comunidade. Com a atribuição desta penalidade, seu perfil acumulou ${currentStrikes} de ${maxStrikes} strikes e entrou em estado de <strong>Restrição de Criação Pública</strong>.`;
+  } else if (eventType === "PACK_RESTRICTED") {
+    title = "Aviso de Moderação de Conteúdo";
+    subtitle = `O pacote "${safePackName}" foi restrito para exibição pública`;
+    introMessage = `Informamos que o pacote de figurinhas <strong>"${safePackName}"</strong> passou por análise da nossa equipe de moderação. Identificamos que o conteúdo não é adequado para a vitrine pública da comunidade e por isso ele foi restrito para visualização estritamente privada. <strong>Nenhuma penalidade (strike) foi aplicada ao seu perfil</strong> e sua conta permanece em estado normal.`;
+  } else if (eventType === "PACK_DELETED_WITH_STRIKE") {
+    title = "Notificação de Moderação";
+    subtitle = `O pacote "${safePackName}" foi removido definitivamente`;
+    introMessage = `Informamos que o pacote de figurinhas <strong>"${safePackName}"</strong> foi analisado pela nossa equipe de moderação e removido definitivamente da plataforma por violação grave das Diretrizes da Comunidade do Senpai.`;
+  } else if (eventType === "PACK_DELETED_WITH_STRIKE_RESTRICTED") {
+    title = "Notificação de Moderação e Restrição";
+    subtitle = `Pacote "${safePackName}" removido e restrição de perfil aplicada`;
+    introMessage = `Informamos que o pacote de figurinhas <strong>"${safePackName}"</strong> foi analisado e removido definitivamente da plataforma por violação grave das Diretrizes da Comunidade. Com a atribuição desta penalidade, seu perfil acumulou ${currentStrikes} de ${maxStrikes} strikes e entrou em estado de <strong>Restrição de Criação Pública</strong>.`;
   }
 
   // Bloco de Detalhes (Omitido se não houver pacote envolvido)
@@ -182,6 +198,26 @@ export function renderModerationOutcomeEmailTemplate(
   } else if (eventType === "BANNED_AND_RESTRICTED") {
     consequenceItems = [
       "O pacote foi retirado permanentemente da visualização pública e não poderá ser republicado.",
+      `Com ${currentStrikes} de ${maxStrikes} strikes atingidos, seu perfil entrou em estado de restrição de publicação pública.`,
+      "Você não poderá publicar novos pacotes ou tornar públicos pacotes existentes.",
+      "A criação de pacotes privados continua autorizada para seu uso pessoal.",
+    ];
+  } else if (eventType === "PACK_RESTRICTED") {
+    consequenceItems = [
+      "O pacote não aparecerá nas buscas, na aba Explorar nem na vitrine da comunidade.",
+      "O pacote não poderá ser alterado para visibilidade pública.",
+      "Sua conta permanece em estado NORMAL (nenhum strike foi atribuído e seu perfil NÃO está restrito).",
+      "Você continua podendo usar o pacote privadamente em suas conversas e exportá-lo normalmente para o seu WhatsApp.",
+    ];
+  } else if (eventType === "PACK_DELETED_WITH_STRIKE") {
+    consequenceItems = [
+      "O pacote e todas as suas figurinhas foram excluídos definitivamente da plataforma.",
+      `Foi contabilizado 1 strike em seu perfil de criador (Strikes acumulados: ${currentStrikes} de ${maxStrikes}).`,
+      "Caso acumule 3 strikes, seu perfil entrará em estado de restrição de publicação pública.",
+    ];
+  } else if (eventType === "PACK_DELETED_WITH_STRIKE_RESTRICTED") {
+    consequenceItems = [
+      "O pacote e todas as suas figurinhas foram excluídos definitivamente da plataforma.",
       `Com ${currentStrikes} de ${maxStrikes} strikes atingidos, seu perfil entrou em estado de restrição de publicação pública.`,
       "Você não poderá publicar novos pacotes ou tornar públicos pacotes existentes.",
       "A criação de pacotes privados continua autorizada para seu uso pessoal.",
@@ -382,6 +418,18 @@ export function renderModerationOutcomeText(
     lines.push(
       `Informamos que o pacote de figurinhas "${packName}" foi removido definitivamente da plataforma por violação das Diretrizes da Comunidade. Com esta penalidade, seu perfil acumulou ${currentStrikes} de ${maxStrikes} strikes e entrou em estado de Restrição de Criação Pública.`,
     );
+  } else if (eventType === "PACK_RESTRICTED") {
+    lines.push(
+      `Informamos que o pacote de figurinhas "${packName}" passou por análise da nossa equipe de moderação. O conteúdo não é adequado para a vitrine pública da comunidade e foi restrito para uso privado. Nenhuma penalidade (strike) foi aplicada ao seu perfil.`,
+    );
+  } else if (eventType === "PACK_DELETED_WITH_STRIKE") {
+    lines.push(
+      `Informamos que o pacote de figurinhas "${packName}" foi analisado pela moderação e removido definitivamente da plataforma por violação grave das Diretrizes da Comunidade.`,
+    );
+  } else if (eventType === "PACK_DELETED_WITH_STRIKE_RESTRICTED") {
+    lines.push(
+      `Informamos que o pacote de figurinhas "${packName}" foi removido definitivamente da plataforma por violação grave das Diretrizes da Comunidade. Com esta penalidade, seu perfil acumulou ${currentStrikes} de ${maxStrikes} strikes e entrou em estado de Restrição de Criação Pública.`,
+    );
   }
 
   lines.push("");
@@ -432,6 +480,33 @@ export function renderModerationOutcomeText(
   } else if (eventType === "BANNED_AND_RESTRICTED") {
     lines.push(
       "- O pacote foi retirado permanentemente da visualização pública.",
+    );
+    lines.push(
+      `- Com ${currentStrikes} de ${maxStrikes} strikes atingidos, seu perfil está restrito para publicação pública.`,
+    );
+    lines.push(
+      "- Você não poderá publicar novos pacotes ou torná-los públicos.",
+    );
+    lines.push(
+      "- A criação de pacotes privados continua autorizada para seu uso pessoal.",
+    );
+  } else if (eventType === "PACK_RESTRICTED") {
+    lines.push("- O pacote não aparecerá nas buscas nem na aba Explorar.");
+    lines.push("- O pacote não poderá ser tornado público novamente.");
+    lines.push("- Nenhum strike foi aplicado e sua conta permanece normal.");
+    lines.push(
+      "- Você pode continuar usando o pacote privadamente e exportá-lo para o WhatsApp.",
+    );
+  } else if (eventType === "PACK_DELETED_WITH_STRIKE") {
+    lines.push(
+      "- O pacote e suas figurinhas foram excluídos definitivamente da plataforma.",
+    );
+    lines.push(
+      `- Foi contabilizado 1 strike em seu perfil (Strikes acumulados: ${currentStrikes} de ${maxStrikes}).`,
+    );
+  } else if (eventType === "PACK_DELETED_WITH_STRIKE_RESTRICTED") {
+    lines.push(
+      "- O pacote e suas figurinhas foram excluídos definitivamente da plataforma.",
     );
     lines.push(
       `- Com ${currentStrikes} de ${maxStrikes} strikes atingidos, seu perfil está restrito para publicação pública.`,

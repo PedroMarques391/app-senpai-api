@@ -11,3 +11,8 @@ export const EMAIL_SENDERS = {
 
 export const EMAIL_REPLY_TO =
   process.env.EMAIL_REPLY_TO ?? "botdosenpaicontato@gmail.com";
+
+export const MODERATOR_EMAIL =
+  process.env.MODERATOR_EMAIL ||
+  EMAIL_REPLY_TO ||
+  "botdosenpaicontato@gmail.com";

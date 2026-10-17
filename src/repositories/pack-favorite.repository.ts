@@ -55,4 +55,9 @@ export class PackFavoriteRepository implements IPackFavoriteRepository {
       created_at: { $gte: since },
     });
   }
+
+  async deleteManyByPackId(packId: ObjectId): Promise<number> {
+    const result = await this.collection.deleteMany({ pack_id: packId });
+    return result.deletedCount;
+  }
 }

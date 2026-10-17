@@ -103,6 +103,13 @@ export class MongoInitializer {
         .collection("stickerPacks")
         .createIndex({ moderation_status: 1, created_at: -1 });
 
+      await this.db
+        .collection("pack_moderation_logs")
+        .createIndex({ pack_id: 1, created_at: -1 });
+      await this.db
+        .collection("pack_moderation_logs")
+        .createIndex({ owner_id: 1, created_at: -1 });
+
       this.logger?.info("Successfully connected to MongoDB");
 
     } catch (error) {

@@ -6,6 +6,11 @@ export const MAX_STRIKES = 3;
 export const CRITICAL_REPORT_REASONS: readonly ReportReason[] = [
   "child_exploitation",
   "adult_content",
+  "violence_gore",
+] as const;
+
+export const AUTO_PENDING_REPORT_REASONS: readonly ReportReason[] = [
+  "irrelevant_repetitive",
 ] as const;
 
 export interface ReportReasonInfo {
@@ -28,7 +33,7 @@ export const REPORT_REASONS_DICTIONARY: Record<ReportReason, ReportReasonInfo> =
   violence_gore: {
     label: "Violência extrema ou gore",
     description: "Imagens com mutilação, ferimentos graves ou crueldade.",
-    isCritical: false,
+    isCritical: true,
   },
   hate_speech: {
     label: "Discurso de ódio ou preconceito",
@@ -48,6 +53,11 @@ export const REPORT_REASONS_DICTIONARY: Record<ReportReason, ReportReasonInfo> =
   spam_misleading: {
     label: "Spam ou conteúdo enganoso",
     description: "Divulgação de golpes, fraudes ou propaganda excessiva e irrelevante.",
+    isCritical: false,
+  },
+  irrelevant_repetitive: {
+    label: "Conteúdo irrelevante ou repetido",
+    description: "Pacotes de baixa relevância, repetitivos, duplicados ou sem utilidade clara.",
     isCritical: false,
   },
   other: {

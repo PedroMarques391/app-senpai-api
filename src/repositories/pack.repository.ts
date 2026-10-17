@@ -237,6 +237,7 @@ export class PackRepository implements IPackRepository {
 
   async updateModerationStatus(
     packId: ObjectId,
+    expectedStatus: PackModerationStatus,
     status: PackModerationStatus,
     isPublic: boolean,
     resetReports: boolean,
@@ -252,10 +253,29 @@ export class PackRepository implements IPackRepository {
       updateFields.$set.reports_count = 0;
     }
     const result = await this.collection.findOneAndUpdate(
-      { _id: packId },
+      {
+        _id: packId,
+        moderation_status: expectedStatus,
+      },
       updateFields,
       { returnDocument: "before" },
     );
     return result;
+  }
+
+  async deleteByModerationStatus(
+    packId: ObjectId,
+    expectedStatus: PackModerationStatus,
+  ): Promise<StickerPack | null> {
+    const deleted = await this.collection.findOneAndDelete({
+      _id: packId,
+      moderation_status: expectedStatus,
+    });
+
+    if (deleted) {
+      await this.stickerCollection.deleteMany({ pack_id: packId });
+    }
+
+    return deleted;
   }
 }

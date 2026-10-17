@@ -9,3 +9,4 @@ export * from "./creation-quota.repository";
 export * from "./group.repository";
 export * from "./pack-report.repository";
 
+export * from "./pack-moderation-log.repository";

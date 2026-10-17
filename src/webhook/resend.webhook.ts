@@ -17,22 +17,14 @@ export const resendWebhook: FastifyPluginAsync = async (app) => {
 
         const payloadString = request.rawBody as string;
 
-        const event = await app.mailer.verifyWebhook(
+        await app.mailer.verifyWebhook(
             payloadString,
             {
                 id: svix_id,
                 timestamp: svix_timestamp,
                 signature: svix_signature,
             }
-        )
-
-
-        if (event.type === 'email.clicked' || event.type === 'email.complained') {
-            console.log(`[Resend Webhook] Event matches target: ${event.type}`);
-            console.log('[Resend Webhook] Event data:', JSON.stringify(event.data, null, 2));
-        } else {
-            console.log(`[Resend Webhook] Ignored event type: ${event.type}`);
-        }
+        );
 
         return reply.status(200).send({
             success: true,

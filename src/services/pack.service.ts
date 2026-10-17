@@ -1,6 +1,5 @@
 import {
   MAX_STICKERS_PER_PACK,
-  MAX_STRIKES,
   MIN_STICKERS_PER_PACK,
 } from "@/constants";
 import type {
@@ -10,19 +9,28 @@ import type {
   UpdatePackDto,
 } from "@/dtos";
 import {
+  AppError,
   MaxStrikesReachedError,
   PackNotFoundError,
   PackReportedCannotBePublicError,
+  PackRestrictedCannotBePublicError,
   PackRulesError,
 } from "@/errors";
-import type { StickerPack } from "@/models";
+import type { Sticker, StickerPack } from "@/models";
 import type {
   PackRepository,
   StickerRepository,
   UserRepository,
 } from "@/repositories";
 import type { PaginatedResult, PaginationOptions } from "@/types";
-import { CloudinaryUtils, MongoUtils, PermissionUtils } from "@/utils";
+import {
+  CloudinaryUtils,
+  MongoUtils,
+  PackModerationUtils,
+  PermissionUtils,
+  UserUtils,
+} from "@/utils";
+import type { ObjectId } from "mongodb";
 import type { UploadService } from "./upload.service";
 
 export class PackService {
@@ -44,12 +52,11 @@ export class PackService {
     );
 
     if (!publisher) {
-      throw new Error("O nome do criador do pacote é obrigatório.");
+      throw new AppError("O nome do criador do pacote é obrigatório.", 400, "PUBLISHER_REQUIRED");
     }
 
     const user = await this.userRepository.find({ _id: userObjectId });
-    const isRestricted =
-      Boolean(user && (user.strikes >= MAX_STRIKES || user.status === "restricted"));
+    const isRestricted = UserUtils.isRestricted(user);
 
     if (packData.is_public !== false && isRestricted) {
       throw new MaxStrikesReachedError();
@@ -246,13 +253,14 @@ export class PackService {
     );
 
     if (updateData.is_public === true) {
-      if (existingPack.moderation_status !== "approved") {
-        throw new PackReportedCannotBePublicError();
+      if (!PackModerationUtils.canBeMadePublic(existingPack.moderation_status)) {
+        throw existingPack.moderation_status === "restricted"
+          ? new PackRestrictedCannotBePublicError()
+          : new PackReportedCannotBePublicError();
       }
 
       const user = await this.userRepository.find({ _id: userObjectId });
-      const isRestricted =
-        Boolean(user && (user.strikes >= MAX_STRIKES || user.status === "restricted"));
+      const isRestricted = UserUtils.isRestricted(user);
 
       if (isRestricted) {
         throw new MaxStrikesReachedError();
@@ -302,49 +310,60 @@ export class PackService {
       );
     }
 
-    if (packStickers.length > 0) {
-      const staticCount = packStickers.filter(
-        (sticker) => sticker.type === "static",
-      ).length;
-      const animatedCount = packStickers.filter(
-        (sticker) => sticker.type === "dynamic",
-      ).length;
-      const totalBytesFreed = packStickers.reduce(
-        (sum, sticker) => sum + (sticker.size_bytes ?? 0),
-        0,
-      );
-
-      if (staticCount > 0) {
-        await this.userRepository.incrementStickersCount(
-          userObjectId,
-          "static",
-          -staticCount,
-        );
-      }
-      if (animatedCount > 0) {
-        await this.userRepository.incrementStickersCount(
-          userObjectId,
-          "dynamic",
-          -animatedCount,
-        );
-      }
-      if (totalBytesFreed > 0) {
-        await this.userRepository.incrementStorageUsedBytes(
-          userObjectId,
-          -totalBytesFreed,
-        );
-      }
-
-      const cloudinaryIds = packStickers
-        .map((sticker) => sticker.cloudinary_id)
-        .filter(Boolean);
-
-      if (cloudinaryIds.length > 0) {
-        await this.uploadService.deleteManyQuietly(cloudinaryIds);
-      }
-    }
+    await this.releasePackResources(userObjectId, packStickers);
 
     return result;
+  }
+
+  async releasePackResources(
+    ownerId: ObjectId,
+    packStickers: Sticker[],
+  ): Promise<string[]> {
+    if (packStickers.length === 0) {
+      return [];
+    }
+
+    const staticCount = packStickers.filter(
+      (sticker) => sticker.type === "static",
+    ).length;
+    const animatedCount = packStickers.filter(
+      (sticker) => sticker.type === "dynamic",
+    ).length;
+    const totalBytesFreed = packStickers.reduce(
+      (sum, sticker) => sum + (sticker.size_bytes ?? 0),
+      0,
+    );
+
+    if (staticCount > 0) {
+      await this.userRepository.incrementStickersCount(
+        ownerId,
+        "static",
+        -staticCount,
+      );
+    }
+    if (animatedCount > 0) {
+      await this.userRepository.incrementStickersCount(
+        ownerId,
+        "dynamic",
+        -animatedCount,
+      );
+    }
+    if (totalBytesFreed > 0) {
+      await this.userRepository.incrementStorageUsedBytes(
+        ownerId,
+        -totalBytesFreed,
+      );
+    }
+
+    const cloudinaryIds = packStickers
+      .map((sticker) => sticker.cloudinary_id)
+      .filter((id): id is string => Boolean(id));
+
+    if (cloudinaryIds.length > 0) {
+      await this.uploadService.deleteManyQuietly(cloudinaryIds);
+    }
+
+    return cloudinaryIds;
   }
 
   async incrementDownloadsCount(id: string): Promise<boolean> {

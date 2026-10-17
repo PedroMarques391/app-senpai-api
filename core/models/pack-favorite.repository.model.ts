@@ -9,4 +9,5 @@ export interface PackFavoriteRepository {
   findByUserId(userId: ObjectId): Promise<PackFavorite[]>;
   create(userId: ObjectId, packId: ObjectId): Promise<PackFavorite>;
   delete(userId: ObjectId, packId: ObjectId): Promise<boolean>;
+  deleteManyByPackId(packId: ObjectId): Promise<number>;
 }

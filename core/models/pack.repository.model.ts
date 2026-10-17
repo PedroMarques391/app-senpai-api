@@ -30,9 +30,14 @@ export interface PackRepository {
   ): Promise<StickerPack | null>;
   updateModerationStatus(
     packId: ObjectId,
+    expectedStatus: PackModerationStatus,
     status: PackModerationStatus,
     isPublic: boolean,
     resetReports: boolean,
+  ): Promise<StickerPack | null>;
+  deleteByModerationStatus(
+    packId: ObjectId,
+    expectedStatus: PackModerationStatus,
   ): Promise<StickerPack | null>;
 }
 

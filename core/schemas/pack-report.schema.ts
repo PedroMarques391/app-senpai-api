@@ -10,6 +10,7 @@ export const reportReasonEnum = z.enum(
     "harassment",
     "copyright",
     "spam_misleading",
+    "irrelevant_repetitive",
     "other",
   ],
   { message: "Motivo de denúncia inválido." },

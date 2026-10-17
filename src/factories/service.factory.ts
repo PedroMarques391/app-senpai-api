@@ -4,6 +4,7 @@ import {
   GroupRepository,
   InventoryRepository,
   PackFavoriteRepository,
+  PackModerationLogRepository,
   PackReportRepository,
   PackRepository,
   StickerRepository,
@@ -235,12 +236,11 @@ export class ServiceFactory {
     return this.dailyMissionService;
   }
 
-  static getGroupService(redisInstance: RedisClientType): GroupService {
+  static getGroupService(_redisInstance?: RedisClientType): GroupService {
     if (!this.groupService) {
       this.groupService = new GroupService(
         new GroupRepository(),
         this.getEmailService(),
-        this.getCacheService(redisInstance),
         new UserRepository(),
       );
     }
@@ -257,6 +257,10 @@ export class ServiceFactory {
         new UserRepository(),
         this.getEmailService(),
         this.getCacheService(redisInstance as RedisClientType),
+        new PackModerationLogRepository(),
+        new StickerRepository(),
+        this.getPackService(),
+        new PackFavoriteRepository(),
       );
     }
     return this.packReportService;

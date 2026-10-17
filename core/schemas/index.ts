@@ -11,3 +11,4 @@ export * from "./creation-quota.schema";
 export * from "./group.schema";
 export * from "./pack-report.schema";
 
+export * from "./pack-moderation-log.schema";

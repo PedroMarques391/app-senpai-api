@@ -1,3 +1,4 @@
+import { MAX_STICKERS_PER_PACK } from "@/constants";
 import { packCategoryEnum, packModerationStatusEnum } from "@/schemas";
 import { z } from "zod";
 
@@ -7,8 +8,8 @@ export const packFilterSchema = z.object({
   search: z.string().optional(),
   sort: z.enum(["recent", "popular", "downloads", "likes"]).optional().default("recent"),
   order: z.enum(["asc", "desc"]).optional().default("desc"),
-  min_stickers: z.coerce.number().int().min(1).max(30).optional(),
-  max_stickers: z.coerce.number().int().min(1).max(30).optional(),
+  min_stickers: z.coerce.number().int().min(1).max(MAX_STICKERS_PER_PACK).optional(),
+  max_stickers: z.coerce.number().int().min(1).max(MAX_STICKERS_PER_PACK).optional(),
   is_public: z.boolean().optional(),
   moderation_status: z
     .union([packModerationStatusEnum, z.array(packModerationStatusEnum)])
@@ -29,8 +30,8 @@ export const listPackQuerySchema = z
     order: z.enum(["asc", "desc"]).optional().default("desc"),
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(50).default(20),
-    min_stickers: z.coerce.number().int().min(1).max(30).optional(),
-    max_stickers: z.coerce.number().int().min(1).max(30).optional(),
+    min_stickers: z.coerce.number().int().min(1).max(MAX_STICKERS_PER_PACK).optional(),
+    max_stickers: z.coerce.number().int().min(1).max(MAX_STICKERS_PER_PACK).optional(),
   })
   .refine(
     (data) => {
