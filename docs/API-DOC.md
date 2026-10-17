@@ -551,7 +551,9 @@ _(Requer Header `Authorization`)_
 _(Requer Header `Authorization`)_
 
 - **Descrição & Regras de Negócio:** Atualiza campos do pacote (`pack_name`, `description`, `category`, `tags`, `icon_url`, `is_public`). Requer que o usuário seja o dono do pacote. Invalida os caches relacionados.
-  - **Restrição de Moderação:** Se o pacote possuir denúncias registradas (`reports_count > 0`) ou seu status de moderação não for `'approved'` (`moderation_status === 'pending'` ou `'banned'`), qualquer tentativa de atualizar `is_public` para `true` será barrada com HTTP `400 Bad Request` (`code: 'PACK_REPORTED_CANNOT_BE_PUBLIC'`).
+  - **Restrição de Moderação:** Se o pacote possuir denúncias registradas (`reports_count > 0`) ou seu status de moderação não for `'approved'` (`moderation_status === 'pending'`, `'restricted'` ou `'banned'`), qualquer tentativa de atualizar `is_public` para `true` será barrada com HTTP `400 Bad Request`:
+    - Caso o status seja `'restricted'`: retorna `code: 'PACK_RESTRICTED_CANNOT_BE_PUBLIC'`.
+    - Caso o status seja `'pending'` ou `'banned'`: retorna `code: 'PACK_REPORTED_CANNOT_BE_PUBLIC'`.
   - **Restrição por Limite de Strikes (`MAX_STRIKES = 3`):** Se o usuário tentar atualizar `is_public` para `true` e possuir 3 ou mais strikes (`user.strikes >= 3`), a requisição será barrada com HTTP `403 Forbidden` (`code: 'MAX_STRIKES_REACHED'`).
 - **Respostas:**
   - `200 OK`: `{"success": true, "message": "Pacote atualizado com sucesso", "pack": { ...StickerPack }}`
@@ -559,8 +561,8 @@ _(Requer Header `Authorization`)_
     ```json
     {
       "success": false,
-      "code": "PACK_REPORTED_CANNOT_BE_PUBLIC",
-      "message": "Este pacote possui denúncias pendentes ou está sob moderação e não pode ser tornado público."
+      "code": "PACK_RESTRICTED_CANNOT_BE_PUBLIC",
+      "message": "Este pacote foi restrito pela moderação e precisa continuar privado. Sua conta não está restrita e você pode seguir usando o pacote normalmente."
     }
     ```
   - `403 Forbidden` (Limite de strikes atingido):
@@ -631,7 +633,7 @@ _(Requer Header `Authorization`)_
 - **Request Body (`ReportPackBodyDto`):**
   | Campo | Tipo | Obrigatório? | Descrição |
   | :--- | :--- | :--- | :--- |
-  | `reason` | `enum` | Sim | Código do motivo: `child_exploitation`, `adult_content`, `violence_gore`, `hate_speech`, `harassment`, `copyright`, `spam_misleading`, `other`. |
+  | `reason` | `enum` | Sim | Código do motivo: `child_exploitation` (crítico), `adult_content` (crítico), `violence_gore` (crítico), `hate_speech`, `harassment`, `copyright`, `spam_misleading`, `irrelevant_repetitive` (auto-pending), `other`. |
   | `description` | `String?` | Não | Justificativa ou detalhes adicionais (máx. 300 caracteres). |
 - **Respostas:**
   - `200 OK`:
@@ -1059,9 +1061,18 @@ _(Requer Header `Authorization` de usuário com cargo `admin` ou `moderator`)_
 - `GET /admin/contents/:id`: Detalhes de um comunicado.
 - `PUT /admin/contents/:id`: Atualização de datas, links e imagens de comunicado.
 - `DELETE /admin/contents/:id`: Remoção de comunicado (exclusivo de `admin`).
-- `GET /admin/packs`: Listagem paginada de pacotes para moderação em ordem cronológica (retorna por padrão packs pendentes e banidos). Suporta filtro por `status` (`pending`, `banned`) e busca textual. Exclusivo para `developer`, `owner`, `moderator`.
-- `GET /admin/packs/:id`: Detalhes completos do pacote com a lista de denúncias recebidas (`pack` e `reports`). Exclusivo para `developer`, `owner`, `moderator`.
-- `PATCH /admin/packs/:id/moderation`: Aprovação ou banimento de pacote (`status: "approved" | "banned"`, `reset_reports?: boolean`, `notes?: string`). Ao aprovar, restaura `is_public: true`, zera `reports_count` e enfileira e-mail de liberação (`RELEASED`) ao criador com e-mail verificado. Ao banir, fixa `is_public: false` e, caso o pacote não estivesse previamente banido (transição idempotente), atribui `+1` strike de forma atômica ao criador (`user.strikes`) e enfileira e-mail formal de remoção (`BANNED` ou `BANNED_AND_RESTRICTED` se acumular 3 strikes) com observações e justificativas para criadores com e-mail verificado. Invalida os caches do pacote e perfil. Exclusivo para `developer`, `owner`, `moderator`.
+- `GET /admin/packs`: Listagem paginada de pacotes para moderação em ordem cronológica (retorna por padrão packs pendentes, banidos e restritos). Suporta filtro por `status` (`pending`, `banned`, `restricted`) e busca textual. Exclusivo para `developer`, `owner`, `moderator`, `admin`.
+- `GET /admin/packs/:id`: Detalhes completos do pacote com a lista de denúncias recebidas (`pack` e `reports`). Exclusivo para `developer`, `owner`, `moderator`, `admin`.
+- `PATCH /admin/packs/:id/moderation`: Execução atômica de uma das **5 ações de moderação de pacotes**:
+  - **Payload (`moderatePackDtoSchema`):** `{ action: "APPROVE" | "RESTRICT" | "BAN" | "DELETE_WITH_STRIKE" | "DELETE_NO_STRIKE", status?: "approved" | "banned", reason?: string, reset_reports?: boolean, notes?: string }` (campo `action` obrigatório; suporta retrocompatibilidade normalizando automaticamente caso seja enviado apenas `status`).
+  - **Ações Disponíveis:**
+    1. `APPROVE`: Libera o pacote publicamente (`is_public: true`, `status: "approved"`), zera `reports_count` e dispara e-mail de liberação (`RELEASED`). Permitido para `admin` e `moderator`. Não pode ser aplicado a pacotes com status final `restricted`.
+    2. `RESTRICT`: Restringe a visibilidade para estritamente privada (`is_public: false`, `status: "restricted"`), sem aplicar strike. O dono pode continuar usando e exportando para WhatsApp, mas não pode republicar. Dispara e-mail educativo `PACK_RESTRICTED`. Permitido para `admin` e `moderator`.
+    3. `BAN`: Remove o pacote da comunidade (`is_public: false`, `status: "banned"`) e aplica 1 strike ao criador (caso não estivesse banido). Dispara e-mail `BANNED` (ou `BANNED_AND_RESTRICTED`). Permitido para `admin` e `moderator`.
+    4. `DELETE_WITH_STRIKE`: Exclui definitivamente o pacote, apaga figurinhas, remove mídias no Cloudinary, recalcula armazenamento do dono e aplica 1 strike (respeitando o teto de 1 strike por pacote caso já estivesse banido). Dispara e-mail `PACK_DELETED_WITH_STRIKE`. **Exclusivo para `admin`** (retorna `403 Forbidden` `MODERATION_ACTION_FORBIDDEN` se chamado por `moderator`).
+    5. `DELETE_NO_STRIKE`: Exclusão definitiva de mídias e conteúdo sem penalidade e sem disparo de e-mail ao criador. **Exclusivo para `admin`** (retorna `403 Forbidden` se chamado por `moderator`).
+  - **Atomicidade & Concorrência:** As atualizações e deleções no MongoDB validam o status anterior esperado. Caso o pacote já tenha sido moderado simultaneamente, retorna `409 Conflict` (`PACK_MODERATION_CONFLICT`).
+  - **Auditoria Permanente:** Cada ação executada registra snapshot na coleção `pack_moderation_logs` com o ID e username do moderador, motivo, notas, arquivos expurgados e strikes resultantes.
 - `GET /admin/groups`: Listagem paginada de itens de grupos para moderação (desenrolados via aggregation `$unwind`). Suporta filtro objetivo por `status` (`pending`, `accepted`, `rejected` — padrão `pending`), ordenação temporal `order` (`desc` para mais recentes, `asc` para mais antigos — padrão `desc`), e paginação (`page`, `limit`). Exclusivo para `admin`, `moderator`. Retorna `{ success: true, items: [...], total, page, limit, totalPages }`, onde cada item possui `groupId`, `userId`, `username`, `userEmail`, `userRole`, `itemId`, `title`, `url`, `status`, `requestType` (`created`, `updated`, `deleted`), `requested_at`, `decided_at`, `decided_by_username` e `moderation_note`.
 - `PATCH /admin/groups/:groupId/items/:itemId/moderation`: Aprovação ou rejeição atômica de item de grupo pendente (`action: "accepted" | "rejected"`, `note?: string` opcional de até 180 caracteres). Exclusivo para `admin`, `moderator`.
   - **Atomicidade & Concorrência:** A atualização no MongoDB é condicional ao predicado `groups.status: "pending"`. Caso o item já tenha sido decidido por outro moderador concorrente, retorna imediatamente `409 Conflict` (`"Este item de grupo já foi moderado anteriormente."`).
