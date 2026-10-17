@@ -33,10 +33,6 @@ export class BillingService implements IBillingService {
     const plan = isMasterPlan ? "VIP_MESTRE" : "VIP_PRO";
     const type = isMasterPlan ? "MESTRE" : "PRO";
 
-    console.log(
-      `[Billing] Processing RevenueCat event: ${event.type} for user ${userId} (plan=${plan}, type=${type}, expires=${expirationDate.toISOString()})`,
-    );
-
     const startDate = new Date(event.purchased_at_ms);
 
     switch (event.type) {
@@ -82,9 +78,6 @@ export class BillingService implements IBillingService {
       }
 
       case "EXPIRATION":
-        console.log(
-          `[Billing] Subscription expired for user ${userId}. Revoking VIP access.`,
-        );
         await this.userRepository.update(
           { _id: userObjectId },
           {
@@ -100,7 +93,7 @@ export class BillingService implements IBillingService {
         break;
 
       default:
-        console.log(`[Billing] Unhandled RevenueCat event: ${event.type}`);
+        break;
     }
   }
 }

@@ -1,4 +1,4 @@
-import { storeItemSchema, storeItemStatusEnum } from "core/schemas";
+import { storeItemSchema, storeItemStatusEnum } from "@/schemas";
 import type { z } from "zod";
 
 export const createStoreItemDtoSchema = storeItemSchema

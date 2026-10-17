@@ -1,10 +1,12 @@
+import type { StoreItemStatus, StoreItemType } from "@/schemas";
+
 export interface SeedStoreItem {
   code: string;
   name: string;
   description: string;
-  type: "wallpaper" | "gift" | "badge" | "border" | "profile_frame" | "profile_picture" | "premium_subscription" | "effect" | "other";
+  type: StoreItemType;
   price_in_petals: number;
-  status: "active" | "inactive" | "archived";
+  status: StoreItemStatus;
 }
 
 export const OFFICIAL_STORE_ITEMS: SeedStoreItem[] = [

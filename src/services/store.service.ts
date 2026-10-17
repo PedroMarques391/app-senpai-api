@@ -1,4 +1,5 @@
 import type { CreateStoreItemDto, UpdateStoreItemDto } from "@/dtos";
+import { AppError, StoreItemNotFoundError } from "@/errors";
 import type { StoreItem, StoreItemStatus, StoreRepository } from "@/models";
 import { MongoUtils } from "@/utils";
 
@@ -15,7 +16,7 @@ export class StoreService {
       "ID do item da loja inválido",
     );
     const item = await this.storeRepository.find({ _id: storeObjectId });
-    if (!item) throw new Error("Item da loja não encontrado");
+    if (!item) throw new StoreItemNotFoundError();
     return item;
   }
 
@@ -23,7 +24,7 @@ export class StoreService {
     const item = await this.storeRepository.find({
       code: code.trim().toLowerCase(),
     });
-    if (!item) throw new Error("Item da loja não encontrado");
+    if (!item) throw new StoreItemNotFoundError();
     return item;
   }
 
@@ -41,10 +42,16 @@ export class StoreService {
     );
 
     const existing = await this.storeRepository.findById(storeObjectId);
-    if (!existing) throw new Error("Item da loja não encontrado");
+    if (!existing) throw new StoreItemNotFoundError();
 
     const updated = await this.storeRepository.update(storeObjectId, dto);
-    if (!updated) throw new Error("Falha ao atualizar item da loja");
+    if (!updated) {
+      throw new AppError(
+        "Falha ao atualizar item da loja",
+        500,
+        "STORE_ITEM_UPDATE_FAILED",
+      );
+    }
     return updated;
   }
 
@@ -55,7 +62,7 @@ export class StoreService {
     );
 
     const existing = await this.storeRepository.findById(storeObjectId);
-    if (!existing) throw new Error("Item da loja não encontrado");
+    if (!existing) throw new StoreItemNotFoundError();
 
     return this.storeRepository.delete(storeObjectId);
   }

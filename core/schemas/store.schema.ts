@@ -1,26 +1,30 @@
 import { ObjectId } from "mongodb";
 import z from "zod";
 
-export const storeItemTypeEnum = z.enum(
-  [
-    "wallpaper",
-    "gift",
-    "badge",
-    "border",
-    "profile_frame",
-    "profile_picture",
-    "premium_subscription",
-    "effect",
-    "other",
-  ],
-  { message: "Tipo de item inválido." },
-);
+export const STORE_ITEM_TYPES = [
+  "wallpaper",
+  "gift",
+  "badge",
+  "border",
+  "profile_frame",
+  "profile_picture",
+  "premium_subscription",
+  "effect",
+  "other",
+] as const;
+export const storeItemTypeEnum = z.enum(STORE_ITEM_TYPES, {
+  message: "Tipo de item inválido.",
+});
 export type StoreItemType = z.infer<typeof storeItemTypeEnum>;
 
-export const storeItemStatusEnum = z.enum(
-  ["active", "inactive", "archived"],
-  { message: "Status do item inválido." },
-);
+export const STORE_ITEM_STATUSES = [
+  "active",
+  "inactive",
+  "archived",
+] as const;
+export const storeItemStatusEnum = z.enum(STORE_ITEM_STATUSES, {
+  message: "Status do item inválido.",
+});
 export type StoreItemStatus = z.infer<typeof storeItemStatusEnum>;
 
 export const storeCodeSchema = z

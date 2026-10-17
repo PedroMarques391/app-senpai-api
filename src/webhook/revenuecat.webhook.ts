@@ -7,11 +7,6 @@ export const revenuecatWebhook: FastifyPluginAsync = async (app) => {
   const profileService = ServiceFactory.getProfileService(app.redis);
 
   app.post("", async (request, reply) => {
-    console.log(
-      "[RevenueCat Webhook] Body recebido:",
-      JSON.stringify(request.body, null, 2),
-    );
-
     const authHeader = request.headers.authorization;
     const revenueCatSecret = process.env.REVENUECAT_WEBHOOK_SECRET;
 

@@ -1,3 +1,9 @@
+import {
+  InsufficientPetalsError,
+  ItemAlreadyOwnedError,
+  StoreItemNotFoundError,
+  UserNotFoundError,
+} from "@/errors";
 import type {
   InventoryRepository,
   PurchaseResult,
@@ -35,7 +41,7 @@ export class PurchaseService {
     }
 
     if (!storeItem || storeItem.status !== "active") {
-      throw new Error("Item da loja não encontrado ou inativo");
+      throw new StoreItemNotFoundError("Item da loja não encontrado ou inativo");
     }
 
     const [user, alreadyOwned] = await Promise.all([
@@ -44,13 +50,13 @@ export class PurchaseService {
     ]);
 
     if (!user) {
-      throw new Error("Usuário não encontrado");
+      throw new UserNotFoundError();
     }
     if (alreadyOwned) {
-      throw new Error("Você já comprou este item anteriormente.");
+      throw new ItemAlreadyOwnedError();
     }
     if (user.petals_balance < storeItem.price_in_petals) {
-      throw new Error(
+      throw new InsufficientPetalsError(
         "Você não tem pétalas suficientes para comprar este item.",
       );
     }
@@ -60,7 +66,7 @@ export class PurchaseService {
       storeItem.price_in_petals,
     );
     if (newBalance === null) {
-      throw new Error(
+      throw new InsufficientPetalsError(
         "Você não tem pétalas suficientes para comprar este item.",
       );
     }

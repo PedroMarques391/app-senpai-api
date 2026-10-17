@@ -6,7 +6,6 @@ const DEFAULT_BANNER_IMAGE = path.resolve(
 );
 
 import type {
-  SuccessEmailDetail,
   SuccessEmailTemplateProps,
 } from "@/types";
 
