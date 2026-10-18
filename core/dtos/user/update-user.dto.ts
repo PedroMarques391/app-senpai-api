@@ -4,7 +4,7 @@ export const updateUserDtoSchema = z
   .object({
     name: z.string().optional(),
     userName: z.string().optional(),
-    email: z.string().optional(),
+    email: z.string().trim().toLowerCase().email().optional(),
     bio: z.string().max(120).nullish(),
     avatar_url: z.string().nullish(),
     banner_url: z.string().nullish(),

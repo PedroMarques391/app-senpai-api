@@ -929,7 +929,7 @@ _(Todas as rotas exigem Header `Authorization`)_
   | `avatar_url` | `z.string()` | `String?` | URL do avatar hospedado (aceita `null` para limpar). |
   | `banner_url` | `z.string()` | `String?` | URL do banner do perfil (aceita `null` para limpar). |
   | `preferred_payment` | `z.string()` | `String?` | Identificador de pagamento preferencial (aceita `null` para limpar). |
-- **Invalidação de Cache:** Invalida automaticamente `profile:<userId>` e `profile:username:<userName>`.
+- **Invalidação de Cache & Segurança:** Invalida automaticamente `profile:<userId>` e `profile:username:<userName>`. Caso o `email` seja alterado para um endereço diferente do atual, o sistema automaticamente redefine `isEmailVerified: false`, exigindo nova confirmação via OTP (`POST /profile/email/code/send`).
 - **Respostas:**
   - `200 OK`: `{"success": true, "message": "Perfil atualizado com sucesso", "profile": { ...User }}`
 

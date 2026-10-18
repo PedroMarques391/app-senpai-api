@@ -241,9 +241,15 @@ export class ProfileService {
       this.ensureEmailAvailable(id, updateData.email, currentUser.email),
     ]);
 
+    const finalUpdate: Partial<User> = { ...(updateData as Partial<User>) };
+
+    if (updateData.email && updateData.email !== currentUser.email) {
+      finalUpdate.isEmailVerified = false;
+    }
+
     const updatedUser = await this.userRepository.update(
       { _id: userObjectId },
-      updateData as Partial<User>,
+      finalUpdate,
     );
 
     if (!updatedUser) {
