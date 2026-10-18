@@ -241,15 +241,13 @@ export class ProfileService {
       this.ensureEmailAvailable(id, updateData.email, currentUser.email),
     ]);
 
-    const finalUpdate: Partial<User> = { ...(updateData as Partial<User>) };
-
     if (updateData.email && updateData.email !== currentUser.email) {
-      finalUpdate.isEmailVerified = false;
+      updateData.isEmailVerified = false;
     }
 
     const updatedUser = await this.userRepository.update(
       { _id: userObjectId },
-      finalUpdate,
+      updateData,
     );
 
     if (!updatedUser) {
@@ -283,14 +281,10 @@ export class ProfileService {
 
     const updatedCosmetics = {
       card_style:
-        data.card_style ??
-        currentCosmetics.card_style ??
-        "card_style_default",
+        data.card_style ?? currentCosmetics.card_style ?? "card_style_default",
       effect: data.effect ?? currentCosmetics.effect ?? "effect_none",
       background:
-        data.background ??
-        currentCosmetics.background ??
-        "background_default",
+        data.background ?? currentCosmetics.background ?? "background_default",
     };
 
     const updatedUser = await this.userRepository.update(
