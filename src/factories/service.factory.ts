@@ -18,6 +18,7 @@ import {
   ContentService,
   CreationQuotaService,
   DailyMissionService,
+  FollowsService,
   GroupService,
   InventoryService,
   MailService,
@@ -61,6 +62,7 @@ export class ServiceFactory {
   private static billingService: BillingService;
   private static groupService: GroupService;
   private static packReportService: PackReportService;
+  private static followsService: FollowsService;
 
   static getInventoryService(): InventoryService {
     if (!this.inventoryService) {
@@ -114,12 +116,22 @@ export class ServiceFactory {
     if (!this.profileService) {
       this.profileService = new ProfileService(
         new UserRepository(),
-        this.getCacheService(redisInstance),
-        new FollowsRepository(),
+        this.getCacheService(redisInstance as RedisClientType),
       );
     }
 
     return this.profileService;
+  }
+
+  static getFollowsService(redisInstance: RedisClientType): FollowsService {
+    if (!this.followsService) {
+      this.followsService = new FollowsService(
+        new FollowsRepository(),
+        new UserRepository(),
+        this.getCacheService(redisInstance),
+      );
+    }
+    return this.followsService;
   }
 
   static getUserService(): UserService {

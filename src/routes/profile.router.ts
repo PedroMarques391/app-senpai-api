@@ -10,6 +10,7 @@ import z from "zod";
 export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
   const profileService = ServiceFactory.getProfileService(app.redis);
   const otpService = ServiceFactory.getOtpService(app.redis);
+  const followsService = ServiceFactory.getFollowsService(app.redis);
 
   app.get("/", async (request, reply) => {
     const profile = await profileService.getProfile(request.user._id);
@@ -38,6 +39,63 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
         success: true,
         profile,
       });
+    },
+  );
+
+  app.get(
+    "/:username/social-summary",
+    {
+      schema: {
+        params: z.object({
+          username: z.string().trim().toLowerCase(),
+        }),
+      },
+    },
+    async (request, reply) => {
+      const result = await followsService.getSocialSummary(
+        request.params.username,
+        request.user?._id,
+      );
+
+      return reply.status(200).send(result);
+    },
+  );
+
+  app.post(
+    "/:username/follow",
+    {
+      schema: {
+        params: z.object({
+          username: z.string().trim().toLowerCase(),
+        }),
+      },
+    },
+    async (request, reply) => {
+      const result = await followsService.followUser(
+        request.user._id,
+        request.params.username,
+      );
+
+      return reply.status(200).send(result);
+    },
+  );
+
+  app.delete(
+    "/:username/follow",
+    {
+      schema: {
+        params: z.object({
+          username: z.string().trim().toLowerCase(),
+        }),
+      },
+    },
+    async (request, reply) => {
+      const result = await followsService.unfollowUser(
+        request.user._id,
+        request.params.username,
+      );
+
+      return reply.status(200).send(result);
     },
   );
 
@@ -114,7 +172,6 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
     },
   );
 
-
   app.post(
     "/email/code/send",
     {
@@ -164,4 +221,3 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
     },
   );
 };
-
