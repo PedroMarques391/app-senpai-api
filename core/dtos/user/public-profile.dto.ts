@@ -14,8 +14,6 @@ export const publicProfileDtoSchema = userSchema.pick({
   role: true,
   accountType: true,
   equipped_cosmetics: true,
-  followers_count: true,
-  following_count: true,
 });
 
 export type PublicProfileDto = z.infer<typeof publicProfileDtoSchema>;
