@@ -205,18 +205,6 @@ export class AuthService {
       this.userRepository.find({ userName: data.userName }),
     ]);
 
-    if (
-      waUser?.status === "inactive" ||
-      emailUser?.status === "inactive" ||
-      usernameUser?.status === "inactive"
-    ) {
-      throw new AppError(
-        "Esta conta está desativada. Entre em contato com o suporte.",
-        403,
-        "ACCOUNT_INACTIVE",
-      );
-    }
-
     if (UserUtils.isFullyRegistered(waUser)) {
       throw new AppError(
         "Este número de WhatsApp já possui uma conta cadastrada. Tente fazer login.",
@@ -245,6 +233,18 @@ export class AuthService {
         "Este nome de usuário já está em uso.",
         409,
         "USERNAME_IN_USE",
+      );
+    }
+
+    if (
+      waUser?.status === "inactive" ||
+      emailUser?.status === "inactive" ||
+      usernameUser?.status === "inactive"
+    ) {
+      throw new AppError(
+        "Esta conta está desativada. Entre em contato com o suporte.",
+        403,
+        "ACCOUNT_INACTIVE",
       );
     }
 
