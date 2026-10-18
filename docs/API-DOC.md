@@ -819,7 +819,7 @@ _(Todas as rotas exigem Header `Authorization`)_
 
 #### `GET /profile/:username`
 
-- **Descrição:** Retorna o perfil público (sanitizado) de outro usuário pelo nome de usuário (`userName`).
+- **Descrição:** Retorna o perfil público (sanitizado) de outro usuário pelo nome de usuário (`userName`). Possui cache Redis de 24h (`profile:username:<userName>`).
 - **Respostas:**
   - `200 OK`:
     ```json
@@ -833,14 +833,81 @@ _(Todas as rotas exigem Header `Authorization`)_
         "bio": "Criador de figurinhas e fã de animes",
         "isVerifiedCreator": true,
         "createdAt": "2026-09-01T12:00:00.000Z",
-        "followers_count": 128,
-        "following_count": 42,
+        "role": "user",
+        "accountType": "creator",
         "equipped_cosmetics": {
           "card_style": "card_style_neon",
           "effect": "effect_none",
           "background": "background_default"
         }
       }
+    }
+    ```
+
+#### `GET /profile/:username/social-summary`
+
+- **Descrição:** Retorna o sumário social dinâmico do usuário informado pelo seu `userName`: contadores de seguidores (`followers_count`), seguindo (`following_count`) e o indicador de relacionamento (`is_following`) com o usuário autenticado na requisição.
+- **Cache Redis:** `social:summary:<targetUserId>` com TTL de 60 segundos para os contadores. O status `is_following` é checado em tempo real para o requisitante autenticado.
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "social": {
+        "followers_count": 128,
+        "following_count": 42,
+        "is_following": true
+      }
+    }
+    ```
+  - `404 Not Found`:
+    ```json
+    {
+      "success": false,
+      "code": "USER_NOT_FOUND",
+      "message": "Usuário não encontrado"
+    }
+    ```
+
+#### `POST /profile/:username/follow`
+
+- **Descrição:** Permite ao usuário autenticado seguir o criador especificado por `userName`.
+- **Validações:** Rejeita se o criador não existir (`404 USER_NOT_FOUND`) ou se o usuário tentar seguir a si mesmo (`400 CANNOT_FOLLOW_SELF`).
+- **Invalidação de Cache:** Invalida instantaneamente os sumários sociais em cache do seguidor e do seguido.
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "message": "Você começou a seguir @pedromarques",
+      "is_following": true,
+      "followers_count": 129,
+      "following_count": 42
+    }
+    ```
+  - `400 Bad Request`:
+    ```json
+    {
+      "success": false,
+      "code": "CANNOT_FOLLOW_SELF",
+      "message": "Você não pode seguir a si mesmo"
+    }
+    ```
+
+#### `DELETE /profile/:username/follow`
+
+- **Descrição:** Permite ao usuário autenticado deixar de seguir o criador especificado por `userName`.
+- **Validações:** Rejeita se o criador não existir (`404 USER_NOT_FOUND`) ou se tentar desseguir a si mesmo (`400 CANNOT_UNFOLLOW_SELF`).
+- **Invalidação de Cache:** Invalida instantaneamente os sumários sociais em cache do seguidor e do seguido.
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "message": "Você deixou de seguir @pedromarques",
+      "is_following": false,
+      "followers_count": 128,
+      "following_count": 42
     }
     ```
 
@@ -983,50 +1050,17 @@ _(Requer Header `Authorization`)_
   - `folder`: `folder` recebido.
   - `public_id`: `public_id` recebido.
 
-#### `POST /upload/?folder=...` (Legado / Retrocompatível)
+#### `POST /upload/` (Descontinuado / Upgrade Obrigatório)
 
-- **Descrição:** Envia arquivos de imagem/sticker via Multipart Stream diretamente ao Cloudinary, organizando o path em pastas segregadas por usuário (`folder/userName/filename`). Mantido para compatibilidade com versões anteriores do aplicativo enquanto as novas versões migram para o _Signed Direct Upload_.
-- **Validação de Cota:** Possui o preHandler `app.checkStorageQuota`. Bloqueia o upload antes de iniciar a transmissão se o tamanho indicado no header `Content-Length` somado ao `storage_used_bytes` do usuário ultrapassar o limite do plano (500 MB Free / 3 GB VIP Pro / 6 GB VIP Mestre).
-- **Limite Máximo por Arquivo (25 MB):** O servidor rejeita imediatamente uploads truncados ou que excedam 25 MB com HTTP `413 Payload Too Large`.
+- **Descrição:** Endpoint legado de upload multipart direto pelo servidor. Com a migração para o envio direto via Signed URL (`GET /upload/signature`), esta rota foi **descontinuada**. Requisições enviadas por versões legadas do aplicativo receberão uma resposta de erro instruindo o usuário a atualizar o app na Google Play Store ou App Store.
 - **Respostas:**
-  - `201 Created`:
-    ```json
-    {
-      "success": true,
-      "message": "Upload realizado com sucesso",
-      "cloudinary_id": "stickers/pedro/pedro_1725888000_abc123",
-      "sticker_url": "https://res.cloudinary.com/.../pedro_1725888000_abc123.png",
-      "public_id": "stickers/pedro/pedro_1725888000_abc123",
-      "url": "http://res.cloudinary.com/...",
-      "type": "png",
-      "bytes": 45120
-    }
-    ```
-  - `403 Forbidden` (Cota de Armazenamento Excedida):
+  - `426 Upgrade Required`:
     ```json
     {
       "success": false,
-      "code": "STORAGE_LIMIT_EXCEEDED",
-      "message": "Limite de armazenamento atingido (500 MB para plano Free). Faça upgrade para VIP e desbloqueie até 6 GB!",
-      "storage": {
-        "used_bytes": 536870912,
-        "limit_bytes": 536870912,
-        "plan_tier": "free",
-        "is_vip": false
-      }
-    }
-    ```
-    > **Variações de Mensagem por Tier:**
-    >
-    > - **Free (`plan_tier: "free"`):** `"Limite de armazenamento atingido (500 MB para plano Free). Faça upgrade para VIP e desbloqueie até 6 GB!"`
-    > - **VIP Pro (`plan_tier: "vip_pro"`):** `"Limite de armazenamento atingido (3 GB para plano VIP Pro). Faça upgrade para VIP Mestre e desbloqueie 6 GB!"`
-    > - **VIP Mestre (`plan_tier: "vip_master"`):** `"Limite de armazenamento atingido (6 GB para plano VIP Mestre). Libere espaço excluindo figurinhas ou mídias antigas."`
-  - `413 Payload Too Large`:
-    ```json
-    {
-      "success": false,
-      "code": "FILE_TOO_LARGE",
-      "message": "O arquivo excede o limite máximo permitido de 25 MB."
+      "code": "APP_UPDATE_REQUIRED",
+      "message": "O envio direto de arquivos foi descontinuado. Por favor, atualize o aplicativo na Google Play Store ou App Store para continuar enviando suas figurinhas e fotos.",
+      "upgrade_required": true
     }
     ```
 
@@ -1906,18 +1940,18 @@ export interface QuotaSnapshotDto {
 
 ```typescript
 export interface GroupItem {
-  id: string;                      // UUID gerado automaticamente
-  title: string;                   // Título do grupo
-  url: string;                     // URL de convite/acesso
-  status: GroupItemStatus;         // "pending" | "accepted" | "rejected"
+  id: string; // UUID gerado automaticamente
+  title: string; // Título do grupo
+  url: string; // URL de convite/acesso
+  status: GroupItemStatus; // "pending" | "accepted" | "rejected"
 }
 
 export interface Group {
-  _id: string;                     // ObjectId hex de 24 chars
-  user_id: string;                 // ObjectId hex do usuário proprietário
-  groups: GroupItem[];             // Lista de 1 a 2 grupos
-  created_at: string | Date;       // ISO 8601 UTC
-  updated_at: string | Date;       // ISO 8601 UTC
+  _id: string; // ObjectId hex de 24 chars
+  user_id: string; // ObjectId hex do usuário proprietário
+  groups: GroupItem[]; // Lista de 1 a 2 grupos
+  created_at: string | Date; // ISO 8601 UTC
+  updated_at: string | Date; // ISO 8601 UTC
 }
 
 export interface GroupModerationTokenPayload {
@@ -1925,7 +1959,7 @@ export interface GroupModerationTokenPayload {
   itemId: string;
   action: "accepted" | "rejected";
   moderatorEmail: string;
-  createdAt: number;               // Epoch timestamp em milissegundos
+  createdAt: number; // Epoch timestamp em milissegundos
 }
 ```
 
@@ -1935,12 +1969,12 @@ export interface GroupModerationTokenPayload {
 export type ChatRole = "user" | "assistant" | "system";
 
 export interface ChatMessageDto {
-  role: ChatRole;                  // Papel da mensagem no chat
-  content: string;                 // Conteúdo em texto puro
+  role: ChatRole; // Papel da mensagem no chat
+  content: string; // Conteúdo em texto puro
 }
 
 export interface ChatBodyDto {
-  messages: ChatMessageDto[];      // Lista com ao menos 1 mensagem (histórico ou mensagem atual)
+  messages: ChatMessageDto[]; // Lista com ao menos 1 mensagem (histórico ou mensagem atual)
 }
 ```
 
