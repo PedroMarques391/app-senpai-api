@@ -236,11 +236,15 @@ export class UserRepository implements IUserRepository {
     userId: ObjectId,
     id: string,
     title: string,
-  ): Promise<void> {
-    await this.collection.updateOne(
+  ): Promise<boolean> {
+    const result = await this.collection.updateOne(
       { _id: userId, "achievements.id": { $ne: id } },
-      { $addToSet: { achievements: { id, title } } },
+      {
+        $addToSet: { achievements: { id, title } },
+        $set: { updatedAt: new Date() },
+      },
     );
+    return result.modifiedCount > 0;
   }
 
 

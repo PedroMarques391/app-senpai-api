@@ -48,3 +48,33 @@ export interface ClaimMissionResult {
   total_xp: number;
   level_info: LevelInfo;
 }
+
+export interface AchievementReward {
+  petals: number;
+}
+
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  goal: number;
+  reward: AchievementReward;
+  active: boolean;
+}
+
+export interface ClaimAchievementResult {
+  achievement: {
+    id: string;
+    title: string;
+  };
+  reward_petals: number;
+  petals_balance: number;
+}
+
+export interface SyncAchievementsResult {
+  achievements: {
+    id: string;
+    title: string;
+  }[];
+}
+

@@ -36,4 +36,8 @@ export class QuotaUtils {
 
     return { cycleDate, cycleStart };
   }
+
+  static resolveCycleIndex(cycleDate: string): number {
+    return DateUtils.resolveCycleIndex(cycleDate);
+  }
 }

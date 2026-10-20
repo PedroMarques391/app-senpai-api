@@ -1138,10 +1138,11 @@ O módulo de gamificação do Senpai estimula a retenção e o engajamento diár
      - _Nível 2:_ 1.080 XP
      - _Nível 3:_ 1.160 XP ...
    - O cálculo decompõe o `total_xp` acumulado, calculando o nível atual, o progresso percentual (`progress` de `0.0` a `1.0`), o XP no nível (`xpInLevel`) e o XP faltante para o próximo nível (`xpNeeded`).
-5. **Missões Estáticas Diárias:**
-   - `daily_checkin` ("Presença Diária"): Abrir o app no dia. Concluída automaticamente ao consultar o overview diário. Recompensa: `+40 XP`, `+5 Pétalas`.
-   - `create_sticker` ("Criar Figurinha"): Criar pelo menos 1 figurinha no editor no ciclo atual. Recompensa: `+120 XP`, `+20 Pétalas`.
-   - `favorite_pack` ("Apoiar a Comunidade"): Adicionar pelo menos 1 pacote público aos favoritos no ciclo atual. Recompensa: `+80 XP`, `+10 Pétalas`.
+5. **Missões Estáticas Diárias (Rotação Determinística por `cycle_date`):**
+   - O catálogo `STATIC_MISSIONS` possui 30 missões divididas em 3 métricas (`app_checkin`, `stickers_created`, `packs_favorited`). A cada ciclo diário (`cycle_date`, virada às 06:00 BRT), `MissionService.getMissions(cycleDate)` seleciona deterministicamente **3 missões do dia** (1 por métrica):
+   - Métrica `app_checkin` (ex.: `daily_checkin` — "Presença Diária"): Abrir o app no dia. Concluída automaticamente ao consultar o overview diário.
+   - Métrica `stickers_created` (ex.: `create_sticker` — "Criar Figurinha"): Criar figurinhas no editor no ciclo atual.
+   - Métrica `packs_favorited` (ex.: `favorite_pack` — "Apoiar a Comunidade"): Adicionar pacotes públicos aos favoritos no ciclo atual.
    - `vip_daily_reward` ("Presente diário VIP"): benefício diário exclusivo de assinatura ativa. Para `subscription.type = "PRO"`, recompensa `+20 Pétalas`; para `subscription.type = "MESTRE"`, recompensa `+40 Pétalas`; não concede XP. A missão nasce `completed: true` e `claimed: false` assim que a assinatura VIP estiver ativa no ciclo atual, inclusive quando a ativação ocorrer depois das 06:00 BRT. Usuários `FREE` não recebem esta missão no overview. Em 30 resgates diários consecutivos, o total nominal é de `600 Pétalas` no PRO e `1.200 Pétalas` no MESTRE.
    - `daily_checkin` e `vip_daily_reward` são recompensas independentes. Resgatar a presença diária não marca, consome nem bloqueia o presente VIP, e o inverso também é verdadeiro; cada missão possui seu próprio `claimed` no ciclo.
 6. **Resgate Atômico de Recompensas (`claim`):**
@@ -1279,6 +1280,55 @@ O módulo de gamificação do Senpai estimula a retenção e o engajamento diár
     ```json
     {
       "message": "Recompensa já foi resgatada ou ciclo expirou."
+    }
+    ```
+
+---
+
+#### `POST /missions/achievements/:id/claim`
+
+- **Descrição:** Resgata e persiste de forma atômica uma conquista única (`STATIC_ACHIEVEMENTS`) no array `achievements` (`{ id, title }`) do perfil do usuário e credita as pétalas correspondentes em `petals_balance`. Invalida o cache `profile:${userId}` no Redis.
+- **Headers:** `Authorization: Bearer <token>`
+- **URL Params:**
+  - `id`: Identificador estável da conquista no catálogo (`welcome`, `first_sticker`, `explorer`, `collector`, `sticker_fan`, `sticker_master`, `creator`, `artist`, `master_creator`, `first_pack`, `pack_collector`, `returning`, `one_week`, `one_month`, `vip`, `vip_master`, `whatsapp_pack`, `pack_curator`, `social_butterfly`).
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "message": "Conquista resgatada com sucesso!",
+      "achievement": {
+        "id": "welcome",
+        "title": "Bem-vindo à Senpai"
+      },
+      "reward_petals": 10,
+      "petals_balance": 135
+    }
+    ```
+  - `404 Not Found` (`ACHIEVEMENT_NOT_FOUND`): Conquista inexistente no catálogo.
+  - `409 Conflict` (`ACHIEVEMENT_ALREADY_CLAIMED`): Conquista já resgatada anteriormente pela conta.
+
+---
+
+#### `POST /missions/achievements/sync`
+
+- **Descrição:** Reconcilia silenciosamente conquistas únicas já resgatadas localmente pelo dispositivo com o array `achievements` do usuário no MongoDB, sem creditar pétalas duplicadas. Invalida o cache `profile:${userId}` no Redis.
+- **Headers:** `Authorization: Bearer <token>`
+- **Request Body:**
+  ```json
+  {
+    "achievement_ids": ["welcome", "creator"]
+  }
+  ```
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "achievements": [
+        { "id": "welcome", "title": "Bem-vindo à Senpai" },
+        { "id": "creator", "title": "Criador" }
+      ]
     }
     ```
 

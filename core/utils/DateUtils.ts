@@ -62,4 +62,23 @@ export class DateUtils {
   ): number {
     return (brasiliaDate.getUTCDay() + 6) % 7;
   }
+
+  static resolveCycleIndex(cycleDate: string): number {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(cycleDate.trim());
+    if (match) {
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      const day = Number(match[3]);
+      const utcMs = Date.UTC(year, month - 1, day);
+      if (!Number.isNaN(utcMs)) {
+        return Math.floor(utcMs / 86_400_000);
+      }
+    }
+
+    let hash = 0;
+    for (let i = 0; i < cycleDate.length; i += 1) {
+      hash = (hash * 31 + cycleDate.charCodeAt(i)) | 0;
+    }
+    return Math.abs(hash);
+  }
 }

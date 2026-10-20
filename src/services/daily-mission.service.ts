@@ -1,11 +1,14 @@
+import { AppError } from "@/errors";
 import {
   PackFavoriteRepository,
   StickerRepository,
   UserRepository,
 } from "@/repositories";
 import type {
+  ClaimAchievementResult,
   ClaimMissionResult,
   DailyMissionOverview,
+  SyncAchievementsResult,
   UserMissionProgressDto,
 } from "@/models";
 import {
@@ -80,7 +83,7 @@ export class DailyMissionService {
         ? (freshUser.daily_missions?.claimed_keys ?? [])
         : [];
 
-    const missions = MissionService.getMissions();
+    const missions = MissionService.getMissions(cycleDate);
     const [stickersCount, favoritesCount] = await Promise.all([
       this.stickerRepository.countByUserSince(userObjectId, cycleStart),
       this.packFavoriteRepository.countByUserSince(userObjectId, cycleStart),
@@ -244,6 +247,84 @@ export class DailyMissionService {
       petals_balance: updatedUser.petals_balance,
       total_xp: updatedUser.total_xp ?? 0,
       level_info: levelInfo,
+    };
+  }
+
+  async claimAchievementReward(
+    userId: string,
+    achievementId: string,
+  ): Promise<ClaimAchievementResult> {
+    const achievement = MissionService.getAchievementById(achievementId);
+    if (!achievement) {
+      throw AppError.notFound(
+        "Conquista não encontrada.",
+        "ACHIEVEMENT_NOT_FOUND",
+      );
+    }
+
+    const userObjectId = new ObjectId(userId);
+    const user = await this.userRepository.find({ _id: userObjectId });
+    if (!user) {
+      throw AppError.notFound("Usuário não encontrado.", "USER_NOT_FOUND");
+    }
+
+    const unlocked = await this.userRepository.unlockAchievement(
+      userObjectId,
+      achievement.id,
+      achievement.title,
+    );
+
+    if (!unlocked) {
+      throw AppError.conflict(
+        "Esta conquista já foi resgatada.",
+        "ACHIEVEMENT_ALREADY_CLAIMED",
+      );
+    }
+
+    const updatedUser = await this.userRepository.incrementPetals(
+      userObjectId,
+      achievement.reward.petals,
+    );
+
+    return {
+      achievement: {
+        id: achievement.id,
+        title: achievement.title,
+      },
+      reward_petals: achievement.reward.petals,
+      petals_balance:
+        updatedUser?.petals_balance ??
+        (user.petals_balance ?? 0) + achievement.reward.petals,
+    };
+  }
+
+  async syncAchievements(
+    userId: string,
+    achievementIds: string[],
+  ): Promise<SyncAchievementsResult> {
+    const userObjectId = new ObjectId(userId);
+    const user = await this.userRepository.find({ _id: userObjectId });
+    if (!user) {
+      throw AppError.notFound("Usuário não encontrado.", "USER_NOT_FOUND");
+    }
+
+    const uniqueIds = Array.from(
+      new Set(achievementIds.map((id) => id.trim()).filter(Boolean)),
+    );
+
+    for (const id of uniqueIds) {
+      const achievement = MissionService.getAchievementById(id);
+      if (!achievement) continue;
+      await this.userRepository.unlockAchievement(
+        userObjectId,
+        achievement.id,
+        achievement.title,
+      );
+    }
+
+    const freshUser = await this.userRepository.find({ _id: userObjectId });
+    return {
+      achievements: freshUser?.achievements ?? [],
     };
   }
 
