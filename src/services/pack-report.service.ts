@@ -7,6 +7,7 @@ import {
   MODERATOR_EMAIL,
   REPORT_REASONS_DICTIONARY,
   REPORT_THRESHOLD_TO_HIDE,
+  REPORTER_REWARD_PETALS,
 } from "@/constants";
 import type {
   ListPacksAdminQueryDto,
@@ -41,6 +42,8 @@ import {
   renderModerationOutcomeText,
   renderModerationPackReportTemplate,
   renderPackSecurityWarningTemplate,
+  renderReporterRewardEmailTemplate,
+  renderReporterRewardText,
   type ModerationOutcomeTemplateProps,
 } from "@/templates";
 import type { PaginatedResult, PaginationOptions } from "@/types";
@@ -287,7 +290,6 @@ export class PackReportService {
 
     const currentStatus = currentPack.moderation_status;
 
-
     const existingReports =
       await this.packReportRepository.findManyByPackId(packObjectId);
 
@@ -371,14 +373,17 @@ export class PackReportService {
         });
       }
 
-      if (action === "DELETE_WITH_STRIKE" && owner) {
-        await this.sendDeleteWithStrikeEmail(
-          currentPack,
-          owner,
-          updatedUser,
-          existingReports,
-          data.notes,
-        );
+      if (action === "DELETE_WITH_STRIKE") {
+        if (owner) {
+          await this.sendDeleteWithStrikeEmail(
+            currentPack,
+            owner,
+            updatedUser,
+            existingReports,
+            data.notes,
+          );
+        }
+        await this.rewardAndNotifyReporters(currentPack, existingReports);
       }
 
       return { pack: null, action, deleted: true };
@@ -436,14 +441,17 @@ export class PackReportService {
       });
     }
 
-    if (action === "BAN" && owner) {
-      await this.sendBanEmail(
-        currentPack,
-        owner,
-        updatedUser,
-        existingReports,
-        data.notes,
-      );
+    if (action === "BAN") {
+      if (owner) {
+        await this.sendBanEmail(
+          currentPack,
+          owner,
+          updatedUser,
+          existingReports,
+          data.notes,
+        );
+      }
+      await this.rewardAndNotifyReporters(currentPack, existingReports);
     } else if (action === "APPROVE" && owner) {
       await this.sendApprovalEmail(currentPack, owner, data.notes);
     } else if (action === "RESTRICT" && owner) {
@@ -638,5 +646,59 @@ export class PackReportService {
     );
     const reason = critical?.reason ?? reports[0]?.reason ?? "other";
     return REPORT_REASONS_DICTIONARY[reason] ?? REPORT_REASONS_DICTIONARY.other;
+  }
+
+  private async rewardAndNotifyReporters(
+    pack: StickerPack,
+    reports: PackReport[],
+  ): Promise<void> {
+    if (!reports || reports.length === 0) {
+      return;
+    }
+
+    const uniqueReporterIds = Array.from(
+      new Set(
+        reports
+          .map((r) => r.reporter_id.toString())
+          .filter((id) => id !== pack.user_id.toString()),
+      ),
+    );
+
+    for (const reporterIdStr of uniqueReporterIds) {
+      const reporterId = MongoUtils.toObjectId(
+        reporterIdStr,
+        "ID do denunciante inválido",
+      );
+
+      const updatedReporter = await this.userRepository.incrementPetals(
+        reporterId,
+        REPORTER_REWARD_PETALS,
+      );
+
+      await this.cacheService.del(`profile:${reporterIdStr}`);
+
+      if (updatedReporter?.email) {
+        const reporterName =
+          updatedReporter.name || updatedReporter.userName || "Denunciante";
+
+        const templateProps = {
+          reporterName,
+          packName: pack.pack_name,
+          petalsReward: REPORTER_REWARD_PETALS,
+          newBalance: updatedReporter.petals_balance,
+        };
+
+        const html = renderReporterRewardEmailTemplate(templateProps);
+        const text = renderReporterRewardText(templateProps);
+
+        await this.mailService.sendMail({
+          from: EMAIL_SENDERS.SECURITY,
+          to: updatedReporter.email,
+          subject: `[Senpai] Você recebeu +${REPORTER_REWARD_PETALS} pétalas pela sua denúncia!`,
+          html,
+          text,
+        });
+      }
+    }
   }
 }
