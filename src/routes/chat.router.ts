@@ -36,10 +36,13 @@ export const chatRoutes: FastifyPluginAsyncZod = async (app) => {
             `\n[${userIdentifier}] - ${lastUserMessage}\n[Senpai] - ${text.trim()}`,
           );
         },
-        onError: ({ error }) => {
+        onError: async ({ error }) => {
           request.log.error(
             error,
             `[Chat Senpai] Erro ao responder [${userIdentifier}]`,
+          );
+          await reply.send(
+            "Eita... esqueci o que ia dizer... 🥺\n\nDesculpe, mas pode avisar alguém do suporte que estou doente? 💗",
           );
         },
       });
