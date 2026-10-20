@@ -241,13 +241,15 @@ export class ProfileService {
       this.ensureEmailAvailable(id, updateData.email, currentUser.email),
     ]);
 
+    const payloadToUpdate: Partial<User> = { ...updateData };
+
     if (updateData.email && updateData.email !== currentUser.email) {
-      updateData.isEmailVerified = false;
+      payloadToUpdate.isEmailVerified = false;
     }
 
     const updatedUser = await this.userRepository.update(
       { _id: userObjectId },
-      updateData,
+      payloadToUpdate,
     );
 
     if (!updatedUser) {
