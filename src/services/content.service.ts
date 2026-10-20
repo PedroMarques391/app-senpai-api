@@ -32,7 +32,7 @@ export class ContentService {
   async findActive(query: GetActiveContentQueryDto): Promise<Content[]> {
     return this.contentRepository.findActive({
       now: new Date(),
-      type: query.type ?? "banner",
+      type: query.type,
       platform: query.platform ?? "all",
     });
   }
