@@ -22,6 +22,8 @@ export const packReportSchema = z.object({
   _id: z.instanceof(ObjectId),
   pack_id: z.instanceof(ObjectId),
   reporter_id: z.instanceof(ObjectId),
+  reporter_username: z.string().optional(),
+  userName: z.string().optional(),
   reason: reportReasonEnum,
   description: z.string().max(300).optional(),
   created_at: z.coerce.date().default(() => new Date()),

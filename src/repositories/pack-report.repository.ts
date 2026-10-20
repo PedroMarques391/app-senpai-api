@@ -52,8 +52,29 @@ export class PackReportRepository implements IPackReportRepository {
 
   async findManyByPackId(packId: ObjectId): Promise<PackReport[]> {
     return this.collection
-      .find({ pack_id: packId })
-      .sort({ created_at: -1 })
+      .aggregate<PackReport>([
+        { $match: { pack_id: packId } },
+        { $sort: { created_at: -1 } },
+        {
+          $lookup: {
+            from: "customers",
+            localField: "reporter_id",
+            foreignField: "_id",
+            as: "reporter",
+          },
+        },
+        {
+          $addFields: {
+            reporter_username: { $arrayElemAt: ["$reporter.userName", 0] },
+            userName: { $arrayElemAt: ["$reporter.userName", 0] },
+          },
+        },
+        {
+          $project: {
+            reporter: 0,
+          },
+        },
+      ])
       .toArray();
   }
 
