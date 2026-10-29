@@ -83,8 +83,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
           return reply.status(429).send({
             success: false,
             code: "REGISTRATION_IP_LIMIT_EXCEEDED",
-            message:
-              "Limite de cadastros diários atingido para esta rede. Tente novamente em 24 horas.",
+            message: "Limite de cadastros diários atingido para esta rede.",
           });
         }
       }
