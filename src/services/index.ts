@@ -20,3 +20,4 @@ export * from "./store.service";
 export * from "./terms.service";
 export * from "./upload.service";
 export * from "./user.service";
+export * from "./sharp.service";
