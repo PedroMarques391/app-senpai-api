@@ -1,3 +1,7 @@
+import {
+  MAX_REGISTRATIONS_PER_IP_24H,
+  REGISTRATION_IP_WINDOW_SECONDS,
+} from "@/constants";
 import { createUserDtoSchema } from "@/dtos";
 import { ServiceFactory } from "@/factories";
 import { NetworkUtils } from "@/utils";
@@ -10,7 +14,13 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
 
   app.post(
     "/login/otp",
-    { schema: { body: z.object({ wa_id: z.string() }) } },
+    {
+      schema: {
+        body: z.object({
+          wa_id: z.string().trim().min(8, "Número de WhatsApp inválido."),
+        }),
+      },
+    },
     async (request, reply) => {
       const { wa_id } = request.body;
 
@@ -30,16 +40,17 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     "/login/verify",
     {
       schema: {
-        body: z.object({ wa_id: z.string(), otp: z.string() }),
+        body: z.object({
+          wa_id: z.string().trim().min(8, "Número de WhatsApp inválido."),
+          otp: z
+            .string()
+            .trim()
+            .length(6, "Código de verificação deve ter 6 dígitos."),
+        }),
       },
     },
     async (request, reply) => {
       const { wa_id, otp } = request.body;
-      if (!otp) {
-        throw new Error(
-          "Código de verificação inválido ou expirado. Solicite um novo código.",
-        );
-      }
       const user = await authService.verifyOtpAndLogin(wa_id, otp);
 
       reply.header("Authorization", `Bearer ${user.token}`);
@@ -55,10 +66,42 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     "/register",
     { schema: { body: createUserDtoSchema } },
     async (request, reply) => {
+      const clientIp = NetworkUtils.getClientIp(
+        request.headers,
+        request.socket.remoteAddress,
+      );
+
+      const isRateLimitedIp =
+        clientIp !== "127.0.0.1" &&
+        clientIp !== "::1" &&
+        clientIp !== "Desconhecido";
+
+      if (isRateLimitedIp) {
+        const ipKey = `ratelimit:register:ip:${clientIp}`;
+        const count = await app.redis.get(ipKey);
+        if (count && Number(count) >= MAX_REGISTRATIONS_PER_IP_24H) {
+          return reply.status(429).send({
+            success: false,
+            code: "REGISTRATION_IP_LIMIT_EXCEEDED",
+            message:
+              "Limite de cadastros diários atingido para esta rede. Tente novamente em 24 horas.",
+          });
+        }
+      }
+
       const userData = request.body;
       const user = await authService.register(userData.wa_id, userData);
 
-      return reply.send({
+      if (isRateLimitedIp) {
+        const ipKey = `ratelimit:register:ip:${clientIp}`;
+        const newCount = await app.redis.incr(ipKey);
+        if (newCount === 1) {
+          await app.redis.expire(ipKey, REGISTRATION_IP_WINDOW_SECONDS);
+        }
+      }
+
+      return reply.status(201).send({
+        success: true,
         message: "Usuário cadastrado com sucesso.",
         user,
       });

@@ -1,0 +1,2 @@
+export const MAX_REGISTRATIONS_PER_IP_24H = 3;
+export const REGISTRATION_IP_WINDOW_SECONDS = 24 * 60 * 60;
