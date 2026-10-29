@@ -36,13 +36,16 @@
     "mongodb": "^7.5.0",
     "redis": "^6.2.1",
     "resend": "^6.29.0",
+    "sharp": "^0.35.5",
     "uuid": "^13.0.0",
     "zod": "^4.2.0"
   },
   "scripts": {
     "build": "tsc --noEmit && tsup",
     "start": "node dist/index.js",
+    "start:worker": "node dist/worker.js",
     "dev": "tsup --watch --onSuccess \"node --env-file=.env dist/index.js\"",
+    "dev:worker": "tsup --watch --onSuccess \"node --env-file=.env dist/worker.js\"",
     "up:development": "docker compose up -d",
     "up:prod": "docker compose up -d redis api",
     "up:build": "docker compose up -d --build",
