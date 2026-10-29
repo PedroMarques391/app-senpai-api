@@ -23,3 +23,23 @@ export interface WhatsAppJobResponse {
   name: string;
   data: WhatsAppJobData;
 }
+
+export type StickerConversionType = "static" | "animated" | "pack_icon";
+
+export interface StickerJobData {
+  type: StickerConversionType;
+  fileBuffer?: string;
+  fileUrl?: string;
+  stickerId?: string;
+  packId?: string;
+  userId?: string;
+  destinationPath?: string;
+  quality?: number;
+}
+
+export interface StickerJobResponse {
+  id?: string;
+  name: string;
+  data: StickerJobData;
+}
+
