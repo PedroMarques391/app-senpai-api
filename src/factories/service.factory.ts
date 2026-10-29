@@ -117,6 +117,7 @@ export class ServiceFactory {
       this.profileService = new ProfileService(
         new UserRepository(),
         this.getCacheService(redisInstance as RedisClientType),
+        this.getOtpService(redisInstance as RedisClientType),
       );
     }
 
@@ -169,7 +170,6 @@ export class ServiceFactory {
     return new AuthService(
       new UserRepository(),
       jwtInstance,
-      QueueFactory.getWhatsAppQueue(),
       this.getOtpService(redisInstance),
     );
   }
@@ -215,7 +215,7 @@ export class ServiceFactory {
       this.otpService = new OtpService(
         this.getCacheService(redisInstance),
         this.getEmailService(),
-        new UserRepository(),
+        QueueFactory.getWhatsAppQueue(),
       );
     }
     return this.otpService;

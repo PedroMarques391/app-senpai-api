@@ -11,6 +11,7 @@ export interface GenerateOtpOptions {
 
 export interface VerifyOtpOptions {
   prefix?: string;
+  success?: boolean;
 }
 
 export type GenerateOtpResult =

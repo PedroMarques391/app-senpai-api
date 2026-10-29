@@ -1,7 +1,6 @@
 import { createUserDtoSchema, type CreateUserDto } from "@/dtos";
 import { AppError } from "@/errors";
 import type { User, UserRepository } from "@/models";
-import type { WhatsAppQueue } from "@/queues";
 import type { AuthResult, SendOtpResult, ServiceResponse } from "@/types";
 import { AuthUtils, UserUtils } from "@/utils";
 import type { JWT as FastifyJWT } from "@fastify/jwt";
@@ -14,7 +13,6 @@ export class AuthService {
       "find" | "create" | "update"
     >,
     private readonly jwtInstance: FastifyJWT,
-    private readonly whatsappQueue: WhatsAppQueue,
     private readonly otpService: OtpService,
   ) {}
 
@@ -41,35 +39,7 @@ export class AuthService {
       };
     }
 
-    const otpResult = await this.otpService.generateOtp(user.wa_id);
-
-    if (otpResult.success === false) {
-      return {
-        success: false,
-        userExists: true,
-        retryAfter: otpResult.retryAfter,
-        message: otpResult.message,
-      };
-    }
-
-    await this.whatsappQueue.addJob(
-      "send-message",
-      {
-        number: user.wa_id,
-        message: otpResult.code,
-      },
-      {
-        attempts: 2,
-      },
-    );
-
-    return {
-      success: true,
-      data: {
-        otp: otpResult.code,
-        identifier: user.wa_id,
-      },
-    };
+    return this.otpService.sendWhatsappOtp(user.wa_id);
   }
 
   async verifyOtpAndLogin(
@@ -90,15 +60,7 @@ export class AuthService {
       throw new AppError("Credenciais inválidas", 401, "INVALID_CREDENTIALS");
     }
 
-    const isValid = await this.otpService.verifyOtp(user.wa_id, otpCode);
-
-    if (!isValid) {
-      throw new AppError(
-        "Código de verificação inválido ou expirado. Solicite um novo código.",
-        400,
-        "INVALID_OTP",
-      );
-    }
+    await this.otpService.verifyWhatsappOtp(user.wa_id, otpCode);
 
     const fullUser = UserUtils.applyDefaults({
       ...user,

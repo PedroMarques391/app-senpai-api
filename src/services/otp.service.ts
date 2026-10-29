@@ -1,5 +1,6 @@
 import { EMAIL_REPLY_TO, EMAIL_SENDERS } from "@/constants";
-import type { UserRepository } from "@/repositories";
+import { AppError } from "@/errors";
+import type { WhatsAppQueue } from "@/queues";
 import {
   renderOtpEmailTemplate,
   renderSuccessEmailTemplate,
@@ -12,7 +13,7 @@ import type {
   ServiceResponse,
   VerifyOtpOptions,
 } from "@/types";
-import { OtpUtils, UserUtils } from "@/utils";
+import { AuthUtils, OtpUtils, UserUtils } from "@/utils";
 import type { CacheService } from "./cache.service";
 import type { MailService } from "./mail.service";
 
@@ -24,7 +25,7 @@ export class OtpService {
   constructor(
     private readonly cacheService: CacheService,
     private readonly mailService: MailService,
-    private readonly userRepository: UserRepository,
+    private readonly whatsappQueue: WhatsAppQueue,
   ) {}
 
   private getCacheKey(identifier: string, prefix: string): string {
@@ -102,31 +103,107 @@ export class OtpService {
     await this.cacheService.del(cacheKey);
   }
 
-  async generateAndSendEmailOtp(
-    email: string,
+  async sendWhatsappOtp(
+    rawWaId: string,
+    options?: GenerateOtpOptions,
   ): Promise<ServiceResponse<SendOtpResult>> {
-    const cleanEmail = UserUtils.normalizeIdentifier(email);
-    const user = await this.userRepository.find({ email: cleanEmail });
+    const variants = AuthUtils.getWaIdVariants(rawWaId);
+    const targetWaId = variants[0];
 
-    if (user?.status === "inactive") {
+    if (!targetWaId || targetWaId.length < 8) {
       return {
         success: false,
         userExists: true,
-        message:
-          "Não foi possível concluir o cadastro. Verifique os dados informados ou tente fazer login.",
+        message: "Número de WhatsApp inválido.",
       };
     }
 
-    if (!user) {
+    const otpResult = await this.generateOtp(targetWaId, {
+      prefix: options?.prefix ?? "wa_otp",
+      cooldownSeconds: options?.cooldownSeconds,
+      ttlSeconds: options?.ttlSeconds,
+    });
+
+    if (otpResult.success === false) {
       return {
         success: false,
-        userExists: false,
-        message:
-          "Você ainda não é um usuário da Senpai, por favor crie sua conta.",
+        userExists: true,
+        retryAfter: otpResult.retryAfter,
+        message: otpResult.message,
       };
     }
 
-    const otpResult = await this.generateOtp(cleanEmail);
+    await this.whatsappQueue.addJob(
+      "send-message",
+      {
+        number: targetWaId,
+        message: otpResult.code,
+      },
+      {
+        attempts: 2,
+      },
+    );
+
+    return {
+      success: true,
+      data: {
+        otp: otpResult.code,
+        identifier: targetWaId,
+      },
+    };
+  }
+
+  async verifyWhatsappOtp(
+    rawWaId: string,
+    code: string,
+    options?: VerifyOtpOptions,
+  ): Promise<boolean> {
+    const variants = AuthUtils.getWaIdVariants(rawWaId);
+    const targetWaId = variants[0];
+
+    if (!targetWaId || !code) {
+      throw new AppError(
+        "Código de verificação inválido ou expirado. Solicite um novo código.",
+        400,
+        "INVALID_OTP",
+      );
+    }
+
+    const isValid = await this.verifyOtp(targetWaId, code, {
+      prefix: options?.prefix ?? "wa_otp",
+    });
+
+    if (!isValid) {
+      throw new AppError(
+        "Código de verificação inválido ou expirado. Solicite um novo código.",
+        400,
+        "INVALID_OTP",
+      );
+    }
+
+    return true;
+  }
+
+  async sendEmailOtp(
+    rawEmail: string,
+    userName?: string,
+    options?: GenerateOtpOptions,
+  ): Promise<ServiceResponse<SendOtpResult>> {
+    const cleanEmail = UserUtils.normalizeIdentifier(rawEmail);
+
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      return {
+        success: false,
+        userExists: true,
+        message: "E-mail inválido.",
+      };
+    }
+
+    const otpResult = await this.generateOtp(cleanEmail, {
+      prefix: options?.prefix ?? this.DEFAULT_PREFIX,
+      cooldownSeconds: options?.cooldownSeconds,
+      ttlSeconds: options?.ttlSeconds,
+    });
 
     if (otpResult.success === false) {
       return {
@@ -139,12 +216,12 @@ export class OtpService {
 
     const html = renderOtpEmailTemplate({
       otp: otpResult.code,
-      userName: user.name || "User",
+      userName: userName || "User",
     });
 
     await this.mailService.sendMail({
       from: EMAIL_SENDERS.NOREPLY,
-      to: user.email,
+      to: cleanEmail,
       subject: "Eii, seu código está aqui!",
       html,
     });
@@ -159,37 +236,42 @@ export class OtpService {
   }
 
   async verifyEmailOtp(
-    email: string,
+    rawEmail: string,
     code: string,
-  ): Promise<{ success: boolean; message: string }> {
-    const cleanEmail = UserUtils.normalizeIdentifier(email);
-    const user = await this.userRepository.find({ email: cleanEmail });
+    options?: VerifyOtpOptions,
+  ): Promise<boolean> {
+    const cleanEmail = UserUtils.normalizeIdentifier(rawEmail);
 
-    if (!user) {
-      throw new Error("Usuário não encontrado com este e-mail.");
-    }
-
-    if (user.status === "inactive") {
-      throw new Error("Credenciais inválidas");
-    }
-
-    const isValid = await this.verifyOtp(cleanEmail, code);
-
-    if (!isValid) {
-      throw new Error(
+    if (!cleanEmail || !code) {
+      throw new AppError(
         "Código de verificação inválido ou expirado. Solicite um novo código.",
+        400,
+        "INVALID_OTP",
       );
     }
 
-    const updated = await this.userRepository.update(
-      { _id: user._id },
-      { isEmailVerified: true },
-    );
+    const isValid = await this.verifyOtp(cleanEmail, code, {
+      prefix: options?.prefix ?? this.DEFAULT_PREFIX,
+      success: options?.success,
+    });
 
-    if (!updated) {
-      throw new Error("Não foi possível confirmar o e-mail. Tente novamente.");
+    if (!isValid) {
+      throw new AppError(
+        "Código de verificação inválido ou expirado. Solicite um novo código.",
+        400,
+        "INVALID_OTP",
+      );
     }
 
+    if (options?.success !== false) {
+      await this.sendEmailVerificationSuccess(cleanEmail);
+    }
+
+    return true;
+  }
+
+  async sendEmailVerificationSuccess(rawEmail: string): Promise<void> {
+    const cleanEmail = UserUtils.normalizeIdentifier(rawEmail);
     const html = renderSuccessEmailTemplate({
       title: "E-mail verificado com sucesso!",
       message:
@@ -205,7 +287,5 @@ export class OtpService {
       subject: "E-mail verificado com sucesso - Senpai",
       html,
     });
-
-    return { success: true, message: "E-mail verificado com sucesso!" };
   }
 }
