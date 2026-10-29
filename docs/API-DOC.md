@@ -184,6 +184,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
 #### `POST /auth/register`
 
 - **Descrição:** Cadastro completo inicial de usuário. Realiza hash da senha e validação de unicidade de `wa_id`, `userName` e `email`.
+- **Rate Limit por IP (Anti-Abuso):** Limite de no máximo 3 cadastros a cada 24 horas (`MAX_REGISTRATIONS_PER_IP_24H = 3`, janela de 86400s) por endereço IP do cliente (rastreado no Redis sob `ratelimit:register:ip:<ip>`).
 - **Request Body (`CreateUserDto`):** `wa_id`, `name`, `userName`, `email`, `password`.
 - **Respostas:**
   - `200 OK`: `{"message": "Usuário cadastrado com sucesso.", "user": { ...User }}`
@@ -194,6 +195,8 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
     - E-mail e username em uso: `{"success": false, "code": "EMAIL_AND_USERNAME_IN_USE", "message": "O e-mail e o nome de usuário já estão em uso."}`
     - E-mail já em uso: `{"success": false, "code": "EMAIL_IN_USE", "message": "Este e-mail já está em uso."}`
     - Username já em uso: `{"success": false, "code": "USERNAME_IN_USE", "message": "Este nome de usuário já está em uso."}`
+  - `429 Too Many Requests`:
+    - Limite de cadastros por IP atingido: `{"success": false, "code": "REGISTRATION_IP_LIMIT_EXCEEDED", "message": "Limite de cadastros por IP atingido. Tente novamente mais tarde."}`
 
 #### `POST /auth/password/recovery`
 
@@ -345,20 +348,24 @@ Além das cotas diárias de criação, a plataforma monitora e limita o consumo 
 #### `POST /creation/quota/reserve-pack`
 
 - **Descrição:** Reserva o nome do pacote que o usuário Free usará no ciclo diário atual antes de concluir o envio dos arquivos.
+- **PreHandlers:** `requireVerifiedEmail`, `requireVerifiedNumber`.
 - **Request Body:**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Constraints |
   | :--- | :--- | :--- | :--- | :--- |
   | `packName` | `z.string()` | `String` | Sim | `min(1).max(50)` |
 - **Respostas:**
   - `200 OK`: `{"success": true, "quota": { ...QuotaSnapshotDto }}`
-  - `403 Forbidden` (Se já tiver pacote diferente reservado):
-    ```json
-    {
-      "success": false,
-      "code": "QUOTA_EXCEEDED",
-      "message": "Sua criação grátis de hoje já está vinculada ao pack \"Memes de Gatinhos\". Você pode continuar nele até completar 3 figurinhas."
-    }
-    ```
+  - `403 Forbidden`:
+    - E-mail não verificado: `{"success": false, "code": "EMAIL_NOT_VERIFIED", "message": "Verifique seu e-mail para criar figurinhas e packs."}`
+    - WhatsApp não verificado: `{"success": false, "code": "NUMBER_NOT_VERIFIED", "message": "Verifique seu número de WhatsApp para criar figurinhas e packs."}`
+    - Pacote diferente já reservado:
+      ```json
+      {
+        "success": false,
+        "code": "QUOTA_EXCEEDED",
+        "message": "Sua criação grátis de hoje já está vinculada ao pack \"Memes de Gatinhos\". Você pode continuar nele até completar 3 figurinhas."
+      }
+      ```
 
 #### `POST /creation/quota/commit`
 
@@ -502,7 +509,8 @@ _(Requer Header `Authorization`)_
 
 - **Descrição & Regras de Negócio:**
   1. **PreHandler de E-mail Verificado (`requireVerifiedEmail`):** Exige que o usuário tenha o e-mail verificado (`isEmailVerified === true`). Se não tiver, retorna HTTP `403 Forbidden` (`code: "EMAIL_NOT_VERIFIED"`).
-  2. **PreHandler de Cota Diária:** Executa `checkPackCreationQuota`. Se o usuário for Free e exceder o limite de 1 pacote/dia ou o total de 3 figurinhas/dia, a requisição é barrada com HTTP `403 QUOTA_EXCEEDED`.
+  2. **PreHandler de WhatsApp Verificado (`requireVerifiedNumber`):** Exige que o usuário tenha o número de WhatsApp verificado (`isNumberVerified === true`). Se não tiver, retorna HTTP `403 Forbidden` (`code: "NUMBER_NOT_VERIFIED"`, `message: "Verifique seu número de WhatsApp para criar figurinhas e packs."`).
+  3. **PreHandler de Cota Diária:** Executa `checkPackCreationQuota`. Se o usuário for Free e exceder o limite de 1 pacote/dia ou o total de 3 figurinhas/dia, a requisição é barrada com HTTP `403 QUOTA_EXCEEDED`.
   3. **Criação de Figurinhas em Lote Embutidas:** O body aceita a propriedade `stickers: CreateStickerDto[]` (mínimo de 3 e máximo de 30 figurinhas). Um pack nunca pode ser criado com menos de 3 figurinhas (`PACK_MIN_STICKERS`). Todas as figurinhas do lote devem ter o mesmo tipo (`type: "static"` ou `"dynamic"`); misturar tipos retorna erro HTTP `400` (`PACK_TYPE_MISMATCH`). Todas as figurinhas enviadas são criadas e vinculadas ao pacote na mesma operação atômica, incrementando o `stickers_count` do usuário (`static` ou `dynamic`) e acumulando `storage_used_bytes` com base na soma dos `size_bytes` de cada figurinha.
   4. **Geração Automática do `icon_url`:** Se o campo `icon_url` não for informado no payload, mas o array `stickers` contiver ao menos uma figurinha com URL válida do Cloudinary, o backend gera automaticamente o `icon_url` aplicando a transformação de otimização `c_fill,w_256,h_256,f_webp,q_auto`.
   5. **Campos Opcionais com Defaults:** `description` é opcional (default `"Sem descrição"`), e `tags` é opcional (default `[]`).
@@ -675,13 +683,15 @@ _(Requer Header `Authorization` para mutações)_
 _(Requer Header `Authorization`)_
 
 - **Descrição & Regras de Negócio:**
-  1. **Validação de Cota:** Executa `checkStickerCreationQuota`. Se o usuário Free já tiver criado 3 figurinhas no ciclo diário, retorna `403 QUOTA_EXCEEDED`.
-  2. **Validação de Limite Máximo por Pacote (30 figurinhas):** Verifica a quantidade atual de figurinhas pertencentes ao pacote no banco. Se o pacote já contiver 30 figurinhas, a criação é bloqueada com HTTP `400 Bad Request` (`"O pacote já atingiu o limite máximo permitido de 30 figurinhas."`).
-  3. **Validação de Propriedade:** Verifica se o usuário autenticado é o proprietário do pacote.
-  4. **Auto-preenchimento do Ícone do Pacote:** Se o pacote estiver sem `icon_url`, a criação da primeira figurinha gera e salva automaticamente o `icon_url` do pacote aplicando a transformação Cloudinary `c_fill,w_256,h_256,f_webp,q_auto` na URL desta figurinha.
-  5. **Contador do Usuário e Armazenamento:** Incrementa atômica e persistentemente o contador `stickers_count.static` ou `stickers_count.dynamic` do perfil do usuário e incrementa `storage_used_bytes` caso `size_bytes` seja informado.
-  6. **Registro de Cota:** Registra o uso da cota para usuários Free em `creation_quotas`.
-  7. **Invalidação Reativa de Cache:** Limpa os caches de figurinhas (`stickers:pack:<packId>`), do pacote (`pack:<packId>`), listagens (`pack:list:*`), pacotes do usuário (`pack:user:<userId>`) e do perfil do usuário (`profile:<userId>`), garantindo sincronização instantânea dos contadores na interface do app.
+  1. **PreHandler de E-mail Verificado (`requireVerifiedEmail`):** Exige que o usuário tenha o e-mail verificado (`isEmailVerified === true`). Se não tiver, retorna HTTP `403 Forbidden` (`code: "EMAIL_NOT_VERIFIED"`).
+  2. **PreHandler de WhatsApp Verificado (`requireVerifiedNumber`):** Exige que o usuário tenha o WhatsApp verificado (`isNumberVerified === true`). Se não tiver, retorna HTTP `403 Forbidden` (`code: "NUMBER_NOT_VERIFIED"`, `message: "Verifique seu número de WhatsApp para criar figurinhas e packs."`).
+  3. **Validação de Cota:** Executa `checkStickerCreationQuota`. Se o usuário Free já tiver criado 3 figurinhas no ciclo diário, retorna `403 QUOTA_EXCEEDED`.
+  4. **Validação de Limite Máximo por Pacote (30 figurinhas):** Verifica a quantidade atual de figurinhas pertencentes ao pacote no banco. Se o pacote já contiver 30 figurinhas, a criação é bloqueada com HTTP `400 Bad Request` (`"O pacote já atingiu o limite máximo permitido de 30 figurinhas."`).
+  5. **Validação de Propriedade:** Verifica se o usuário autenticado é o proprietário do pacote.
+  6. **Auto-preenchimento do Ícone do Pacote:** Se o pacote estiver sem `icon_url`, a criação da primeira figurinha gera e salva automaticamente o `icon_url` do pacote aplicando a transformação Cloudinary `c_fill,w_256,h_256,f_webp,q_auto` na URL desta figurinha.
+  7. **Contador do Usuário e Armazenamento:** Incrementa atômica e persistentemente o contador `stickers_count.static` ou `stickers_count.dynamic` do perfil do usuário e incrementa `storage_used_bytes` caso `size_bytes` seja informado.
+  8. **Registro de Cota:** Registra o uso da cota para usuários Free em `creation_quotas`.
+  9. **Invalidação Reativa de Cache:** Limpa os caches de figurinhas (`stickers:pack:<packId>`), do pacote (`pack:<packId>`), listagens (`pack:list:*`), pacotes do usuário (`pack:user:<userId>`) e do perfil do usuário (`profile:<userId>`), garantindo sincronização instantânea dos contadores na interface do app.
 - **Request Body (`CreateStickerDto`):**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Constraints | Descrição |
   | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -1008,6 +1018,79 @@ _(Todas as rotas exigem Header `Authorization`)_
     }
     ```
 
+#### `POST /profile/phone/code/send`
+
+- **Descrição e Regra de Negócio:** Dispara o envio de um código de verificação OTP de 6 dígitos via WhatsApp para o número informado ou para o número já associado à conta do usuário autenticado.
+  1. **Enfileiramento Assíncrono via WhatsApp:** O envio é processado via fila `whatsapp` no **BullMQ**, consumida pelo `WhatsAppWorker` utilizando o template oficial `senpai_login_code`.
+  2. **Anti-Reciclagem de Números:** Verifica se o número (considerando variações com/sem o 9º dígito no Brasil) já pertence a outra conta ativa com `isNumberVerified: true`. Se pertencer, bloqueia o envio com HTTP `403 Forbidden` (`code: "PHONE_ALREADY_VERIFIED_OTHER_ACCOUNT"`).
+  3. **Rate Limit:** Aplica intervalo mínimo de 60 segundos entre disparos para o mesmo número de WhatsApp. Se chamado antes do tempo, retorna `403 Forbidden` com `retryAfter` indicando os segundos restantes para reenvio.
+  4. **TTL:** O código OTP expira em 5 minutos (300 segundos).
+- **Request Body:**
+  | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `wa_id` | `z.string().trim().min(8).optional()` | `String?` | Não | Número com DDI e DDD (ex: `"5511999998888"`). Se omitido, utiliza o `wa_id` do usuário logado. |
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "message": "Código enviado para o seu WhatsApp",
+      "expiresIn": 300,
+      "retryAfter": 60
+    }
+    ```
+  - `400 Bad Request`:
+    ```json
+    {
+      "success": false,
+      "message": "Número de WhatsApp não informado."
+    }
+    ```
+  - `403 Forbidden` (Número em uso por outra conta):
+    ```json
+    {
+      "success": false,
+      "code": "PHONE_ALREADY_VERIFIED_OTHER_ACCOUNT",
+      "message": "Este número de WhatsApp já está verificado em outra conta."
+    }
+    ```
+  - `403 Forbidden` (Rate Limit):
+    ```json
+    {
+      "success": false,
+      "retryAfter": 45,
+      "message": "Por favor, aguarde 45 segundos antes de solicitar um novo código."
+    }
+    ```
+
+#### `POST /profile/phone/code/verify`
+
+- **Descrição e Regra de Negócio:** Valida o código OTP de 6 dígitos e confirma o WhatsApp da conta do usuário autenticado.
+  1. **Validação do Código:** Compara o código informado com o token armazenado no Redis. Rejeita códigos inválidos ou expirados com erro `400 Bad Request`.
+  2. **Anti-Reciclagem:** Revalida se o número não foi verificado por outra conta entre o envio e a validação.
+  3. **Atualização no Banco de Dados:** Atualiza o usuário com `isNumberVerified: true` (e sincroniza `wa_id` caso tenha sido alterado) de forma atômica no MongoDB.
+  4. **Invalidação de Cache Automática:** Remove imediatamente as chaves de cache de perfil no Redis (`profile:<userId>` e `profile:username:<userName>`).
+- **Request Body:**
+  | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `code` | `z.string().length(6)` | `String` | Sim | Código numérico de 6 dígitos recebido no WhatsApp. |
+  | `wa_id` | `z.string().trim().min(8).optional()` | `String?` | Não | Número associado (se omitido, usa o do usuário logado). |
+- **Respostas:**
+  - `200 OK`:
+    ```json
+    {
+      "success": true,
+      "message": "Número de WhatsApp verificado com sucesso!"
+    }
+    ```
+  - `400 Bad Request`:
+    ```json
+    {
+      "success": false,
+      "message": "Código de verificação inválido ou expirado. Solicite um novo código."
+    }
+    ```
+
 ---
 
 ### 3.9 Upload de Mídia (`/upload`)
@@ -1019,7 +1102,7 @@ _(Requer Header `Authorization`)_
 - **Descrição:** Gera uma assinatura criptográfica temporária autorizada para que o aplicativo cliente (Flutter) envie o arquivo diretamente para os servidores do Cloudinary, sem intermediar binários na API Senpai (economizando 100% de banda de upload no servidor e evitando gargalos de conexões).
 - **Query Params:**
   - `folder`: `"sticker"` (default), `"banner"`, `"avatar"`.
-- **Validação de Cota:** Possui o preHandler `app.checkStorageQuota` e `app.requireVerifiedEmail`. Se o usuário já tiver atingido a capacidade máxima de armazenamento de sua conta, a requisição é barrada com HTTP `403 Forbidden`.
+- **Validação de Cota & Verificação:** Possui os preHandlers `app.checkStorageQuota`, `app.requireVerifiedEmail` e `app.requireVerifiedNumber`. Se o usuário já tiver atingido a capacidade máxima de armazenamento de sua conta ou se não tiver confirmado e-mail/WhatsApp, a requisição é barrada com HTTP `403 Forbidden`.
 - **Respostas:**
   - `200 OK`:
     ```json
