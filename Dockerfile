@@ -1,11 +1,11 @@
-FROM node:20-alpine
+FROM node:26-alpine
 
 WORKDIR /app
 
 RUN apk add --no-cache tzdata
 ENV TZ=America/Sao_Paulo
 
-RUN corepack enable && corepack prepare yarn@4.12.0 --activate
+RUN npm install -g corepack && corepack enable && corepack prepare yarn@4.12.0 --activate
 
 COPY package.json yarn.lock* .yarnrc.yml* ./
 
