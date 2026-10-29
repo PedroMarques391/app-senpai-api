@@ -20,6 +20,10 @@ declare global {
       RESEND_WEBHOOK_SECRET: string;
       REVENUECAT_WEBHOOK_SECRET: string;
       GEMINI_API_KEY: string;
+      R2_ACCESS_KEY_ID: string;
+      R2_SECRET_ACCESS_KEY: string;
+      R2_ENDPOINT: string;
+      BUCKET_NAME: string;
     }
   }
 }

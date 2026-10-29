@@ -8,3 +8,5 @@ export * from "./revenueCat";
 export * from "./services";
 export * from "./upload";
 export * from "./user";
+export * from "./storage";
+
