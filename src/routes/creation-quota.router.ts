@@ -23,7 +23,7 @@ export const creationQuotaRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post(
     "/reserve-pack",
     {
-      preHandler: [app.requireVerifiedEmail],
+      preHandler: [app.requireVerifiedEmail, app.requireVerifiedNumber],
       schema: {
         body: reservePackDtoSchema,
       },

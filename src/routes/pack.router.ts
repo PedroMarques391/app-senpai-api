@@ -114,7 +114,11 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
     "/",
     {
       onRequest: [app.authenticate],
-      preHandler: [app.checkPackCreationQuota, app.requireVerifiedEmail],
+      preHandler: [
+        app.checkPackCreationQuota,
+        app.requireVerifiedEmail,
+        app.requireVerifiedNumber,
+      ],
       schema: { body: createPackDtoSchema },
     },
     async (request, reply) => {

@@ -4,15 +4,18 @@ import type {
   UpdateEquippedCosmeticsDto,
   UpdateUserDto,
 } from "@/dtos";
+import { AppError } from "@/errors";
 import type { User } from "@/models";
 import type { UserRepository } from "@/repositories";
-import type { ICacheService } from "@/types";
+import type { ICacheService, SendOtpResult, ServiceResponse } from "@/types";
 import { AuthUtils, MongoUtils, PermissionUtils, UserUtils } from "@/utils";
+import type { OtpService } from "./otp.service";
 
 export class ProfileService {
   constructor(
     private readonly userRepository: UserRepository,
     private cacheService?: ICacheService,
+    private readonly otpService?: OtpService,
   ) {}
 
   setCacheService(cacheService: ICacheService): void {
@@ -301,5 +304,216 @@ export class ProfileService {
     await this.invalidateProfile(id, currentUser.userName);
 
     return UserUtils.applyDefaults(updatedUser);
+  }
+
+  async sendEmailVerification(
+    userId: string,
+    userEmail: string,
+  ): Promise<ServiceResponse<SendOtpResult>> {
+    if (!this.otpService) {
+      throw new AppError("Serviço de OTP indisponível", 500);
+    }
+
+    const userObjectId = MongoUtils.toObjectId(
+      userId,
+      "ID de usuário inválido",
+    );
+    const user = await this.userRepository.find({ _id: userObjectId });
+
+    if (!user || user.status === "inactive") {
+      throw new AppError(
+        "Usuário não encontrado ou conta inativa.",
+        404,
+        "USER_NOT_FOUND",
+      );
+    }
+
+    if (!userEmail || userEmail !== user.email) {
+      return {
+        success: false,
+        userExists: true,
+        message: "E-mail não informado ou não pertence ao usuário",
+      };
+    }
+
+    const cleanEmail = UserUtils.normalizeIdentifier(userEmail);
+
+    return this.otpService.sendEmailOtp(cleanEmail, user.name);
+  }
+
+  async verifyEmail(
+    userId: string,
+    email: string,
+    code: string,
+  ): Promise<{ success: boolean; message: string }> {
+    if (!this.otpService) {
+      throw new AppError("Serviço de OTP indisponível", 500);
+    }
+
+    const userObjectId = MongoUtils.toObjectId(
+      userId,
+      "ID de usuário inválido",
+    );
+    const user = await this.userRepository.find({ _id: userObjectId });
+
+    if (!user || user.status === "inactive") {
+      throw new AppError(
+        "Usuário não encontrado ou conta inativa.",
+        404,
+        "USER_NOT_FOUND",
+      );
+    }
+
+    const cleanEmail = UserUtils.normalizeIdentifier(email);
+
+    await this.otpService.verifyEmailOtp(cleanEmail, code, { success: true });
+
+    const updated = await this.userRepository.update(
+      { _id: userObjectId },
+      { email: cleanEmail, isEmailVerified: true },
+    );
+
+    if (!updated) {
+      throw new AppError(
+        "Não foi possível confirmar o e-mail. Tente novamente.",
+        500,
+        "UPDATE_FAILED",
+      );
+    }
+
+    await this.invalidateProfile(userId, user.userName);
+
+    return { success: true, message: "E-mail verificado com sucesso!" };
+  }
+
+  async sendPhoneVerification(
+    userId: string,
+    rawWaId?: string,
+  ): Promise<ServiceResponse<SendOtpResult>> {
+    if (!this.otpService) {
+      throw new AppError("Serviço de OTP indisponível", 500);
+    }
+
+    const userObjectId = MongoUtils.toObjectId(
+      userId,
+      "ID de usuário inválido",
+    );
+    const user = await this.userRepository.find({ _id: userObjectId });
+
+    if (!user || user.status === "inactive") {
+      throw new AppError(
+        "Usuário não encontrado ou conta inativa.",
+        404,
+        "USER_NOT_FOUND",
+      );
+    }
+
+    const phone = rawWaId || user.wa_id;
+    if (!phone) {
+      return {
+        success: false,
+        userExists: true,
+        message: "Número de WhatsApp não informado.",
+      };
+    }
+
+    const variants = AuthUtils.getWaIdVariants(phone);
+    const targetWaId = variants[0];
+
+    if (!targetWaId || targetWaId.length < 8) {
+      return {
+        success: false,
+        userExists: true,
+        message: "Número de WhatsApp inválido.",
+      };
+    }
+
+    const existingUser = await this.userRepository.find({
+      wa_id: { $in: variants },
+    });
+
+    if (
+      existingUser &&
+      existingUser.isNumberVerified &&
+      existingUser._id.toString() !== userId
+    ) {
+      return {
+        success: false,
+        userExists: true,
+        message:
+          "Este número de WhatsApp já foi validado em outra conta da Senpai.",
+      };
+    }
+
+    return this.otpService.sendWhatsappOtp(targetWaId);
+  }
+
+  async verifyPhone(
+    userId: string,
+    rawWaId: string,
+    code: string,
+  ): Promise<{ success: boolean; message: string }> {
+    if (!this.otpService) {
+      throw new AppError("Serviço de OTP indisponível", 500);
+    }
+
+    const userObjectId = MongoUtils.toObjectId(
+      userId,
+      "ID de usuário inválido",
+    );
+    const user = await this.userRepository.find({ _id: userObjectId });
+
+    if (!user || user.status === "inactive") {
+      throw new AppError(
+        "Usuário não encontrado ou conta inativa.",
+        404,
+        "USER_NOT_FOUND",
+      );
+    }
+
+    const variants = AuthUtils.getWaIdVariants(rawWaId);
+    const targetWaId = variants[0];
+
+    if (!targetWaId || targetWaId.length < 8) {
+      throw new AppError("Número de WhatsApp inválido.", 400, "INVALID_PHONE");
+    }
+
+    const existingUser = await this.userRepository.find({
+      wa_id: { $in: variants },
+    });
+
+    if (
+      existingUser &&
+      existingUser.isNumberVerified &&
+      existingUser._id.toString() !== userId
+    ) {
+      throw new AppError(
+        "Este número de WhatsApp já foi validado em outra conta da Senpai.",
+        409,
+        "PHONE_ALREADY_VERIFIED",
+      );
+    }
+
+    await this.otpService.verifyWhatsappOtp(targetWaId, code);
+
+    const updated = await this.userRepository.update(
+      { _id: userObjectId },
+      { wa_id: targetWaId, isNumberVerified: true },
+    );
+
+    if (!updated) {
+      throw new AppError(
+        "Não foi possível confirmar o número de WhatsApp. Tente novamente.",
+        500,
+        "UPDATE_FAILED",
+      );
+    }
+
+    await this.invalidateProfile(userId, user.userName);
+
+    return {
+      success: true,
+      message: "Número de WhatsApp verificado com sucesso!",
+    };
   }
 }

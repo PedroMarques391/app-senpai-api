@@ -13,7 +13,11 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
       schema: {
         querystring: uploadSignatureQuerySchema,
       },
-      preHandler: [app.checkStorageQuota, app.requireVerifiedEmail],
+      preHandler: [
+        app.checkStorageQuota,
+        app.requireVerifiedEmail,
+        app.requireVerifiedNumber,
+      ],
     },
     async (request, reply) => {
       const { userName } = request.user;

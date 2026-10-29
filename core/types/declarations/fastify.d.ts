@@ -23,6 +23,10 @@ declare module "fastify" {
       req: FastifyRequest,
       reply: FastifyReply,
     ) => Promise<void>;
+    requireVerifiedNumber: (
+      req: FastifyRequest,
+      reply: FastifyReply,
+    ) => Promise<void>;
     checkPackCreationQuota: (
       req: FastifyRequest,
       reply: FastifyReply,

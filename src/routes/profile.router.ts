@@ -9,7 +9,6 @@ import z from "zod";
 
 export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
   const profileService = ServiceFactory.getProfileService(app.redis);
-  const otpService = ServiceFactory.getOtpService(app.redis);
   const followsService = ServiceFactory.getFollowsService(app.redis);
 
   app.get("/", async (request, reply) => {
@@ -183,7 +182,10 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (request, reply) => {
       const { email } = request.body;
-      const result = await otpService.generateAndSendEmailOtp(email);
+      const result = await profileService.sendEmailVerification(
+        request.user._id,
+        email,
+      );
 
       if (!result.success) {
         return reply.status(403).send(result);
@@ -210,11 +212,77 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (request, reply) => {
       const { email, code } = request.body;
-      const result = await otpService.verifyEmailOtp(email, code);
-
-      await profileService.invalidateProfile(
+      const result = await profileService.verifyEmail(
         request.user._id,
-        request.user.userName,
+        email,
+        code,
+      );
+
+      return reply.status(200).send(result);
+    },
+  );
+
+  app.post(
+    "/phone/code/send",
+    {
+      schema: {
+        body: z.object({
+          wa_id: z.string().trim().min(8).optional(),
+        }),
+      },
+    },
+    async (request, reply) => {
+      const waId = request.body?.wa_id || request.user.wa_id;
+      if (!waId) {
+        return reply.status(400).send({
+          success: false,
+          message: "Número de WhatsApp não informado.",
+        });
+      }
+
+      const result = await profileService.sendPhoneVerification(
+        request.user._id,
+        waId,
+      );
+
+      if (!result.success) {
+        return reply.status(403).send(result);
+      }
+
+      return reply.status(200).send({
+        success: true,
+        message: "Código enviado para o seu WhatsApp",
+        expiresIn: 300,
+        retryAfter: 60,
+      });
+    },
+  );
+
+  app.post(
+    "/phone/code/verify",
+    {
+      schema: {
+        body: z.object({
+          wa_id: z.string().trim().min(8).optional(),
+          code: z.string().length(6),
+        }),
+      },
+    },
+    async (request, reply) => {
+      const waId = request.body?.wa_id || request.user.wa_id;
+      const { code } = request.body;
+
+      if (!waId) {
+        return reply.status(400).send({
+          success: false,
+          message: "Número de WhatsApp não informado.",
+        });
+      }
+
+      const result = await profileService.verifyPhone(
+        request.user._id,
+        waId,
+        code,
       );
 
       return reply.status(200).send(result);

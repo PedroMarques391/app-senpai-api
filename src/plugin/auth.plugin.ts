@@ -90,6 +90,30 @@ async function authPlugin(fastify: FastifyInstance) {
     },
   );
 
+  fastify.decorate(
+    "requireVerifiedNumber",
+    async function (request: FastifyRequest, reply: FastifyReply) {
+      if (!request.user) {
+        return reply.status(401).send({
+          message:
+            "Sua sessão expirou ou é inválida. Por favor, faça login novamente.",
+          success: false,
+        });
+      }
+
+      const profileService = ServiceFactory.getProfileService(fastify.redis);
+      const profile = await profileService.getProfile(request.user._id);
+
+      if (!profile?.isNumberVerified) {
+        return reply.status(403).send({
+          success: false,
+          code: "NUMBER_NOT_VERIFIED",
+          message:
+            "Verifique seu número de WhatsApp para criar figurinhas e packs.",
+        });
+      }
+    },
+  );
 }
 
 export default fp(authPlugin);

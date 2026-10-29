@@ -52,7 +52,11 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post(
     "/:packId",
     {
-      preHandler: [app.checkStickerCreationQuota, app.requireVerifiedEmail],
+      preHandler: [
+        app.checkStickerCreationQuota,
+        app.requireVerifiedEmail,
+        app.requireVerifiedNumber,
+      ],
       schema: {
         body: createStickerDtoSchema,
         params: z.object({ packId: z.string() }),
