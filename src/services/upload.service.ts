@@ -1,87 +1,65 @@
-import { UploadError } from "@/errors";
-import type { UploadSignatureResponse } from "@/types";
-import { v2 as cloudinary } from "cloudinary";
+import { AppError } from "@/errors";
+import type { StorageProvider } from "@/types";
+
+export interface PresignedUploadResponse {
+  uploadUrl: string;
+  key: string;
+  publicUrl: string;
+  expiresIn: number;
+}
 
 export class UploadService {
-  async delete(publicId: string): Promise<unknown> {
-    let result = await cloudinary.uploader.destroy(publicId, {
-      resource_type: "image",
-    });
+  constructor(private readonly storageProvider: StorageProvider) {}
 
-    if (result.result === "not found") {
-      result = await cloudinary.uploader.destroy(publicId, {
-        resource_type: "video",
-      });
+  async delete(key: string): Promise<{ success: boolean; message: string }> {
+    if (!key) {
+      throw new AppError("Chave do arquivo não informada.", 400, "INVALID_FILE_KEY");
     }
 
-    if (result.result !== "ok") {
-      throw new UploadError(
-        "Não foi possível excluir o arquivo. Tente novamente.",
-        "DELETE_FAILED",
-        400,
-      );
-    }
-    return result;
+    await this.storageProvider.deleteFile(key);
+    return { success: true, message: "Arquivo excluído com sucesso." };
   }
 
-  async deleteQuietly(publicId: string): Promise<boolean> {
-    try {
-      let result = await cloudinary.uploader.destroy(publicId, {
-        resource_type: "image",
-      });
-      if (result.result === "not found") {
-        result = await cloudinary.uploader.destroy(publicId, {
-          resource_type: "video",
-        });
-      }
-      return result.result === "ok" || result.result === "not found";
-    } catch {
-      return false;
-    }
+  async deleteQuietly(key: string): Promise<boolean> {
+    return this.storageProvider
+      .deleteFile(key)
+      .then(() => true)
+      .catch(() => false);
   }
 
-  async deleteManyQuietly(publicIds: string[]): Promise<void> {
-    if (publicIds.length === 0) return;
-    await Promise.allSettled(
-      publicIds.map((publicId) => this.deleteQuietly(publicId)),
-    );
+  async deleteManyQuietly(keys: string[]): Promise<void> {
+    if (keys.length === 0) return;
+    await Promise.allSettled(keys.map((key) => this.deleteQuietly(key)));
   }
 
-  generateSignature(
+  async generatePresignedUrl(
     folderPath: string,
     filename: string,
-  ): UploadSignatureResponse {
-    const apiSecret = process.env.CLOUDINARY_API_SECRET;
-    const apiKey = process.env.CLOUDINARY_API_KEY;
-    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-
-    if (!apiSecret || !apiKey || !cloudName) {
-      throw new UploadError(
-        "Configurações do Cloudinary ausentes no servidor",
-        "CLOUDINARY_CONFIG_MISSING",
-        500,
+    contentType = "image/webp",
+  ): Promise<PresignedUploadResponse> {
+    if (!folderPath || !filename) {
+      throw new AppError(
+        "Parâmetros de upload inválidos.",
+        400,
+        "INVALID_UPLOAD_PARAMS",
       );
     }
 
-    const timestamp = Math.round(Date.now() / 1000);
-    const paramsToSign = {
-      folder: folderPath,
-      public_id: filename,
-      timestamp,
-    };
+    const key = `${folderPath}/${filename}`;
+    const expiresIn = 300;
 
-    const signature = cloudinary.utils.api_sign_request(
-      paramsToSign,
-      apiSecret,
+    const uploadUrl = await this.storageProvider.getPresignedUploadUrl(
+      key,
+      contentType,
+      expiresIn,
     );
+    const publicUrl = this.storageProvider.getPublicUrl(key);
 
     return {
-      signature,
-      timestamp,
-      api_key: apiKey,
-      cloud_name: cloudName,
-      folder: folderPath,
-      public_id: filename,
+      uploadUrl,
+      key,
+      publicUrl,
+      expiresIn,
     };
   }
 }

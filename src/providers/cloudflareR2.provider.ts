@@ -5,6 +5,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export class CloudFlareR2Provider implements StorageProvider {
   private readonly accessKeyId = process.env.R2_ACCESS_KEY_ID;
@@ -36,6 +37,8 @@ export class CloudFlareR2Provider implements StorageProvider {
         Body: file as StorageBody,
         ContentType: options?.contentType,
         Metadata: options?.metadata,
+        CacheControl:
+          options?.cacheControl ?? "public, max-age=31536000, immutable",
       }),
     );
   }
@@ -61,4 +64,21 @@ export class CloudFlareR2Provider implements StorageProvider {
   getPublicUrl(key: string): string {
     return `${this.endpoint}/${this.bucketName}/${key}`;
   }
+
+  async getPresignedUploadUrl(
+    key: string,
+    contentType?: string,
+    expiresInSeconds = 300,
+  ): Promise<string> {
+    const command = new PutObjectCommand({
+      Bucket: this.bucketName,
+      Key: key,
+      ContentType: contentType,
+    });
+
+    return getSignedUrl(this.client, command, {
+      expiresIn: expiresInSeconds,
+    });
+  }
 }
+

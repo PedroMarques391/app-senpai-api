@@ -1,4 +1,5 @@
-import { uploadSignatureQuerySchema } from "@/dtos";
+import { uploadPresignedQuerySchema } from "@/dtos";
+import { AppError, VerifyOwnershipError } from "@/errors";
 import { ServiceFactory } from "@/factories";
 import { UploadUtils } from "@/utils";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
@@ -8,10 +9,10 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
   const uploadService = ServiceFactory.getUploadService();
 
   app.get(
-    "/signature",
+    "/presigned-url",
     {
       schema: {
-        querystring: uploadSignatureQuerySchema,
+        querystring: uploadPresignedQuerySchema,
       },
       preHandler: [
         app.checkStorageQuota,
@@ -22,12 +23,11 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
     async (request, reply) => {
       const { userName } = request.user;
       if (!userName) {
-        return reply.status(401).send({
-          success: false,
-          code: "USER_NAME_REQUIRED",
-          message:
-            "Para realizar o upload é necessário ter um nome de usuário, por favor atualize seu perfil.",
-        });
+        throw new AppError(
+          "Para realizar o upload é necessário ter um nome de usuário, por favor atualize seu perfil.",
+          401,
+          "USER_NAME_REQUIRED",
+        );
       }
 
       const { folderPath, filename } = UploadUtils.generateMetadata(
@@ -35,15 +35,17 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
         request.query.folder,
       );
 
-      const signatureData = uploadService.generateSignature(
+      const presignedData = await uploadService.generatePresignedUrl(
         folderPath,
         filename,
       );
 
       return reply.status(200).send({
         success: true,
-        ...signatureData,
-        data: signatureData,
+        ...presignedData,
+        upload_url: presignedData.uploadUrl,
+        public_id: presignedData.key,
+        data: presignedData,
       });
     },
   );
@@ -60,22 +62,31 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
 
   app.delete(
     "/",
-    { schema: { querystring: z.object({ public_id: z.string() }) } },
+    {
+      schema: {
+        querystring: z.object({
+          public_id: z.string().optional(),
+          key: z.string().optional(),
+        }),
+      },
+    },
     async (request, reply) => {
-      if (
-        !UploadUtils.verifyOwnership(
-          request.query.public_id,
-          request.user.userName,
-        )
-      ) {
-        return reply.status(403).send({
-          success: false,
-          message:
-            "Operação não permitida: você não pode excluir arquivos de outro usuário",
-        });
+      const fileKey = request.query.key || request.query.public_id;
+      if (!fileKey) {
+        throw new AppError(
+          "Parâmetro key ou public_id é obrigatório.",
+          400,
+          "FILE_KEY_REQUIRED",
+        );
       }
 
-      const result = await uploadService.delete(request.query.public_id);
+      if (!UploadUtils.verifyOwnership(fileKey, request.user.userName)) {
+        throw new VerifyOwnershipError(
+          "Operação não permitida: você não pode excluir arquivos de outro usuário",
+        );
+      }
+
+      const result = await uploadService.delete(fileKey);
       return reply.status(200).send({
         success: true,
         message: "Arquivo excluído com sucesso",
