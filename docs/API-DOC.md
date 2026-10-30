@@ -688,7 +688,7 @@ _(Requer Header `Authorization`)_
   3. **Validação de Cota:** Executa `checkStickerCreationQuota`. Se o usuário Free já tiver criado 3 figurinhas no ciclo diário, retorna `403 QUOTA_EXCEEDED`.
   4. **Validação de Limite Máximo por Pacote (30 figurinhas):** Verifica a quantidade atual de figurinhas pertencentes ao pacote no banco. Se o pacote já contiver 30 figurinhas, a criação é bloqueada com HTTP `400 Bad Request` (`"O pacote já atingiu o limite máximo permitido de 30 figurinhas."`).
   5. **Validação de Propriedade:** Verifica se o usuário autenticado é o proprietário do pacote.
-  6. **Auto-preenchimento do Ícone do Pacote:** Se o pacote estiver sem `icon_url`, a criação da primeira figurinha gera e salva automaticamente o `icon_url` do pacote aplicando a transformação Cloudinary `c_fill,w_256,h_256,f_webp,q_auto` na URL desta figurinha.
+  6. **Processamento Assíncrono via BullMQ & Sharp:** Se `file_key` for informado (chave temporária no Cloudflare R2 obtida via `/upload/presigned-url`), um job é enfileirado na fila `sticker`. O `FileWorker` converte a imagem/animação com Sharp para o padrão WebP estrito (512x512 para stickers e 96x96 com fundo transparente para ícone de pack) e atualiza a figurinha e o pacote diretamente no MongoDB e R2.
   7. **Contador do Usuário e Armazenamento:** Incrementa atômica e persistentemente o contador `stickers_count.static` ou `stickers_count.dynamic` do perfil do usuário e incrementa `storage_used_bytes` caso `size_bytes` seja informado.
   8. **Registro de Cota:** Registra o uso da cota para usuários Free em `creation_quotas`.
   9. **Invalidação Reativa de Cache:** Limpa os caches de figurinhas (`stickers:pack:<packId>`), do pacote (`pack:<packId>`), listagens (`pack:list:*`), pacotes do usuário (`pack:user:<userId>`) e do perfil do usuário (`profile:<userId>`), garantindo sincronização instantânea dos contadores na interface do app.
@@ -697,8 +697,9 @@ _(Requer Header `Authorization`)_
   | :--- | :--- | :--- | :--- | :--- | :--- |
   | `name` | `z.string()` | `String` | Sim | — | Nome da figurinha. |
   | `author` | `z.string()` | `String` | Sim | — | Autor da figurinha. |
-  | `cloudinary_id` | `z.string()` | `String` | Sim | — | Identificador do asset no Cloudinary. |
-  | `sticker_url` | `z.url()` | `String` | Sim | URL válida | URL final da imagem/animação. |
+  | `file_key` | `z.string().optional()` | `String?` | Recomendado | — | Chave do arquivo temporário no Cloudflare R2 (para conversão assíncrona). |
+  | `cloudinary_id` | `z.string().optional()` | `String?` | Não | — | Identificador legado no Cloudinary (retrocompatibilidade). |
+  | `sticker_url` | `z.url()` | `String` | Sim | URL válida | URL da imagem/animação no R2. |
   | `emojis` | `z.array(z.string())` | `List<String>?` | Não | Max 3 emojis / default `[]` | Emojis associados. |
   | `type` | `z.enum(["dynamic", "static"])` | `String` | Sim | `"dynamic"` ou `"static"` | Tipo da figurinha. |
   | `size_bytes` | `z.number().nonnegative()` | `int?` | Não | `>= 0` / default `0` | Tamanho do arquivo em bytes. |
@@ -1097,9 +1098,9 @@ _(Todas as rotas exigem Header `Authorization`)_
 
 _(Requer Header `Authorization`)_
 
-#### `GET /upload/signature?folder=...` (Recomendado - Signed Direct Upload)
+#### `GET /upload/presigned-url` (Presigned URL Direct Upload)
 
-- **Descrição:** Gera uma assinatura criptográfica temporária autorizada para que o aplicativo cliente (Flutter) envie o arquivo diretamente para os servidores do Cloudinary, sem intermediar binários na API Senpai (economizando 100% de banda de upload no servidor e evitando gargalos de conexões).
+- **Descrição:** Gera uma URL pré-assinada temporária (Cloudflare R2 via AWS S3 SDK) autorizada para que o aplicativo cliente (Flutter) envie o arquivo binário diretamente via requisição HTTP `PUT`, sem intermediar binários na API Senpai (economizando 100% de CPU/banda no servidor principal). O processamento subsequente (conversão em WebP 512x512 ou 96x96 com Sharp) ocorre em segundo plano via worker assíncrono.
 - **Query Params:**
   - `folder`: `"sticker"` (default), `"banner"`, `"avatar"`.
 - **Validação de Cota & Verificação:** Possui os preHandlers `app.checkStorageQuota`, `app.requireVerifiedEmail` e `app.requireVerifiedNumber`. Se o usuário já tiver atingido a capacidade máxima de armazenamento de sua conta ou se não tiver confirmado e-mail/WhatsApp, a requisição é barrada com HTTP `403 Forbidden`.
@@ -1108,34 +1109,28 @@ _(Requer Header `Authorization`)_
     ```json
     {
       "success": true,
-      "signature": "1a2b3c4d5e6f...",
-      "timestamp": 1728750000,
-      "api_key": "123456789012345",
-      "cloud_name": "senpai-cloud",
-      "folder": "sticker/pedro",
-      "public_id": "pedro_1728750000_a1b2c3d4",
+      "uploadUrl": "https://<account-id>.r2.cloudflarestorage.com/<bucket>/sticker/<userName>/<filename>?...",
+      "key": "sticker/<userName>/<filename>",
+      "publicUrl": "https://<account-id>.r2.cloudflarestorage.com/<bucket>/sticker/<userName>/<filename>",
+      "expiresIn": 300,
+      "upload_url": "https://<account-id>.r2.cloudflarestorage.com/...",
+      "public_id": "sticker/<userName>/<filename>",
       "data": {
-        "signature": "1a2b3c4d5e6f...",
-        "timestamp": 1728750000,
-        "api_key": "123456789012345",
-        "cloud_name": "senpai-cloud",
-        "folder": "sticker/pedro",
-        "public_id": "pedro_1728750000_a1b2c3d4"
+        "uploadUrl": "https://<account-id>.r2.cloudflarestorage.com/...",
+        "key": "sticker/<userName>/<filename>",
+        "publicUrl": "https://<account-id>.r2.cloudflarestorage.com/...",
+        "expiresIn": 300
       }
     }
     ```
 - **Como utilizar no Flutter/Client:**
-  O app envia um `POST multipart/form-data` para `https://api.cloudinary.com/v1_1/<cloud_name>/image/upload` contendo:
-  - `file`: Arquivo local da imagem.
-  - `api_key`: `api_key` recebida.
-  - `timestamp`: `timestamp` recebido.
-  - `signature`: `signature` recebida.
-  - `folder`: `folder` recebido.
-  - `public_id`: `public_id` recebido.
+  O app envia um `PUT` direto para a `uploadUrl` com o binário no body:
+  - Header: `Content-Type: image/webp` (ou o MIME correspondente).
+  - Body: Bytes crus da imagem (`Uint8List`).
 
 #### `POST /upload/` (Descontinuado / Upgrade Obrigatório)
 
-- **Descrição:** Endpoint legado de upload multipart direto pelo servidor. Com a migração para o envio direto via Signed URL (`GET /upload/signature`), esta rota foi **descontinuada**. Requisições enviadas por versões legadas do aplicativo receberão uma resposta de erro instruindo o usuário a atualizar o app na Google Play Store ou App Store.
+- **Descrição:** Endpoint legado de upload multipart direto pelo servidor. Com a migração para o envio direto via Presigned URL (`GET /upload/presigned-url`), esta rota foi **descontinuada**. Requisições enviadas por versões legadas do aplicativo receberão uma resposta de erro instruindo o usuário a atualizar o app na Google Play Store ou App Store.
 - **Respostas:**
   - `426 Upgrade Required`:
     ```json
@@ -1147,9 +1142,9 @@ _(Requer Header `Authorization`)_
     }
     ```
 
-#### `DELETE /upload/?public_id=...`
+#### `DELETE /upload/?key=...` ou `?public_id=...`
 
-- **Descrição:** Exclui um asset do Cloudinary. Valida com rigor se o `public_id` contém o `userName` do usuário requisitante para prevenir deleção de arquivos de outros usuários. Suporta exclusão transparente tanto de imagens quanto de vídeos com fallback automático de tipo de recurso (`image` / `video`) na camada resiliente do `UploadService`.
+- **Descrição:** Exclui um arquivo do Cloudflare R2. Valida com rigor se a `key` contém o `userName` do usuário autenticado (`UploadUtils.verifyOwnership`) para prevenir deleção de arquivos de outros usuários. Suporta tanto o parâmetro `key` quanto `public_id` (retrocompatibilidade). Retorna erro amigável formatado por `errorPlugin` via `AppError`.
 
 ---
 
