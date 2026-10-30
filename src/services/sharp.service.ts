@@ -54,4 +54,28 @@ export class SharpService {
       })
       .toBuffer();
   }
+
+  async convertToAvatar(buffer: Buffer): Promise<Buffer> {
+    return sharp(buffer)
+      .resize(256, 256, {
+        fit: "cover",
+      })
+      .webp({
+        quality: 85,
+        effort: 4,
+      })
+      .toBuffer();
+  }
+
+  async convertToBanner(buffer: Buffer): Promise<Buffer> {
+    return sharp(buffer)
+      .resize(1080, 360, {
+        fit: "cover",
+      })
+      .webp({
+        quality: 85,
+        effort: 4,
+      })
+      .toBuffer();
+  }
 }
