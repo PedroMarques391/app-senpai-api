@@ -256,6 +256,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@aws-sdk/s3-request-presigner@npm:^3.1160.0":
+  version: 3.1160.0
+  resolution: "@aws-sdk/s3-request-presigner@npm:3.1160.0"
+  dependencies:
+    "@aws-sdk/core": "npm:^3.979.0"
+    "@aws-sdk/signature-v4-multi-region": "npm:^3.996.50"
+    "@aws-sdk/types": "npm:^3.975.0"
+    "@smithy/core": "npm:^3.37.0"
+    "@smithy/types": "npm:^4.19.0"
+    tslib: "npm:^2.6.2"
+  checksum: 10c0/06171733aa271434f9ecaa6356847f91ba1f3aee7189bbe6281795fe8d11b859f9c784a73d344813db87082b4b5f083a610eba064bd8e3d6b6d964f8f2a2e184
+  languageName: node
+  linkType: hard
+
 "@aws-sdk/signature-v4-multi-region@npm:^3.996.50":
   version: 3.996.50
   resolution: "@aws-sdk/signature-v4-multi-region@npm:3.996.50"
@@ -1784,15 +1798,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cloudinary@npm:^2.10.0":
-  version: 2.10.0
-  resolution: "cloudinary@npm:2.10.0"
-  dependencies:
-    lodash: "npm:^4.17.23"
-  checksum: 10c0/88a6c93ee43427657f82225f9970f5ea9b227787f8c02686b9ff39e9cd434fdb38b7553b8cef65ae447a06c879d623a3bbf5282ae51ce8b72eab71a7e61da1ef
-  languageName: node
-  linkType: hard
-
 "cluster-key-slot@npm:1.1.2":
   version: 1.1.2
   resolution: "cluster-key-slot@npm:1.1.2"
@@ -2498,13 +2503,6 @@ __metadata:
   version: 0.2.5
   resolution: "load-tsconfig@npm:0.2.5"
   checksum: 10c0/bf2823dd26389d3497b6567f07435c5a7a58d9df82e879b0b3892f87d8db26900f84c85bc329ef41c0540c0d6a448d1c23ddc64a80f3ff6838b940f3915a3fcb
-  languageName: node
-  linkType: hard
-
-"lodash@npm:^4.17.23":
-  version: 4.18.1
-  resolution: "lodash@npm:4.18.1"
-  checksum: 10c0/757228fc68805c59789e82185135cf85f05d0b2d3d54631d680ca79ec21944ec8314d4533639a14b8bcfbd97a517e78960933041a5af17ecb693ec6eecb99a27
   languageName: node
   linkType: hard
 
@@ -3244,6 +3242,7 @@ __metadata:
   dependencies:
     "@ai-sdk/google": "npm:^4.0.87"
     "@aws-sdk/client-s3": "npm:^3.1160.0"
+    "@aws-sdk/s3-request-presigner": "npm:^3.1160.0"
     "@fastify/cors": "npm:^11.3.0"
     "@fastify/jwt": "npm:^10.0.0"
     "@fastify/multipart": "npm:^10.1.0"
@@ -3255,7 +3254,6 @@ __metadata:
     ai: "npm:^7.0.126"
     bcrypt: "npm:^6.0.0"
     bullmq: "npm:^6.3.4"
-    cloudinary: "npm:^2.10.0"
     fastify: "npm:^5.6.1"
     fastify-plugin: "npm:^5.1.0"
     fastify-raw-body: "npm:^6.0.1"
