@@ -97,8 +97,8 @@ export const userSchema = z.object({
   last_login: z.coerce.date().default(() => new Date()),
   status: userStatusEnum.default("active"),
   preferred_payment: z.string().optional(),
-  avatar_url: z.url().optional(),
-  banner_url: z.url().optional(),
+  avatar_url: z.url().optional().nullable(),
+  banner_url: z.url().optional().nullable(),
   subscription: z
     .preprocess((val) => val ?? { type: "FREE" }, userSubscriptionSchema)
     .default({ type: "FREE" }),
