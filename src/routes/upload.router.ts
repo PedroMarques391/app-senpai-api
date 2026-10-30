@@ -44,6 +44,8 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
         success: true,
         ...presignedData,
         upload_url: presignedData.uploadUrl,
+        public_url: presignedData.publicUrl,
+        secure_url: presignedData.publicUrl,
         public_id: presignedData.key,
         data: presignedData,
       });
