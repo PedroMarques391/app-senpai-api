@@ -24,13 +24,13 @@ import type {
 } from "@/repositories";
 import type { PaginatedResult, PaginationOptions } from "@/types";
 import {
-  CloudinaryUtils,
   MongoUtils,
   PackModerationUtils,
   PermissionUtils,
   UserUtils,
 } from "@/utils";
 import type { ObjectId } from "mongodb";
+import type { StickerQueue } from "@/queues";
 import type { UploadService } from "./upload.service";
 
 export class PackService {
@@ -39,6 +39,7 @@ export class PackService {
     private readonly stickerRepository: StickerRepository,
     private readonly userRepository: UserRepository,
     private readonly uploadService: UploadService,
+    private readonly stickerQueue?: StickerQueue,
   ) {}
 
   async createPack(
@@ -83,11 +84,10 @@ export class PackService {
       !iconUrlToSave &&
       stickers &&
       stickers.length > 0 &&
-      stickers[0]?.sticker_url
+      stickers[0]?.sticker_url &&
+      !stickers[0]?.file_key
     ) {
-      iconUrlToSave = CloudinaryUtils.transformUrlForPackIcon(
-        stickers[0].sticker_url,
-      );
+      iconUrlToSave = stickers[0].sticker_url;
     }
 
     const pack = await this.packRepository.create({
@@ -119,7 +119,7 @@ export class PackService {
         (s: CreateStickerDto) => s.type === "dynamic",
       ).length;
 
-      await Promise.all(
+      const createdStickers = await Promise.all(
         stickers.map((stickerData: CreateStickerDto) =>
           this.stickerRepository.create({
             ...stickerData,
@@ -132,6 +132,22 @@ export class PackService {
           }),
         ),
       );
+
+      if (this.stickerQueue) {
+        await Promise.allSettled(
+          createdStickers
+            .filter((s): s is Sticker => Boolean(s && s.file_key))
+            .map((s) =>
+              this.stickerQueue!.addJob("convert-sticker", {
+                type: s.type === "dynamic" ? "animated" : "static",
+                tempKey: s.file_key,
+                packId: pack._id.toString(),
+                stickerId: s._id.toString(),
+                userId: userObjectId.toString(),
+              }),
+            ),
+        );
+      }
 
       if (staticCount > 0) {
         await this.userRepository.incrementStickersCount(
@@ -305,9 +321,15 @@ export class PackService {
 
     const result = await this.packRepository.delete(packObjectId, userObjectId);
     if (!result) {
-      throw new Error(
+      throw new AppError(
         "Não foi possível excluir o pacote de figurinhas. Tente novamente em instantes.",
+        500,
+        "PACK_DELETE_FAILED",
       );
+    }
+
+    if (existingPack.icon_file_key) {
+      await this.uploadService.deleteQuietly(existingPack.icon_file_key);
     }
 
     await this.releasePackResources(userObjectId, packStickers);
@@ -355,15 +377,15 @@ export class PackService {
       );
     }
 
-    const cloudinaryIds = packStickers
-      .map((sticker) => sticker.cloudinary_id)
+    const fileKeysToDelete = packStickers
+      .map((sticker) => sticker.file_key || sticker.cloudinary_id)
       .filter((id): id is string => Boolean(id));
 
-    if (cloudinaryIds.length > 0) {
-      await this.uploadService.deleteManyQuietly(cloudinaryIds);
+    if (fileKeysToDelete.length > 0) {
+      await this.uploadService.deleteManyQuietly(fileKeysToDelete);
     }
 
-    return cloudinaryIds;
+    return fileKeysToDelete;
   }
 
   async incrementDownloadsCount(id: string): Promise<boolean> {

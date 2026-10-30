@@ -1,18 +1,14 @@
 import { MAX_STICKERS_PER_PACK, MIN_STICKERS_PER_PACK } from "@/constants";
 import type { CreateStickerDto, UpdateStickerDto } from "@/dtos";
-import { PackRulesError } from "@/errors";
+import { AppError, PackNotFoundError, PackRulesError } from "@/errors";
 import type { Sticker } from "@/models";
+import type { StickerQueue } from "@/queues";
 import type {
   PackRepository,
   StickerRepository,
   UserRepository,
 } from "@/repositories";
-import {
-  CloudinaryUtils,
-  MongoUtils,
-  PermissionUtils,
-  UserUtils,
-} from "@/utils";
+import { MongoUtils, PermissionUtils, UserUtils } from "@/utils";
 import type { UploadService } from "./upload.service";
 
 export class StickerService {
@@ -21,6 +17,7 @@ export class StickerService {
     private readonly packRepository: PackRepository,
     private readonly userRepository: UserRepository,
     private readonly uploadService: UploadService,
+    private readonly stickerQueue?: StickerQueue,
   ) {}
 
   async createSticker(
@@ -36,7 +33,7 @@ export class StickerService {
 
     const pack = await this.packRepository.findById(packObjectId);
     if (!pack) {
-      throw new Error("Pacote não encontrado");
+      throw new PackNotFoundError();
     }
 
     PermissionUtils.verifyOwnership(pack.user_id, userObjectId, "pacote");
@@ -75,8 +72,10 @@ export class StickerService {
       user_id: userObjectId,
     });
     if (!sticker) {
-      throw new Error(
+      throw new AppError(
         "Não foi possível criar a figurinha agora. Tente novamente em instantes.",
+        500,
+        "STICKER_CREATION_FAILED",
       );
     }
 
@@ -96,12 +95,18 @@ export class StickerService {
       );
     }
 
+    if (sticker.file_key && this.stickerQueue) {
+      await this.stickerQueue.addJob("convert-sticker", {
+        type: sticker.type === "dynamic" ? "animated" : "static",
+        tempKey: sticker.file_key,
+        packId: packObjectId.toString(),
+        stickerId: sticker._id.toString(),
+        userId: userObjectId.toString(),
+      });
+    }
     if (!pack.icon_url && sticker.sticker_url) {
-      const transformedUrl = CloudinaryUtils.transformUrlForPackIcon(
-        sticker.sticker_url,
-      );
       await this.packRepository.update(packObjectId, userObjectId, {
-        icon_url: transformedUrl,
+        icon_url: sticker.sticker_url,
       });
     }
 
@@ -268,8 +273,10 @@ export class StickerService {
       );
     }
 
-    if (existingSticker.cloudinary_id) {
-      await this.uploadService.deleteQuietly(existingSticker.cloudinary_id);
+    const fileIdentifier =
+      existingSticker.file_key || existingSticker.cloudinary_id;
+    if (fileIdentifier) {
+      await this.uploadService.deleteQuietly(fileIdentifier);
     }
 
     return existingSticker;

@@ -1,6 +1,5 @@
 import {
   BullMQInitializer,
-  CloudinaryInitializer,
   MailerInitializer,
   MongoInitializer,
 } from "@/init";
@@ -140,7 +139,6 @@ server.get("/", async (_request, reply) => {
 
 const bootstrap = async () => {
   try {
-    CloudinaryInitializer.init();
     BullMQInitializer.setLogger(server.log);
     await MongoInitializer.init(server.log);
     MailerInitializer.init(server.log);

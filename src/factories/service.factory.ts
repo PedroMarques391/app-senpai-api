@@ -34,8 +34,10 @@ import {
   TermsService,
   UploadService,
   UserService,
+  SharpService,
 } from "@/services";
 
+import { CloudFlareR2Provider } from "@/providers";
 import { BillingService } from "@/services/billing.service";
 import type { JWT as FastifyJWT } from "@fastify/jwt";
 import type { RedisClientType } from "redis";
@@ -63,6 +65,22 @@ export class ServiceFactory {
   private static groupService: GroupService;
   private static packReportService: PackReportService;
   private static followsService: FollowsService;
+  private static cloudflareR2Provider: CloudFlareR2Provider;
+  private static sharpService: SharpService;
+
+  static getCloudFlareR2Provider(): CloudFlareR2Provider {
+    if (!this.cloudflareR2Provider) {
+      this.cloudflareR2Provider = new CloudFlareR2Provider();
+    }
+    return this.cloudflareR2Provider;
+  }
+
+  static getSharpService(): SharpService {
+    if (!this.sharpService) {
+      this.sharpService = new SharpService();
+    }
+    return this.sharpService;
+  }
 
   static getInventoryService(): InventoryService {
     if (!this.inventoryService) {
@@ -78,6 +96,7 @@ export class ServiceFactory {
         new StickerRepository(),
         new UserRepository(),
         this.getUploadService(),
+        QueueFactory.getStickerQueue(),
       );
     }
     return this.packService;
@@ -100,6 +119,7 @@ export class ServiceFactory {
         new PackRepository(),
         new UserRepository(),
         this.getUploadService(),
+        QueueFactory.getStickerQueue(),
       );
     }
     return this.stickerService;
@@ -107,7 +127,7 @@ export class ServiceFactory {
 
   static getUploadService(): UploadService {
     if (!this.uploadService) {
-      this.uploadService = new UploadService();
+      this.uploadService = new UploadService(this.getCloudFlareR2Provider());
     }
     return this.uploadService;
   }

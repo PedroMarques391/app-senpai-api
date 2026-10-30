@@ -326,9 +326,9 @@ export class PackReportService {
         throw new PackModerationConflictError();
       }
 
-      let cloudinaryIds: string[] = [];
+      let fileKeys: string[] = [];
       if (this.packService) {
-        cloudinaryIds = await this.packService.releasePackResources(
+        fileKeys = await this.packService.releasePackResources(
           currentPack.user_id,
           stickers,
         );
@@ -363,7 +363,8 @@ export class PackReportService {
           reports_count: currentPack.reports_count,
           report_reasons: existingReports.map((r) => r.reason),
           stickers_count: stickers.length,
-          cloudinary_ids: cloudinaryIds,
+          cloudinary_ids: fileKeys,
+          file_keys: fileKeys,
           moderator_id: MongoUtils.toObjectId(
             actorUser._id,
             "ID do moderador inválido",
@@ -432,6 +433,7 @@ export class PackReportService {
         report_reasons: existingReports.map((r) => r.reason),
         stickers_count: currentPack.stickers_count,
         cloudinary_ids: [],
+        file_keys: [],
         moderator_id: MongoUtils.toObjectId(
           actorUser._id,
           "ID do moderador inválido",
