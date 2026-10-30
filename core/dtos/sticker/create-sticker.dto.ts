@@ -6,6 +6,7 @@ export const createStickerDtoSchema = stickerSchema
     name: true,
     author: true,
     cloudinary_id: true,
+    file_key: true,
     sticker_url: true,
     emojis: true,
     type: true,

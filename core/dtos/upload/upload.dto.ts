@@ -1,9 +1,13 @@
 import { z } from "zod";
 
-export const uploadSignatureQuerySchema = z.object({
+export const uploadPresignedQuerySchema = z.object({
   folder: z.enum(["sticker", "banner", "avatar"]).default("sticker"),
 });
 
-export type UploadSignatureQueryDto = z.infer<
-  typeof uploadSignatureQuerySchema
+export type UploadPresignedQueryDto = z.infer<
+  typeof uploadPresignedQuerySchema
 >;
+
+export const uploadSignatureQuerySchema = uploadPresignedQuerySchema;
+export type UploadSignatureQueryDto = UploadPresignedQueryDto;
+

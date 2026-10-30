@@ -22,6 +22,7 @@ export const packModerationLogSchema = z.object({
   report_reasons: z.array(reportReasonEnum).default([]),
   stickers_count: z.number().int().nonnegative().default(0),
   cloudinary_ids: z.array(z.string()).default([]),
+  file_keys: z.array(z.string()).default([]),
   moderator_id: z.instanceof(ObjectId),
   moderator_username: z.string(),
   created_at: z.coerce.date().default(() => new Date()),

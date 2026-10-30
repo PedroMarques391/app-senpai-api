@@ -3,7 +3,6 @@ export * from "./MongoUtils";
 export * from "./PermissionUtils";
 export * from "./UploadUtils";
 export * from "./UserUtils";
-export * from "./CloudinaryUtils";
 export * from "./QuotaUtils";
 export * from "./StorageQuotaUtils";
 export * from "./LevelUtils";

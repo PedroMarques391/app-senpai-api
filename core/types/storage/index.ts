@@ -2,6 +2,7 @@ import type { GetObjectCommandOutput } from "@aws-sdk/client-s3";
 
 export interface UploadFileOptions {
   contentType?: string;
+  cacheControl?: string;
   metadata?: Record<string, string>;
 }
 
@@ -16,4 +17,9 @@ export interface StorageProvider {
   getFile(key: string): Promise<GetObjectCommandOutput>;
   deleteFile(key: string): Promise<void>;
   getPublicUrl(key: string): string;
+  getPresignedUploadUrl(
+    key: string,
+    contentType?: string,
+    expiresInSeconds?: number,
+  ): Promise<string>;
 }

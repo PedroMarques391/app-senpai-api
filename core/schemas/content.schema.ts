@@ -42,6 +42,7 @@ export const bannerContentSchema = baseContentSchema.extend({
   type: z.literal("banner"),
   image_url: z.url(),
   image_cloudinary_id: z.string().optional(),
+  image_file_key: z.string().optional(),
   cta_label: z.string().max(50).optional(),
   cta_link: z.url().optional(),
 });

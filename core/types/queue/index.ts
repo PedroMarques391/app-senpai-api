@@ -30,6 +30,7 @@ export interface StickerJobData {
   type: StickerConversionType;
   fileBuffer?: string;
   fileUrl?: string;
+  tempKey?: string;
   stickerId?: string;
   packId?: string;
   userId?: string;

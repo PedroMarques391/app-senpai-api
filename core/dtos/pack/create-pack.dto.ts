@@ -8,6 +8,7 @@ export const createPackDtoSchema = stickerPackSchema
   .pick({
     pack_name: true,
     icon_url: true,
+    icon_file_key: true,
     is_public: true,
     category: true,
   })

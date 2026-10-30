@@ -49,6 +49,7 @@ export const stickerPackSchema = z.object({
   category: packCategoryEnum.default("other"),
   tags: z.array(z.string().min(2).max(20)).max(10).default([]),
   icon_url: z.url().optional(),
+  icon_file_key: z.string().optional(),
   is_public: z.boolean().default(true),
   reports_count: z.number().default(0),
   moderation_status: packModerationStatusEnum.default("approved"),
