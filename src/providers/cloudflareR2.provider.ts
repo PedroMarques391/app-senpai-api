@@ -62,7 +62,10 @@ export class CloudFlareR2Provider implements StorageProvider {
   }
 
   getPublicUrl(key: string): string {
-    return `${this.endpoint}/${this.bucketName}/${key}`;
+    const baseUrl =
+      process.env.R2_PUBLIC_URL || "https://media.botdosenpai.com.br";
+    const cleanKey = key.startsWith("/") ? key.slice(1) : key;
+    return `${baseUrl.replace(/\/+$/, "")}/${cleanKey}`;
   }
 
   async getPresignedUploadUrl(
@@ -81,4 +84,3 @@ export class CloudFlareR2Provider implements StorageProvider {
     });
   }
 }
-
