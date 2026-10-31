@@ -1,7 +1,7 @@
 import { ServiceFactory } from "@/factories";
 import { BullMQInitializer, MongoInitializer } from "@/init";
 import { PackRepository, StickerRepository } from "@/repositories";
-import { FileWorker } from "@/workers";
+import { MediaWorker } from "@/workers";
 import http from "node:http";
 import { createClient } from "redis";
 
@@ -13,7 +13,7 @@ async function bootstrap() {
 
     const redisClient = createClient({ url: process.env.REDIS_URL });
     await redisClient.connect();
-    console.log("✅ Redis conectado com sucesso no Worker");
+    console.log("Redis conectado com sucesso no Worker");
 
     const cacheService = ServiceFactory.getCacheService(redisClient as any);
     const storageProvider = ServiceFactory.getCloudFlareR2Provider();
@@ -21,7 +21,7 @@ async function bootstrap() {
     const stickerRepository = new StickerRepository();
     const packRepository = new PackRepository();
 
-    const fileWorker = new FileWorker(
+    const mediaWorker = new MediaWorker(
       storageProvider,
       sharpService,
       stickerRepository,
@@ -29,7 +29,7 @@ async function bootstrap() {
       cacheService,
     );
 
-    console.log("🚀 Media/File Worker inicializado e pronto para processar filas!");
+    console.log("Media Worker inicializado e pronto para processar filas!");
 
     const port = Number(process.env.PORT);
     const healthServer = http.createServer((_req, res) => {
@@ -38,14 +38,14 @@ async function bootstrap() {
     });
 
     healthServer.listen(port, "0.0.0.0", () => {
-      console.log(`🩺 Healthcheck HTTP ativo na porta ${port}`);
+      console.log(`Healthcheck HTTP ativo na porta ${port}`);
     });
 
     const shutdown = async () => {
-      console.log("🛑 Finalizando Media Worker...");
+      console.log("Finalizando Media Worker...");
       healthServer.close();
-      await fileWorker.close();
-      await redisClient.disconnect();
+      await mediaWorker.close();
+      await redisClient.destroy();
       await BullMQInitializer.disconnect();
       await MongoInitializer.close();
       process.exit(0);
@@ -54,10 +54,9 @@ async function bootstrap() {
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
   } catch (err) {
-    console.error("❌ Falha crítica ao inicializar Media Worker:", err);
+    console.error("Falha crítica ao inicializar Media Worker:", err);
     process.exit(1);
   }
 }
 
 bootstrap();
-

@@ -3,17 +3,17 @@ import { BullMQInitializer } from "@/init";
 import { PackRepository, StickerRepository } from "@/repositories";
 import type { CacheService, SharpService } from "@/services";
 import type {
-  StickerConversionType,
-  StickerJobData,
+  MediaConversionType,
+  MediaJobData,
   StorageProvider,
 } from "@/types";
 import { MongoUtils } from "@/utils";
 import { Job, Worker } from "bullmq";
 import type { FastifyBaseLogger } from "fastify";
 
-export class FileWorker {
-  private worker: Worker<StickerJobData>;
-  private readonly QUEUE_NAME = "sticker";
+export class MediaWorker {
+  private worker: Worker<MediaJobData>;
+  private readonly QUEUE_NAME = "media";
 
   constructor(
     private readonly storageProvider: StorageProvider,
@@ -23,7 +23,7 @@ export class FileWorker {
     private readonly cacheService: CacheService,
     private readonly logger?: FastifyBaseLogger,
   ) {
-    this.worker = new Worker<StickerJobData>(
+    this.worker = new Worker<MediaJobData>(
       this.QUEUE_NAME,
       this.process.bind(this),
       {
@@ -35,7 +35,7 @@ export class FileWorker {
     this.setupListeners();
   }
 
-  private async getBuffer(job: StickerJobData): Promise<Buffer> {
+  private async getBuffer(job: MediaJobData): Promise<Buffer> {
     if (job.fileBuffer) {
       return Buffer.from(job.fileBuffer, "base64");
     }
@@ -50,7 +50,7 @@ export class FileWorker {
   }
 
   private convert(
-    type: StickerConversionType,
+    type: MediaConversionType,
     buffer: Buffer,
   ): Promise<Buffer> {
     switch (type) {
@@ -58,45 +58,64 @@ export class FileWorker {
         return this.sharpService.convertToAnimated(buffer);
       case "pack_icon":
         return this.sharpService.convertToStickerPackIcon(buffer);
+      case "avatar":
+        return this.sharpService.convertToAvatar(buffer);
+      case "banner":
+        return this.sharpService.convertToBanner(buffer);
       default:
         return this.sharpService.convertToStatic(buffer);
     }
   }
 
-  private async process(job: Job<StickerJobData>): Promise<void> {
+  private async process(job: Job<MediaJobData>): Promise<void> {
     const { type, packId, stickerId, userId, destinationPath, tempKey } =
       job.data;
     this.logger?.info(
       { jobId: job.id, type, stickerId, packId },
-      "[FileWorker] Processando conversão",
+      "[MediaWorker] Processando conversão",
     );
 
     const inputBuffer = await this.getBuffer(job.data);
     const finalBuffer = await this.convert(type, inputBuffer);
 
-    const finalKey =
-      destinationPath ??
-      (type === "pack_icon"
-        ? `packs/${packId}/icon.webp`
-        : `stickers/${packId}/${stickerId}.webp`);
+    let finalKey = destinationPath;
+    if (!finalKey) {
+      switch (type) {
+        case "pack_icon":
+          finalKey = `packs/${packId}/icon.webp`;
+          break;
+        case "avatar":
+          finalKey = `avatars/${userId}/avatar.webp`;
+          break;
+        case "banner":
+          finalKey = `banners/${userId}/banner.webp`;
+          break;
+        case "static":
+        case "animated":
+        default:
+          finalKey = `stickers/${packId}/${stickerId}.webp`;
+          break;
+      }
+    }
 
     await this.storageProvider.uploadFile(finalKey, finalBuffer, {
       contentType: "image/webp",
+      cacheControl: "public, max-age=31536000, immutable",
     });
 
     const publicUrl = this.storageProvider.getPublicUrl(finalKey);
 
-    const userObjectId = MongoUtils.toObjectId(userId);
-    const packObjectId = MongoUtils.toObjectId(packId);
+    const userObjectId = userId ? MongoUtils.toObjectId(userId) : undefined;
+    const packObjectId = packId ? MongoUtils.toObjectId(packId) : undefined;
 
-    if (type === "pack_icon") {
+    if (type === "pack_icon" && packObjectId && userObjectId) {
       await this.packRepository.update(packObjectId, userObjectId, {
         icon_url: publicUrl,
         icon_file_key: finalKey,
       });
     }
 
-    if (stickerId) {
+    if (stickerId && userObjectId) {
       await this.stickerRepository.update(
         MongoUtils.toObjectId(stickerId),
         userObjectId,
@@ -108,7 +127,7 @@ export class FileWorker {
       );
     }
 
-    if (packId && type !== "pack_icon") {
+    if (packObjectId && userObjectId && type !== "pack_icon") {
       const pack = await this.packRepository.findById(packObjectId);
       if (pack && !pack.icon_url) {
         const iconBuffer =
@@ -116,6 +135,7 @@ export class FileWorker {
         const iconKey = `packs/${packId}/icon.webp`;
         await this.storageProvider.uploadFile(iconKey, iconBuffer, {
           contentType: "image/webp",
+          cacheControl: "public, max-age=31536000, immutable",
         });
         const iconUrl = this.storageProvider.getPublicUrl(iconKey);
         await this.packRepository.update(packObjectId, userObjectId, {
@@ -129,39 +149,41 @@ export class FileWorker {
       await this.storageProvider.deleteFile(tempKey).catch((err) => {
         this.logger?.warn(
           { tempKey, err: err?.message },
-          "[FileWorker] Falha ao excluir arquivo temporário",
+          "[MediaWorker] Falha ao excluir arquivo temporário",
         );
       });
     }
 
-    await Promise.allSettled([
-      this.cacheService.del(`pack:${packId}`),
-      this.cacheService.del(`stickers:pack:${packId}`),
-      this.cacheService.del(`pack:user:${userId}`),
-    ]);
+    if (packId) {
+      await Promise.allSettled([
+        this.cacheService.del(`pack:${packId}`),
+        this.cacheService.del(`stickers:pack:${packId}`),
+        ...(userId ? [this.cacheService.del(`pack:user:${userId}`)] : []),
+      ]);
+    }
 
     this.logger?.info(
       { jobId: job.id, finalKey, publicUrl },
-      "[FileWorker] Conversão finalizada com sucesso",
+      "[MediaWorker] Conversão finalizada com sucesso",
     );
   }
 
   private setupListeners(): void {
     this.worker.on("ready", () => {
-      this.logger?.info("FileWorker pronto para processar jobs");
+      this.logger?.info("[MediaWorker] Pronto para processar jobs");
     });
 
     this.worker.on("completed", (job) => {
       this.logger?.info(
         { jobId: job.id },
-        `[FileWorker] Job ${job.id} concluído com sucesso`,
+        `[MediaWorker] Job ${job.id} concluído com sucesso`,
       );
     });
 
     this.worker.on("failed", (job, err) => {
       this.logger?.error(
         { jobId: job?.id, err: err.message },
-        `[FileWorker] Job ${job?.id} falhou: ${err.message}`,
+        `[MediaWorker] Job ${job?.id} falhou: ${err.message}`,
       );
     });
   }

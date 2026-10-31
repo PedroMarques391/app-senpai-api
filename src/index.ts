@@ -1,8 +1,4 @@
-import {
-  BullMQInitializer,
-  MailerInitializer,
-  MongoInitializer,
-} from "@/init";
+import { BullMQInitializer, MailerInitializer, MongoInitializer } from "@/init";
 import {
   authPlugin,
   errorPlugin,

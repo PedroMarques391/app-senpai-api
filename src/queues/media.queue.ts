@@ -1,23 +1,23 @@
 import { BullMQInitializer } from "@/init";
-import type { StickerJobData, StickerJobResponse } from "@/types";
+import type { MediaJobData, MediaJobResponse } from "@/types";
 import { Queue, type JobsOptions } from "bullmq";
 
-export class StickerQueue {
-  private readonly queue: Queue<StickerJobData>;
-  private readonly QUEUE_NAME = "sticker";
+export class MediaQueue {
+  private readonly queue: Queue<MediaJobData>;
+  private readonly QUEUE_NAME = "media";
   private readonly CONNECTION = BullMQInitializer.connect();
 
   constructor() {
-    this.queue = new Queue<StickerJobData>(this.QUEUE_NAME, {
+    this.queue = new Queue<MediaJobData>(this.QUEUE_NAME, {
       connection: this.CONNECTION,
     });
   }
 
   async addJob(
     name: string,
-    job: StickerJobData,
+    job: MediaJobData,
     options?: JobsOptions,
-  ): Promise<StickerJobResponse> {
+  ): Promise<MediaJobResponse> {
     const result = await this.queue.add(name, job, {
       attempts: 3,
       backoff: {
