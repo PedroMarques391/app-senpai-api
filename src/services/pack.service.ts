@@ -30,7 +30,7 @@ import {
   UserUtils,
 } from "@/utils";
 import type { ObjectId } from "mongodb";
-import type { StickerQueue } from "@/queues";
+import type { MediaQueue } from "@/queues";
 import type { UploadService } from "./upload.service";
 
 export class PackService {
@@ -39,7 +39,7 @@ export class PackService {
     private readonly stickerRepository: StickerRepository,
     private readonly userRepository: UserRepository,
     private readonly uploadService: UploadService,
-    private readonly stickerQueue?: StickerQueue,
+    private readonly mediaQueue?: MediaQueue,
   ) {}
 
   async createPack(
@@ -133,12 +133,12 @@ export class PackService {
         ),
       );
 
-      if (this.stickerQueue) {
+      if (this.mediaQueue) {
         await Promise.allSettled(
           createdStickers
             .filter((s): s is Sticker => Boolean(s && s.file_key))
             .map((s) =>
-              this.stickerQueue!.addJob("convert-sticker", {
+              this.mediaQueue!.addJob("process-media", {
                 type: s.type === "dynamic" ? "animated" : "static",
                 tempKey: s.file_key,
                 packId: pack._id.toString(),

@@ -1,9 +1,9 @@
-import { EmailQueue, StickerQueue, WhatsAppQueue } from "@/queues";
+import { EmailQueue, MediaQueue, WhatsAppQueue } from "@/queues";
 
 export class QueueFactory {
   private static whatsappQueue: WhatsAppQueue;
   private static emailQueue: EmailQueue;
-  private static stickerQueue: StickerQueue;
+  private static mediaQueue: MediaQueue;
 
   static getWhatsAppQueue(): WhatsAppQueue {
     if (!this.whatsappQueue) {
@@ -19,11 +19,11 @@ export class QueueFactory {
     return this.emailQueue;
   }
 
-  static getStickerQueue(): StickerQueue {
-    if (!this.stickerQueue) {
-      this.stickerQueue = new StickerQueue();
+  static getMediaQueue(): MediaQueue {
+    if (!this.mediaQueue) {
+      this.mediaQueue = new MediaQueue();
     }
-    return this.stickerQueue;
+    return this.mediaQueue;
   }
 }
 

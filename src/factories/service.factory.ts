@@ -96,7 +96,7 @@ export class ServiceFactory {
         new StickerRepository(),
         new UserRepository(),
         this.getUploadService(),
-        QueueFactory.getStickerQueue(),
+        QueueFactory.getMediaQueue(),
       );
     }
     return this.packService;
@@ -119,7 +119,7 @@ export class ServiceFactory {
         new PackRepository(),
         new UserRepository(),
         this.getUploadService(),
-        QueueFactory.getStickerQueue(),
+        QueueFactory.getMediaQueue(),
       );
     }
     return this.stickerService;

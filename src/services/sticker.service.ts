@@ -2,7 +2,7 @@ import { MAX_STICKERS_PER_PACK, MIN_STICKERS_PER_PACK } from "@/constants";
 import type { CreateStickerDto, UpdateStickerDto } from "@/dtos";
 import { AppError, PackNotFoundError, PackRulesError } from "@/errors";
 import type { Sticker } from "@/models";
-import type { StickerQueue } from "@/queues";
+import type { MediaQueue } from "@/queues";
 import type {
   PackRepository,
   StickerRepository,
@@ -17,7 +17,7 @@ export class StickerService {
     private readonly packRepository: PackRepository,
     private readonly userRepository: UserRepository,
     private readonly uploadService: UploadService,
-    private readonly stickerQueue?: StickerQueue,
+    private readonly mediaQueue?: MediaQueue,
   ) {}
 
   async createSticker(
@@ -95,8 +95,8 @@ export class StickerService {
       );
     }
 
-    if (sticker.file_key && this.stickerQueue) {
-      await this.stickerQueue.addJob("convert-sticker", {
+    if (sticker.file_key && this.mediaQueue) {
+      await this.mediaQueue.addJob("process-media", {
         type: sticker.type === "dynamic" ? "animated" : "static",
         tempKey: sticker.file_key,
         packId: packObjectId.toString(),
