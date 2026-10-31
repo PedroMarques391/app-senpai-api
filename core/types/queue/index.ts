@@ -24,10 +24,15 @@ export interface WhatsAppJobResponse {
   data: WhatsAppJobData;
 }
 
-export type StickerConversionType = "static" | "animated" | "pack_icon";
+export type MediaConversionType =
+  | "static"
+  | "animated"
+  | "pack_icon"
+  | "avatar"
+  | "banner";
 
-export interface StickerJobData {
-  type: StickerConversionType;
+export interface MediaJobData {
+  type: MediaConversionType;
   fileBuffer?: string;
   fileUrl?: string;
   tempKey?: string;
@@ -38,9 +43,9 @@ export interface StickerJobData {
   quality?: number;
 }
 
-export interface StickerJobResponse {
+export interface MediaJobResponse {
   id?: string;
   name: string;
-  data: StickerJobData;
+  data: MediaJobData;
 }
 
