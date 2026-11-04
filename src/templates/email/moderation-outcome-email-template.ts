@@ -51,7 +51,6 @@ export function renderModerationOutcomeEmailTemplate(
     currentYear = new Date().getFullYear(),
   } = props;
 
-  // Sanitização obrigatória contra HTML injection / XSS
   const safeUserName = StringUtils.escapeHtml(userName);
   const safeUserHandle = StringUtils.escapeHtml(userHandle);
   const safePackName = StringUtils.escapeHtml(packName);
@@ -62,7 +61,6 @@ export function renderModerationOutcomeEmailTemplate(
   const safeSupportEmail = StringUtils.escapeHtml(supportEmail);
   const safePolicyUrl = StringUtils.escapeHtml(policyUrl);
 
-  // Configuração textual de cabeçalho por tipo de evento
   let title = "Notificação de Moderação";
   let subtitle = "Atualização de status na plataforma";
   let introMessage = "";
@@ -97,7 +95,6 @@ export function renderModerationOutcomeEmailTemplate(
     introMessage = `Informamos que o pacote de figurinhas <strong>"${safePackName}"</strong> foi analisado e removido definitivamente da plataforma por violação grave das Diretrizes da Comunidade. Com a atribuição desta penalidade, seu perfil acumulou ${currentStrikes} de ${maxStrikes} strikes e entrou em estado de <strong>Restrição de Criação Pública</strong>.`;
   }
 
-  // Bloco de Detalhes (Omitido se não houver pacote envolvido)
   const detailsHtml =
     packName || packId || reasonLabel
       ? `
@@ -154,7 +151,6 @@ export function renderModerationOutcomeEmailTemplate(
       </tr>`
       : "";
 
-  // Bloco de Notas do Moderador (Omitido se não fornecido)
   const notesHtml = safeModeratorNotes
     ? `
       <tr>
@@ -175,7 +171,6 @@ export function renderModerationOutcomeEmailTemplate(
       </tr>`
     : "";
 
-  // Bloco de Consequências Reais
   let consequenceItems: string[] = [];
   if (eventType === "BANNED") {
     consequenceItems = [
@@ -236,7 +231,6 @@ export function renderModerationOutcomeEmailTemplate(
       </td>
     </tr>`;
 
-  // Bloco de Pedido de Desculpas (Apenas para RELEASED)
   const apologyHtml =
     eventType === "RELEASED"
       ? `
@@ -255,7 +249,6 @@ export function renderModerationOutcomeEmailTemplate(
       </tr>`
       : "";
 
-  // Bloco "O que você pode fazer" (Orientações de contestação)
   const identifierRef = safePackId
     ? ` informando o identificador do pacote (ID: <code>${safePackId}</code>)`
     : safeUserHandle
@@ -366,10 +359,6 @@ export function renderModerationOutcomeEmailTemplate(
 </html>`.trim();
 }
 
-/**
- * Gera a versão em Texto Puro (MIME text/plain) correspondente com os mesmos dados,
- * garantindo compatibilidade com clientes em modo texto e pontuação positiva em filtros anti-spam.
- */
 export function renderModerationOutcomeText(
   props: ModerationOutcomeTemplateProps,
 ): string {
