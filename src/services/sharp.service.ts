@@ -4,6 +4,7 @@ export interface StickerConvertOptions {
   quality?: number;
   maxSeconds?: number;
   maxFrames?: number;
+  isAnimated?: boolean;
 }
 
 export class SharpService {
@@ -57,7 +58,6 @@ export class SharpService {
       })
       .toBuffer();
 
-    // Se ultrapassar os 500 KB do WhatsApp, tenta primeiro baixar a qualidade e ajustar para max 24 frames
     if (result.length > this.WHATSAPP_STICKER_MAX_BYTES) {
       result = await sharp(buffer, {
         animated: true,
@@ -75,7 +75,6 @@ export class SharpService {
         .toBuffer();
     }
 
-    // Se ainda exceder 500 KB (caso extremo de ruído/cores), reduz para 16 frames em qualidade 40
     if (result.length > this.WHATSAPP_STICKER_MAX_BYTES) {
       result = await sharp(buffer, {
         animated: true,
@@ -93,7 +92,6 @@ export class SharpService {
         .toBuffer();
     }
 
-    // Fallback garantido para casos com alto ruído: reduz para 12 frames em qualidade 35
     if (result.length > this.WHATSAPP_STICKER_MAX_BYTES) {
       result = await sharp(buffer, {
         animated: true,
@@ -118,7 +116,48 @@ export class SharpService {
     buffer: Buffer,
     options?: StickerConvertOptions,
   ): Promise<Buffer> {
-    return sharp(buffer)
+    const isAnimated = options?.isAnimated ?? false;
+
+    if (isAnimated) {
+      const metadata = await sharp(buffer, { animated: true })
+        .metadata()
+        .catch(() => null);
+
+      const avgDelay = metadata?.delay?.length
+        ? metadata.delay.reduce((a, b) => a + b, 0) / metadata.delay.length
+        : 100;
+
+      const maxSeconds = options?.maxSeconds ?? 6;
+      const framesInMaxSeconds = Math.round((maxSeconds * 1000) / avgDelay);
+      const maxFramesCap = options?.maxFrames ?? 48;
+
+      const pages = Math.max(
+        1,
+        Math.min(metadata?.pages || 1, framesInMaxSeconds, maxFramesCap),
+      );
+
+      return sharp(buffer, { animated: true, pages })
+        .resize(this.TRAY_ICON_SIZE, this.TRAY_ICON_SIZE, {
+          fit: "contain",
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
+        })
+        .webp({
+          quality: options?.quality ?? 75,
+          loop: 0,
+          effort: 4,
+          minSize: true,
+        })
+        .toBuffer();
+    }
+
+    const metadata = await sharp(buffer, { animated: true })
+      .metadata()
+      .catch(() => null);
+    const pages = metadata?.pages || 1;
+    const targetPage =
+      pages > 1 ? Math.min(Math.floor(pages * 0.25), pages - 1) : 0;
+
+    return sharp(buffer, { page: targetPage })
       .resize(this.TRAY_ICON_SIZE, this.TRAY_ICON_SIZE, {
         fit: "contain",
         background: { r: 0, g: 0, b: 0, alpha: 0 },

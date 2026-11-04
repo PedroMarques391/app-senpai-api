@@ -80,17 +80,32 @@ export class PackService {
       throw new PackRulesError("type_mismatch");
     }
 
+    const chosenIconCandidate = packFields.icon_url?.trim();
+    const chosenIndex = chosenIconCandidate
+      ? stickers.findIndex(
+          (s) =>
+            s &&
+            (s.sticker_url === chosenIconCandidate ||
+              (s.file_key && chosenIconCandidate.includes(s.file_key))),
+        )
+      : -1;
+    const targetCoverIndex = chosenIndex >= 0 ? chosenIndex : 0;
+    const initialCoverUrl =
+      packFields.icon_url || stickers[targetCoverIndex]?.sticker_url;
+
     const pack = await this.packRepository.create({
       ...packFields,
-      icon_url: undefined,
+      icon_url: initialCoverUrl,
       tags: sanitizedTags,
       user_id: userObjectId,
       publisher,
       stickers_count: stickers?.length ?? 0,
     });
     if (!pack) {
-      throw new Error(
+      throw new AppError(
         "Não foi possível criar o pacote de figurinhas agora. Tente novamente em instantes.",
+        500,
+        "PACK_CREATION_FAILED",
       );
     }
 
@@ -122,17 +137,6 @@ export class PackService {
           }),
         ),
       );
-
-      const chosenIconCandidate = packFields.icon_url?.trim();
-      const chosenIndex = chosenIconCandidate
-        ? createdStickers.findIndex(
-            (s) =>
-              s &&
-              (s.sticker_url === chosenIconCandidate ||
-                (s.file_key && chosenIconCandidate.includes(s.file_key))),
-          )
-        : -1;
-      const targetCoverIndex = chosenIndex >= 0 ? chosenIndex : 0;
 
       if (this.mediaQueue) {
         await Promise.allSettled(

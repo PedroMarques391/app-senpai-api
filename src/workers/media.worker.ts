@@ -134,14 +134,17 @@ export class MediaWorker {
     if (packObjectId && userObjectId && type !== "pack_icon") {
       const pack = await this.packRepository.findById(packObjectId);
       if (pack && (!pack.icon_url || isPackCover === true)) {
-        const iconBuffer =
-          await this.sharpService.convertToStickerPackIcon(inputBuffer);
+        const iconBuffer = await this.sharpService.convertToStickerPackIcon(
+          inputBuffer,
+          { isAnimated: type === "animated" },
+        );
         const iconKey = `packs/${packId}/icon.webp`;
         await this.storageProvider.uploadFile(iconKey, iconBuffer, {
           contentType: "image/webp",
           cacheControl: "public, max-age=31536000, immutable",
         });
         const iconUrl = this.storageProvider.getPublicUrl(iconKey);
+
         await this.packRepository.update(packObjectId, userObjectId, {
           icon_url: iconUrl,
           icon_file_key: iconKey,
@@ -150,12 +153,14 @@ export class MediaWorker {
     }
 
     if (tempKey) {
-      await this.storageProvider.deleteFile(tempKey).catch((err) => {
-        this.logger?.warn(
-          { tempKey, err: err?.message },
-          "[MediaWorker] Falha ao excluir arquivo temporário",
-        );
-      });
+      setTimeout(() => {
+        this.storageProvider.deleteFile(tempKey).catch((err) => {
+          this.logger?.warn(
+            { tempKey, err: err?.message },
+            "[MediaWorker] Falha ao excluir arquivo temporário",
+          );
+        });
+      }, 120000).unref();
     }
 
     if (packId) {
