@@ -73,25 +73,43 @@ export class BillingService implements IBillingService {
               },
             },
           );
+          break;
         }
+
         break;
       }
 
       case "EXPIRATION":
-        await this.userRepository.update(
-          { _id: userObjectId },
-          {
-            premium: false,
-            subscription: {
-              start: null,
-              end: null,
-              plan: null,
-              type: "FREE",
-            },
-          },
-        );
-        break;
+        {
+          const expirationDate = new Date(event.expiration_at_ms);
 
+          const currentUser = await this.userRepository.find({
+            _id: userObjectId,
+          });
+
+          const userExpirationDate = new Date(currentUser?.subscription?.end);
+
+          if (
+            currentUser?.subscription?.end &&
+            userExpirationDate > expirationDate
+          ) {
+            break;
+          }
+
+          await this.userRepository.update(
+            { _id: userObjectId },
+            {
+              premium: false,
+              subscription: {
+                start: null,
+                end: null,
+                plan: null,
+                type: "FREE",
+              },
+            },
+          );
+        }
+        break;
       default:
         break;
     }
