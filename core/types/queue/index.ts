@@ -41,6 +41,7 @@ export interface MediaJobData {
   userId?: string;
   destinationPath?: string;
   quality?: number;
+  isPackCover?: boolean;
 }
 
 export interface MediaJobResponse {

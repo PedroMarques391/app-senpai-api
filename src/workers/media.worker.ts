@@ -49,10 +49,7 @@ export class MediaWorker {
     return Buffer.from(await (response.Body as any).transformToByteArray());
   }
 
-  private convert(
-    type: MediaConversionType,
-    buffer: Buffer,
-  ): Promise<Buffer> {
+  private convert(type: MediaConversionType, buffer: Buffer): Promise<Buffer> {
     switch (type) {
       case "animated":
         return this.sharpService.convertToAnimated(buffer);
@@ -68,8 +65,15 @@ export class MediaWorker {
   }
 
   private async process(job: Job<MediaJobData>): Promise<void> {
-    const { type, packId, stickerId, userId, destinationPath, tempKey } =
-      job.data;
+    const {
+      type,
+      packId,
+      stickerId,
+      userId,
+      destinationPath,
+      tempKey,
+      isPackCover,
+    } = job.data;
     this.logger?.info(
       { jobId: job.id, type, stickerId, packId },
       "[MediaWorker] Processando conversão",
@@ -129,7 +133,7 @@ export class MediaWorker {
 
     if (packObjectId && userObjectId && type !== "pack_icon") {
       const pack = await this.packRepository.findById(packObjectId);
-      if (pack && !pack.icon_url) {
+      if (pack && (!pack.icon_url || isPackCover === true)) {
         const iconBuffer =
           await this.sharpService.convertToStickerPackIcon(inputBuffer);
         const iconKey = `packs/${packId}/icon.webp`;

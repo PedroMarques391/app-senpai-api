@@ -102,11 +102,7 @@ export class StickerService {
         packId: packObjectId.toString(),
         stickerId: sticker._id.toString(),
         userId: userObjectId.toString(),
-      });
-    }
-    if (!pack.icon_url && sticker.sticker_url) {
-      await this.packRepository.update(packObjectId, userObjectId, {
-        icon_url: sticker.sticker_url,
+        isPackCover: !pack.icon_url,
       });
     }
 

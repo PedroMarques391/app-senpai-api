@@ -1,7 +1,4 @@
-import {
-  MAX_STICKERS_PER_PACK,
-  MIN_STICKERS_PER_PACK,
-} from "@/constants";
+import { MAX_STICKERS_PER_PACK, MIN_STICKERS_PER_PACK } from "@/constants";
 import type {
   CreatePackDto,
   CreateStickerDto,
@@ -17,6 +14,7 @@ import {
   PackRulesError,
 } from "@/errors";
 import type { Sticker, StickerPack } from "@/models";
+import type { MediaQueue } from "@/queues";
 import type {
   PackRepository,
   StickerRepository,
@@ -30,7 +28,6 @@ import {
   UserUtils,
 } from "@/utils";
 import type { ObjectId } from "mongodb";
-import type { MediaQueue } from "@/queues";
 import type { UploadService } from "./upload.service";
 
 export class PackService {
@@ -53,7 +50,11 @@ export class PackService {
     );
 
     if (!publisher) {
-      throw new AppError("O nome do criador do pacote é obrigatório.", 400, "PUBLISHER_REQUIRED");
+      throw new AppError(
+        "O nome do criador do pacote é obrigatório.",
+        400,
+        "PUBLISHER_REQUIRED",
+      );
     }
 
     const user = await this.userRepository.find({ _id: userObjectId });
@@ -79,20 +80,9 @@ export class PackService {
       throw new PackRulesError("type_mismatch");
     }
 
-    let iconUrlToSave = packFields.icon_url;
-    if (
-      !iconUrlToSave &&
-      stickers &&
-      stickers.length > 0 &&
-      stickers[0]?.sticker_url &&
-      !stickers[0]?.file_key
-    ) {
-      iconUrlToSave = stickers[0].sticker_url;
-    }
-
     const pack = await this.packRepository.create({
       ...packFields,
-      icon_url: iconUrlToSave,
+      icon_url: undefined,
       tags: sanitizedTags,
       user_id: userObjectId,
       publisher,
@@ -133,17 +123,29 @@ export class PackService {
         ),
       );
 
+      const chosenIconCandidate = packFields.icon_url?.trim();
+      const chosenIndex = chosenIconCandidate
+        ? createdStickers.findIndex(
+            (s) =>
+              s &&
+              (s.sticker_url === chosenIconCandidate ||
+                (s.file_key && chosenIconCandidate.includes(s.file_key))),
+          )
+        : -1;
+      const targetCoverIndex = chosenIndex >= 0 ? chosenIndex : 0;
+
       if (this.mediaQueue) {
         await Promise.allSettled(
           createdStickers
             .filter((s): s is Sticker => Boolean(s && s.file_key))
-            .map((s) =>
+            .map((s, idx) =>
               this.mediaQueue!.addJob("process-media", {
                 type: s.type === "dynamic" ? "animated" : "static",
                 tempKey: s.file_key,
                 packId: pack._id.toString(),
                 stickerId: s._id.toString(),
                 userId: userObjectId.toString(),
+                isPackCover: idx === targetCoverIndex,
               }),
             ),
         );
@@ -269,7 +271,9 @@ export class PackService {
     );
 
     if (updateData.is_public === true) {
-      if (!PackModerationUtils.canBeMadePublic(existingPack.moderation_status)) {
+      if (
+        !PackModerationUtils.canBeMadePublic(existingPack.moderation_status)
+      ) {
         throw existingPack.moderation_status === "restricted"
           ? new PackRestrictedCannotBePublicError()
           : new PackReportedCannotBePublicError();
