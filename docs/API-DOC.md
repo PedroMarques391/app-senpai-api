@@ -92,7 +92,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
 #### `POST /auth/login/otp`
 
 - **Descrição e Regra de Negócio:** Envia código OTP de 6 dígitos via WhatsApp.
-  1. **Normalização e Busca por Variantes:** O backend normaliza o número via `AuthUtils.normalizeWaId` (adicionando prefixo `55` se ausente) e localiza a conta utilizando variantes com e sem o 9º dígito (`AuthUtils.getWaIdVariants`), garantindo que tanto números de 12 quanto de 13 dígitos encontrem o cadastro correto. O OTP é registrado sob o `wa_id` exato armazenado no perfil do usuário.
+  1. **Normalização e Busca por Variantes:** O backend normaliza o número via `AuthUtils.normalizeWaId` (adicionando prefixo `55` apenas para números nacionais brasileiros válidos com DDD nacional e 9º dígito em celulares, preservando números internacionais como Espanha `+34...`, EUA `+1...`, etc.) e localiza a conta utilizando variantes (`AuthUtils.getWaIdVariants`), garantindo que tanto números de 12 quanto de 13 dígitos no Brasil e números internacionais encontrem o cadastro correto. O OTP é registrado sob o `wa_id` canônico normalizado.
   2. **Proteção de Usuário Inativo:** Se a conta estiver com `status: "inactive"`, a API retorna mensagem genérica com `userExists: true` para evitar enumeração de status por terceiros.
   3. **Verificação Premium:** Valida se o usuário é `premium`. Usuários não-premium recebem aviso específico.
   4. **Rate Limit:** Aplica intervalo mínimo de 60 segundos entre envios. Se chamado antes do tempo, retorna `403` com `retryAfter` indicando os segundos restantes.
