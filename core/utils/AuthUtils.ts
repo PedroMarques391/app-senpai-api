@@ -81,20 +81,21 @@ export class AuthUtils {
     const base = AuthUtils.normalizeWaId(rawWaId);
     if (!base) return [base];
 
-    if (/^55\d{2}9\d{8}$/.test(base)) {
-      const withoutNine = base.replace(/^(55\d{2})9(\d{8})$/, "$1$2");
-      return [base, withoutNine];
-    }
+    const variants = new Set<string>([base]);
 
+    if (/^55\d{2}9\d{8}$/.test(base)) {
+      variants.add(base.replace(/^(55\d{2})9(\d{8})$/, "$1$2"));
+      variants.add(base.slice(2));
+    }
     if (/^55\d{2}[2-5]\d{7}$/.test(base)) {
-      const withNine = base.slice(0, 4) + "9" + base.slice(4);
-      return [base, withNine];
+      variants.add(base.slice(0, 4) + "9" + base.slice(4));
+      variants.add(base.slice(2));
     }
 
     if (/^34[67]\d{8}$/.test(base)) {
-      return [base, `55${base}`];
+      variants.add(`55${base}`);
     }
 
-    return [base];
+    return Array.from(variants);
   }
 }
