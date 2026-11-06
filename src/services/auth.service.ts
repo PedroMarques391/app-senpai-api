@@ -64,6 +64,7 @@ export class AuthService {
 
     const fullUser = UserUtils.applyDefaults({
       ...user,
+      wa_id: variants[0],
       isNumberVerified: true,
       last_login: new Date(),
     });
