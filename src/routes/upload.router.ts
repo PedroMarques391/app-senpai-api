@@ -21,8 +21,8 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
       ],
     },
     async (request, reply) => {
-      const { userName } = request.user;
-      if (!userName) {
+      const { _id, userName } = request.user;
+      if (!_id || !userName) {
         throw new AppError(
           "Para realizar o upload é necessário ter um nome de usuário, por favor atualize seu perfil.",
           401,
@@ -31,7 +31,7 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
       }
 
       const { folderPath, filename } = UploadUtils.generateMetadata(
-        userName,
+        _id,
         request.query.folder,
       );
 
@@ -82,7 +82,13 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
         );
       }
 
-      if (!UploadUtils.verifyOwnership(fileKey, request.user.userName)) {
+      if (
+        !UploadUtils.verifyOwnership(
+          fileKey,
+          request.user._id,
+          request.user.userName,
+        )
+      ) {
         throw new VerifyOwnershipError(
           "Operação não permitida: você não pode excluir arquivos de outro usuário",
         );
