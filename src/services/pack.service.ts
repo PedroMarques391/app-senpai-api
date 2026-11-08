@@ -80,20 +80,11 @@ export class PackService {
       throw new PackRulesError("type_mismatch");
     }
 
-    const chosenIconCandidate = packFields.icon_url?.trim();
-    const chosenIndex = chosenIconCandidate
-      ? stickers.findIndex(
-          (s) =>
-            s &&
-            (s.sticker_url === chosenIconCandidate ||
-              (s.file_key && chosenIconCandidate.includes(s.file_key))),
-        )
-      : -1;
-    const targetCoverIndex = chosenIndex >= 0 ? chosenIndex : 0;
-    const initialCoverUrl =
-      packFields.cover_url ||
-      packFields.icon_url ||
-      stickers[targetCoverIndex]?.sticker_url;
+    const { targetCoverIndex, initialCoverUrl } = this.resolveCoverSelection(
+      stickers,
+      packFields.icon_url,
+      packFields.cover_url,
+    );
 
     const pack = await this.packRepository.create({
       ...packFields,
@@ -400,6 +391,30 @@ export class PackService {
     }
 
     return fileKeysToDelete;
+  }
+
+  private resolveCoverSelection(
+    stickers: CreateStickerDto[],
+    candidateUrl?: string,
+    explicitCoverUrl?: string,
+  ): { targetCoverIndex: number; initialCoverUrl?: string } {
+    const candidate = candidateUrl?.trim();
+    const chosenIndex = candidate
+      ? stickers.findIndex(
+          (s) =>
+            s &&
+            (s.sticker_url === candidate ||
+              (s.file_key && candidate.includes(s.file_key))),
+        )
+      : -1;
+
+    const targetCoverIndex = chosenIndex >= 0 ? chosenIndex : 0;
+    const initialCoverUrl =
+      explicitCoverUrl ||
+      candidateUrl ||
+      stickers[targetCoverIndex]?.sticker_url;
+
+    return { targetCoverIndex, initialCoverUrl };
   }
 
   async incrementDownloadsCount(id: string): Promise<boolean> {
