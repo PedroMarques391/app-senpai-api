@@ -27,7 +27,6 @@ export interface WhatsAppJobResponse {
 export type MediaConversionType =
   | "static"
   | "animated"
-  | "pack_icon"
   | "avatar"
   | "banner";
 

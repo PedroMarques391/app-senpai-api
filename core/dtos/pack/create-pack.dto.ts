@@ -9,6 +9,8 @@ export const createPackDtoSchema = stickerPackSchema
     pack_name: true,
     icon_url: true,
     icon_file_key: true,
+    cover_url: true,
+    cover_file_key: true,
     is_public: true,
     category: true,
   })

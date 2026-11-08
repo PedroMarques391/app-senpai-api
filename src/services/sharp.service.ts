@@ -115,7 +115,7 @@ export class SharpService {
   async convertToStickerPackIcon(
     buffer: Buffer,
     options?: StickerConvertOptions,
-  ): Promise<Buffer> {
+  ): Promise<{ icon: Buffer; cover: Buffer }> {
     const isAnimated = options?.isAnimated ?? false;
 
     if (isAnimated) {
@@ -136,18 +136,34 @@ export class SharpService {
         Math.min(metadata?.pages || 1, framesInMaxSeconds, maxFramesCap),
       );
 
-      return sharp(buffer, { animated: true, pages })
-        .resize(this.TRAY_ICON_SIZE, this.TRAY_ICON_SIZE, {
-          fit: "contain",
-          background: { r: 0, g: 0, b: 0, alpha: 0 },
-        })
-        .webp({
-          quality: options?.quality ?? 75,
-          loop: 0,
-          effort: 4,
-          minSize: true,
-        })
-        .toBuffer();
+      const [cover, icon] = await Promise.all([
+        sharp(buffer, { animated: true, pages })
+          .resize(this.STICKER_SIZE, this.STICKER_SIZE, {
+            fit: "cover",
+            position: "center",
+          })
+          .webp({
+            quality: options?.quality ?? 75,
+            loop: 0,
+            effort: 4,
+            minSize: true,
+          })
+          .toBuffer(),
+        sharp(buffer, { animated: true, pages })
+          .resize(this.TRAY_ICON_SIZE, this.TRAY_ICON_SIZE, {
+            fit: "cover",
+            position: "center",
+          })
+          .webp({
+            quality: options?.quality ?? 75,
+            loop: 0,
+            effort: 4,
+            minSize: true,
+          })
+          .toBuffer(),
+      ]);
+
+      return { cover, icon };
     }
 
     const metadata = await sharp(buffer, { animated: true })
@@ -157,16 +173,34 @@ export class SharpService {
     const targetPage =
       pages > 1 ? Math.min(Math.floor(pages * 0.25), pages - 1) : 0;
 
-    return sharp(buffer, { page: targetPage })
-      .resize(this.TRAY_ICON_SIZE, this.TRAY_ICON_SIZE, {
-        fit: "contain",
-        background: { r: 0, g: 0, b: 0, alpha: 0 },
-      })
-      .webp({
-        quality: options?.quality ?? 80,
-        effort: 6,
-      })
-      .toBuffer();
+    const baseSharp = sharp(buffer, { page: targetPage });
+
+    const [cover, icon] = await Promise.all([
+      baseSharp
+        .clone()
+        .resize(this.STICKER_SIZE, this.STICKER_SIZE, {
+          fit: "cover",
+          position: "center",
+        })
+        .webp({
+          quality: options?.quality ?? 85,
+          effort: 6,
+        })
+        .toBuffer(),
+      baseSharp
+        .clone()
+        .resize(this.TRAY_ICON_SIZE, this.TRAY_ICON_SIZE, {
+          fit: "cover",
+          position: "center",
+        })
+        .webp({
+          quality: options?.quality ?? 80,
+          effort: 6,
+        })
+        .toBuffer(),
+    ]);
+
+    return { cover, icon };
   }
 
   async convertToAvatar(buffer: Buffer): Promise<Buffer> {

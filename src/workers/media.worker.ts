@@ -10,6 +10,7 @@ import type {
 import { MongoUtils } from "@/utils";
 import { Job, Worker } from "bullmq";
 import type { FastifyBaseLogger } from "fastify";
+import type { ObjectId } from "mongodb";
 
 export class MediaWorker {
   private worker: Worker<MediaJobData>;
@@ -53,8 +54,6 @@ export class MediaWorker {
     switch (type) {
       case "animated":
         return this.sharpService.convertToAnimated(buffer);
-      case "pack_icon":
-        return this.sharpService.convertToStickerPackIcon(buffer);
       case "avatar":
         return this.sharpService.convertToAvatar(buffer);
       case "banner":
@@ -62,6 +61,40 @@ export class MediaWorker {
       default:
         return this.sharpService.convertToStatic(buffer);
     }
+  }
+
+  private async savePackCoverAndIcon(
+    packObjectId: ObjectId,
+    userObjectId: ObjectId,
+    packId: string,
+    inputBuffer: Buffer,
+    isAnimated: boolean,
+  ): Promise<void> {
+    const { icon, cover } = await this.sharpService.convertToStickerPackIcon(
+      inputBuffer,
+      { isAnimated },
+    );
+
+    const iconKey = `packs/${packId}/icon.webp`;
+    const coverKey = `packs/${packId}/cover.webp`;
+
+    await Promise.all([
+      this.storageProvider.uploadFile(iconKey, icon, {
+        contentType: "image/webp",
+        cacheControl: "public, max-age=31536000, immutable",
+      }),
+      this.storageProvider.uploadFile(coverKey, cover, {
+        contentType: "image/webp",
+        cacheControl: "public, max-age=31536000, immutable",
+      }),
+    ]);
+
+    await this.packRepository.update(packObjectId, userObjectId, {
+      icon_url: this.storageProvider.getPublicUrl(iconKey),
+      icon_file_key: iconKey,
+      cover_url: this.storageProvider.getPublicUrl(coverKey),
+      cover_file_key: coverKey,
+    });
   }
 
   private async process(job: Job<MediaJobData>): Promise<void> {
@@ -80,14 +113,14 @@ export class MediaWorker {
     );
 
     const inputBuffer = await this.getBuffer(job.data);
+    const userObjectId = userId ? MongoUtils.toObjectId(userId) : undefined;
+    const packObjectId = packId ? MongoUtils.toObjectId(packId) : undefined;
+
     const finalBuffer = await this.convert(type, inputBuffer);
 
     let finalKey = destinationPath;
     if (!finalKey) {
       switch (type) {
-        case "pack_icon":
-          finalKey = `packs/${packId}/icon.webp`;
-          break;
         case "avatar":
           finalKey = `avatars/${userId}/avatar.webp`;
           break;
@@ -109,16 +142,6 @@ export class MediaWorker {
 
     const publicUrl = this.storageProvider.getPublicUrl(finalKey);
 
-    const userObjectId = userId ? MongoUtils.toObjectId(userId) : undefined;
-    const packObjectId = packId ? MongoUtils.toObjectId(packId) : undefined;
-
-    if (type === "pack_icon" && packObjectId && userObjectId) {
-      await this.packRepository.update(packObjectId, userObjectId, {
-        icon_url: publicUrl,
-        icon_file_key: finalKey,
-      });
-    }
-
     if (stickerId && userObjectId) {
       await this.stickerRepository.update(
         MongoUtils.toObjectId(stickerId),
@@ -131,24 +154,16 @@ export class MediaWorker {
       );
     }
 
-    if (packObjectId && userObjectId && type !== "pack_icon") {
+    if (packObjectId && userObjectId && packId) {
       const pack = await this.packRepository.findById(packObjectId);
-      if (pack && (!pack.icon_url || isPackCover === true)) {
-        const iconBuffer = await this.sharpService.convertToStickerPackIcon(
+      if (pack && (!pack.icon_url || !pack.cover_url || isPackCover === true)) {
+        await this.savePackCoverAndIcon(
+          packObjectId,
+          userObjectId,
+          packId,
           inputBuffer,
-          { isAnimated: type === "animated" },
+          type === "animated",
         );
-        const iconKey = `packs/${packId}/icon.webp`;
-        await this.storageProvider.uploadFile(iconKey, iconBuffer, {
-          contentType: "image/webp",
-          cacheControl: "public, max-age=31536000, immutable",
-        });
-        const iconUrl = this.storageProvider.getPublicUrl(iconKey);
-
-        await this.packRepository.update(packObjectId, userObjectId, {
-          icon_url: iconUrl,
-          icon_file_key: iconKey,
-        });
       }
     }
 

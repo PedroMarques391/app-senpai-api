@@ -91,11 +91,14 @@ export class PackService {
       : -1;
     const targetCoverIndex = chosenIndex >= 0 ? chosenIndex : 0;
     const initialCoverUrl =
-      packFields.icon_url || stickers[targetCoverIndex]?.sticker_url;
+      packFields.cover_url ||
+      packFields.icon_url ||
+      stickers[targetCoverIndex]?.sticker_url;
 
     const pack = await this.packRepository.create({
       ...packFields,
-      icon_url: initialCoverUrl,
+      icon_url: packFields.icon_url || initialCoverUrl,
+      cover_url: initialCoverUrl,
       tags: sanitizedTags,
       user_id: userObjectId,
       publisher,
@@ -338,6 +341,9 @@ export class PackService {
 
     if (existingPack.icon_file_key) {
       await this.uploadService.deleteQuietly(existingPack.icon_file_key);
+    }
+    if (existingPack.cover_file_key) {
+      await this.uploadService.deleteQuietly(existingPack.cover_file_key);
     }
 
     await this.releasePackResources(userObjectId, packStickers);
