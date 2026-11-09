@@ -2474,6 +2474,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"libphonenumber-js@npm:^1.13.15":
+  version: 1.13.15
+  resolution: "libphonenumber-js@npm:1.13.15"
+  checksum: 10c0/041fa295a526566a9e0910240887d1daa678faf546303ef2580479dadafc40c240dae50cc9f1c73632d0772f09fd3d87fbb47ec505d9f569025997807c6fe6ae
+  languageName: node
+  linkType: hard
+
 "light-my-request@npm:^6.0.0":
   version: 6.6.0
   resolution: "light-my-request@npm:6.6.0"
@@ -3258,6 +3265,7 @@ __metadata:
     fastify-plugin: "npm:^5.1.0"
     fastify-raw-body: "npm:^6.0.1"
     fastify-type-provider-zod: "npm:^6.1.0"
+    libphonenumber-js: "npm:^1.13.15"
     mongodb: "npm:^7.5.0"
     pino-pretty: "npm:^13.1.3"
     redis: "npm:^6.2.1"

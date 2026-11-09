@@ -34,6 +34,7 @@
     "fastify-plugin": "^5.1.0",
     "fastify-raw-body": "^6.0.1",
     "fastify-type-provider-zod": "^6.1.0",
+    "libphonenumber-js": "^1.13.15",
     "mongodb": "^7.5.0",
     "redis": "^6.2.1",
     "resend": "^6.29.0",
