@@ -25,12 +25,12 @@ export class AuthUtils {
     return jwtInstance.verify(token) as T;
   }
 
-  static normalizeWaId(waId: string): string {
-    return PhoneUtils.toCanonicalWaId(waId);
+  static normalizeWaId(phone: string): string {
+    return PhoneUtils.toCanonicalWaId(phone);
   }
 
-  static getWaIdVariants(rawWaId: string): string[] {
-    return PhoneUtils.getSearchVariants(rawWaId);
+  static getWaIdVariants(phone: string): string[] {
+    return PhoneUtils.getSearchVariants(phone);
   }
 }
 

@@ -39,14 +39,14 @@ export class PhoneUtils {
   }
 
   static parse(
-    rawInput?: string,
+    phone?: string,
     defaultCountry: CountryCode = this.DEFAULT_COUNTRY,
   ): ParsedPhoneResult {
-    if (!rawInput || typeof rawInput !== "string") {
+    if (!phone || typeof phone !== "string") {
       return { isValid: false, e164: "", canonicalWaId: "" };
     }
 
-    let clean = rawInput.trim().replace(/[^\d+]/g, "");
+    let clean = phone.trim().replace(/[^\d+]/g, "");
     if (!clean) {
       return { isValid: false, e164: "", canonicalWaId: "" };
     }
@@ -69,21 +69,21 @@ export class PhoneUtils {
   }
 
   static toCanonicalWaId(
-    rawInput?: string,
+    phone?: string,
     defaultCountry: CountryCode = this.DEFAULT_COUNTRY,
   ): string {
-    return this.parse(rawInput, defaultCountry).canonicalWaId;
+    return this.parse(phone, defaultCountry).canonicalWaId;
   }
 
   static isValid(
-    rawInput?: string,
+    phone?: string,
     defaultCountry: CountryCode = this.DEFAULT_COUNTRY,
   ): boolean {
-    return this.parse(rawInput, defaultCountry).isValid;
+    return this.parse(phone, defaultCountry).isValid;
   }
 
-  static getSearchVariants(rawInput: string): string[] {
-    const parsed = this.parse(rawInput);
+  static getSearchVariants(phone: string): string[] {
+    const parsed = this.parse(phone);
     if (!parsed.canonicalWaId) {
       return [];
     }

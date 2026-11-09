@@ -14,11 +14,11 @@ export const moderatePackDtoSchema = z
         !("action" in val) &&
         "status" in val
       ) {
-        const rawStatus = (val as Record<string, unknown>).status;
-        if (rawStatus === "approved") {
+        const status = (val as Record<string, unknown>).status;
+        if (status === "approved") {
           return { ...val, action: "APPROVE" };
         }
-        if (rawStatus === "banned") {
+        if (status === "banned") {
           return { ...val, action: "BAN" };
         }
       }

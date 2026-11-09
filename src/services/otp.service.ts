@@ -104,13 +104,13 @@ export class OtpService {
   }
 
   async sendWhatsappOtp(
-    rawWaId: string,
+    phone: string,
     options?: GenerateOtpOptions,
   ): Promise<ServiceResponse<SendOtpResult>> {
-    const variants = AuthUtils.getWaIdVariants(rawWaId);
-    const cleanRaw = rawWaId?.replace(/\D/g, "");
+    const variants = AuthUtils.getWaIdVariants(phone);
+    const digits = phone?.replace(/\D/g, "");
     const targetWaId =
-      cleanRaw && variants.includes(cleanRaw) ? cleanRaw : variants[0];
+      digits && variants.includes(digits) ? digits : variants[0];
 
     if (!targetWaId || targetWaId.length < 8) {
       return {
@@ -156,14 +156,14 @@ export class OtpService {
   }
 
   async verifyWhatsappOtp(
-    rawWaId: string,
+    phone: string,
     code: string,
     options?: VerifyOtpOptions,
   ): Promise<boolean> {
-    const variants = AuthUtils.getWaIdVariants(rawWaId);
-    const cleanRaw = rawWaId?.replace(/\D/g, "");
+    const variants = AuthUtils.getWaIdVariants(phone);
+    const digits = phone?.replace(/\D/g, "");
     const targetWaId =
-      cleanRaw && variants.includes(cleanRaw) ? cleanRaw : variants[0];
+      digits && variants.includes(digits) ? digits : variants[0];
 
     if (!targetWaId || !code) {
       throw new AppError(
@@ -193,13 +193,13 @@ export class OtpService {
   }
 
   async sendEmailOtp(
-    rawEmail: string,
+    email: string,
     userName?: string,
     options?: GenerateOtpOptions,
   ): Promise<ServiceResponse<SendOtpResult>> {
-    const cleanEmail = UserUtils.normalizeIdentifier(rawEmail);
+    const normalizedEmail = UserUtils.normalizeIdentifier(email);
 
-    if (!cleanEmail || !cleanEmail.includes("@")) {
+    if (!normalizedEmail || !normalizedEmail.includes("@")) {
       return {
         success: false,
         userExists: true,
@@ -207,7 +207,7 @@ export class OtpService {
       };
     }
 
-    const otpResult = await this.generateOtp(cleanEmail, {
+    const otpResult = await this.generateOtp(normalizedEmail, {
       prefix: options?.prefix ?? this.DEFAULT_PREFIX,
       cooldownSeconds: options?.cooldownSeconds,
       ttlSeconds: options?.ttlSeconds,
@@ -229,7 +229,7 @@ export class OtpService {
 
     await this.mailService.sendMail({
       from: EMAIL_SENDERS.NOREPLY,
-      to: cleanEmail,
+      to: normalizedEmail,
       subject: "Eii, seu código está aqui!",
       html,
     });
@@ -238,19 +238,19 @@ export class OtpService {
       success: true,
       data: {
         otp: otpResult.code,
-        identifier: cleanEmail,
+        identifier: normalizedEmail,
       },
     };
   }
 
   async verifyEmailOtp(
-    rawEmail: string,
+    email: string,
     code: string,
     options?: VerifyOtpOptions,
   ): Promise<boolean> {
-    const cleanEmail = UserUtils.normalizeIdentifier(rawEmail);
+    const normalizedEmail = UserUtils.normalizeIdentifier(email);
 
-    if (!cleanEmail || !code) {
+    if (!normalizedEmail || !code) {
       throw new AppError(
         "Código de verificação inválido ou expirado. Solicite um novo código.",
         400,
@@ -258,7 +258,7 @@ export class OtpService {
       );
     }
 
-    const isValid = await this.verifyOtp(cleanEmail, code, {
+    const isValid = await this.verifyOtp(normalizedEmail, code, {
       prefix: options?.prefix ?? this.DEFAULT_PREFIX,
       success: options?.success,
     });
@@ -272,14 +272,14 @@ export class OtpService {
     }
 
     if (options?.success !== false) {
-      await this.sendEmailVerificationSuccess(cleanEmail);
+      await this.sendEmailVerificationSuccess(normalizedEmail);
     }
 
     return true;
   }
 
-  async sendEmailVerificationSuccess(rawEmail: string): Promise<void> {
-    const cleanEmail = UserUtils.normalizeIdentifier(rawEmail);
+  async sendEmailVerificationSuccess(email: string): Promise<void> {
+    const normalizedEmail = UserUtils.normalizeIdentifier(email);
     const html = renderSuccessEmailTemplate({
       title: "E-mail verificado com sucesso!",
       message:
@@ -291,7 +291,7 @@ export class OtpService {
     await this.mailService.sendMail({
       from: EMAIL_SENDERS.SUPPORT,
       replyTo: EMAIL_REPLY_TO,
-      to: cleanEmail,
+      to: normalizedEmail,
       subject: "E-mail verificado com sucesso - Senpai",
       html,
     });

@@ -388,7 +388,7 @@ export class ProfileService {
 
   async sendPhoneVerification(
     userId: string,
-    rawWaId?: string,
+    phoneInput?: string,
   ): Promise<ServiceResponse<SendOtpResult>> {
     if (!this.otpService) {
       throw new AppError("Serviço de OTP indisponível", 500);
@@ -408,7 +408,7 @@ export class ProfileService {
       );
     }
 
-    const phone = rawWaId || user.wa_id;
+    const phone = phoneInput || user.wa_id;
     if (!phone) {
       return {
         success: false,
@@ -450,7 +450,7 @@ export class ProfileService {
 
   async verifyPhone(
     userId: string,
-    rawWaId: string,
+    phone: string,
     code: string,
   ): Promise<{ success: boolean; message: string }> {
     if (!this.otpService) {
@@ -471,7 +471,7 @@ export class ProfileService {
       );
     }
 
-    const variants = AuthUtils.getWaIdVariants(rawWaId);
+    const variants = AuthUtils.getWaIdVariants(phone);
     const targetWaId = variants[0];
 
     if (!targetWaId || targetWaId.length < 8) {

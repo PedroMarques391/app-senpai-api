@@ -16,8 +16,8 @@ export class AuthService {
     private readonly otpService: OtpService,
   ) {}
 
-  async sendOTP(rawWaId: string): Promise<ServiceResponse<SendOtpResult>> {
-    const variants = AuthUtils.getWaIdVariants(rawWaId);
+  async sendOTP(phone: string): Promise<ServiceResponse<SendOtpResult>> {
+    const variants = AuthUtils.getWaIdVariants(phone);
     const user = await this.userRepository.find({ wa_id: { $in: variants } });
 
     if (user?.status === "inactive") {
@@ -43,10 +43,10 @@ export class AuthService {
   }
 
   async verifyOtpAndLogin(
-    rawWaId: string,
+    phone: string,
     otpCode: string,
   ): Promise<AuthResult> {
-    const variants = AuthUtils.getWaIdVariants(rawWaId);
+    const variants = AuthUtils.getWaIdVariants(phone);
     const user = await this.userRepository.find({ wa_id: { $in: variants } });
     if (!user) {
       throw new AppError(
@@ -152,10 +152,10 @@ export class AuthService {
   }
 
   async register(
-    rawWaId: string,
+    phone: string,
     userData: CreateUserDto,
   ): Promise<User | null> {
-    const variants = AuthUtils.getWaIdVariants(rawWaId || userData.wa_id);
+    const variants = AuthUtils.getWaIdVariants(phone || userData.wa_id);
 
     const data = createUserDtoSchema.parse({
       ...userData,

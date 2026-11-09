@@ -17,8 +17,8 @@ export class CacheService implements ICacheService {
     const value = await this.redis.get(key);
     if (!value) return null;
 
-    const rawString = typeof value === "string" ? value : value.toString();
-    return JSON.parse(rawString) as T;
+    const cachedString = typeof value === "string" ? value : value.toString();
+    return JSON.parse(cachedString) as T;
   }
 
   async del(key: string): Promise<void> {

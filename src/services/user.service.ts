@@ -28,8 +28,8 @@ export class UserService {
     private readonly mailService?: MailService,
   ) {}
 
-  async findUserByWAId(rawWaId: string): Promise<User | null> {
-    const variants = AuthUtils.getWaIdVariants(rawWaId);
+  async findUserByWAId(phone: string): Promise<User | null> {
+    const variants = AuthUtils.getWaIdVariants(phone);
     const user = await this.userRepository.find({ wa_id: { $in: variants } });
     if (!user) {
       throw new UserNotFoundError();
@@ -51,18 +51,18 @@ export class UserService {
   }
 
   async updateUser(
-    rawWaId: string,
+    phone: string,
     updateData: UpdateUserDto,
   ): Promise<User | null> {
-    const user = await this.findUserByWAId(rawWaId);
+    const user = await this.findUserByWAId(phone);
     return this.userRepository.update(
       { _id: user!._id },
       updateData as Partial<User>,
     );
   }
 
-  async deleteUser(rawWaId: string): Promise<void> {
-    const user = await this.findUserByWAId(rawWaId);
+  async deleteUser(phone: string): Promise<void> {
+    const user = await this.findUserByWAId(phone);
     return this.userRepository.delete({ _id: user!._id });
   }
 
