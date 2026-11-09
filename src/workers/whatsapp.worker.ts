@@ -1,7 +1,7 @@
 import { BullMQInitializer } from "@/init";
 import type { WhatsAppJobData } from "@/types";
-import type { FastifyBaseLogger } from "fastify";
 import { Worker, type Job } from "bullmq";
+import type { FastifyBaseLogger } from "fastify";
 
 export class WhatsAppWorker {
   private worker: Worker<WhatsAppJobData>;
@@ -31,7 +31,7 @@ export class WhatsAppWorker {
       to: number,
       type: "template",
       template: {
-        name: "senpai_login_code",
+        name: "otp_codigo",
         language: {
           code: "pt_BR",
         },
@@ -84,11 +84,17 @@ export class WhatsAppWorker {
     });
 
     this.worker.on("completed", (job) => {
-      this.logger?.info({ jobId: job.id }, `[WhatsAppWorker] Job ${job.id} concluído com sucesso`);
+      this.logger?.info(
+        { jobId: job.id },
+        `[WhatsAppWorker] Job ${job.id} concluído com sucesso`,
+      );
     });
 
     this.worker.on("failed", (job, err) => {
-      this.logger?.error({ jobId: job?.id, err: err.message }, `[WhatsAppWorker] Job ${job?.id} falhou: ${err.message}`);
+      this.logger?.error(
+        { jobId: job?.id, err: err.message },
+        `[WhatsAppWorker] Job ${job?.id} falhou: ${err.message}`,
+      );
     });
   }
 
