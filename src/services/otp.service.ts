@@ -110,9 +110,7 @@ export class OtpService {
     const variants = AuthUtils.getWaIdVariants(rawWaId);
     const cleanRaw = rawWaId?.replace(/\D/g, "");
     const targetWaId =
-      cleanRaw && cleanRaw.startsWith("55") && variants.includes(cleanRaw)
-        ? cleanRaw
-        : variants[0];
+      cleanRaw && variants.includes(cleanRaw) ? cleanRaw : variants[0];
 
     if (!targetWaId || targetWaId.length < 8) {
       return {
@@ -165,9 +163,7 @@ export class OtpService {
     const variants = AuthUtils.getWaIdVariants(rawWaId);
     const cleanRaw = rawWaId?.replace(/\D/g, "");
     const targetWaId =
-      cleanRaw && cleanRaw.startsWith("55") && variants.includes(cleanRaw)
-        ? cleanRaw
-        : variants[0];
+      cleanRaw && variants.includes(cleanRaw) ? cleanRaw : variants[0];
 
     if (!targetWaId || !code) {
       throw new AppError(
