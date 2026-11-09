@@ -54,13 +54,16 @@ export class UserService {
     rawWaId: string,
     updateData: UpdateUserDto,
   ): Promise<User | null> {
-    const waId = AuthUtils.normalizeWaId(rawWaId);
-    return this.userRepository.update({ wa_id: waId }, updateData as Partial<User>);
+    const variants = AuthUtils.getWaIdVariants(rawWaId);
+    return this.userRepository.update(
+      { wa_id: { $in: variants } } as any,
+      updateData as Partial<User>,
+    );
   }
 
   async deleteUser(rawWaId: string): Promise<void> {
-    const waId = AuthUtils.normalizeWaId(rawWaId);
-    return this.userRepository.delete({ wa_id: waId });
+    const variants = AuthUtils.getWaIdVariants(rawWaId);
+    return this.userRepository.delete({ wa_id: { $in: variants } } as any);
   }
 
   async addPetals(userId: string, amount: number): Promise<User> {

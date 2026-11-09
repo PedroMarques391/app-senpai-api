@@ -108,7 +108,11 @@ export class OtpService {
     options?: GenerateOtpOptions,
   ): Promise<ServiceResponse<SendOtpResult>> {
     const variants = AuthUtils.getWaIdVariants(rawWaId);
-    const targetWaId = variants[0];
+    const cleanRaw = rawWaId?.replace(/\D/g, "");
+    const targetWaId =
+      cleanRaw && cleanRaw.startsWith("55") && variants.includes(cleanRaw)
+        ? cleanRaw
+        : variants[0];
 
     if (!targetWaId || targetWaId.length < 8) {
       return {
@@ -159,7 +163,11 @@ export class OtpService {
     options?: VerifyOtpOptions,
   ): Promise<boolean> {
     const variants = AuthUtils.getWaIdVariants(rawWaId);
-    const targetWaId = variants[0];
+    const cleanRaw = rawWaId?.replace(/\D/g, "");
+    const targetWaId =
+      cleanRaw && cleanRaw.startsWith("55") && variants.includes(cleanRaw)
+        ? cleanRaw
+        : variants[0];
 
     if (!targetWaId || !code) {
       throw new AppError(

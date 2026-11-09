@@ -64,7 +64,7 @@ export class AuthService {
 
     const fullUser = UserUtils.applyDefaults({
       ...user,
-      wa_id: variants[0],
+      wa_id: user.wa_id,
       isNumberVerified: true,
       last_login: new Date(),
     });
@@ -215,7 +215,10 @@ export class AuthService {
     const payload = { ...data, password: hashedPassword };
 
     if (waUser) {
-      return this.userRepository.update({ _id: waUser._id }, payload);
+      return this.userRepository.update(
+        { _id: waUser._id },
+        { ...payload, wa_id: waUser.wa_id },
+      );
     }
 
     return this.userRepository.create(payload);

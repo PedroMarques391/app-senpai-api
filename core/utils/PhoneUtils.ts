@@ -16,14 +16,25 @@ export class PhoneUtils {
   private static readonly DEFAULT_COUNTRY: CountryCode = "BR";
 
   private static formatResult(parsed: PhoneNumber): ParsedPhoneResult {
-    const e164 = parsed.format("E.164");
+    let finalParsed = parsed;
+
+    if (parsed.country === "BR" && parsed.nationalNumber.length === 10) {
+      const nat = parsed.nationalNumber;
+      const injectedE164 = `+55${nat.slice(0, 2)}9${nat.slice(2)}`;
+      const reParsed = parsePhoneNumberFromString(injectedE164);
+      if (reParsed && reParsed.isValid()) {
+        finalParsed = reParsed;
+      }
+    }
+
+    const e164 = finalParsed.format("E.164");
     const canonicalWaId = e164.replace(/\D/g, "");
     return {
-      isValid: parsed.isValid(),
+      isValid: finalParsed.isValid(),
       e164,
       canonicalWaId,
-      country: parsed.country,
-      nationalNumber: parsed.nationalNumber,
+      country: finalParsed.country,
+      nationalNumber: finalParsed.nationalNumber,
     };
   }
 
@@ -47,32 +58,37 @@ export class PhoneUtils {
       }
     }
 
-    const digits = clean.replace(/\D/g, "");
+    let digits = clean.replace(/\D/g, "");
 
-    let normalizedDigits = digits;
-    if (/^0[1-9]\d{9,10}$/.test(normalizedDigits)) {
-      normalizedDigits = normalizedDigits.slice(1);
-    } else if (/^055\d{10,11}$/.test(normalizedDigits)) {
-      normalizedDigits = normalizedDigits.slice(1);
+    if (/^0[1-9]\d{8,10}$/.test(digits)) {
+      digits = digits.slice(1);
+    } else if (/^055\d{10,11}$/.test(digits)) {
+      digits = digits.slice(1);
     }
 
-    // 1. Tentar interpretar como número internacional completo com DDI (+digits)
-    const parsedIntl = parsePhoneNumberFromString(`+${normalizedDigits}`);
+    if (/^55[1-9]{2}\d{8}$/.test(digits)) {
+      digits = `55${digits.slice(2, 4)}9${digits.slice(4)}`;
+    }
+    if (/^[1-9]{2}\d{8}$/.test(digits)) {
+      digits = `55${digits.slice(0, 2)}9${digits.slice(2)}`;
+    }
+    if (/^[1-9]{2}9\d{8}$/.test(digits)) {
+      digits = `55${digits}`;
+    }
+
+    const parsedIntl = parsePhoneNumberFromString(`+${digits}`);
     if (parsedIntl && parsedIntl.isValid()) {
       return this.formatResult(parsedIntl);
     }
-
-    // 2. Tentar interpretar com o país padrão (BR)
-    let parsedDefault = parsePhoneNumberFromString(normalizedDigits, defaultCountry);
+    const parsedDefault = parsePhoneNumberFromString(digits, defaultCountry);
     if (parsedDefault && parsedDefault.isValid()) {
       return this.formatResult(parsedDefault);
     }
 
-    const fallbackDigits = digits;
     return {
       isValid: false,
-      e164: clean.startsWith("+") ? clean : `+${fallbackDigits}`,
-      canonicalWaId: fallbackDigits,
+      e164: clean.startsWith("+") ? clean : `+${digits}`,
+      canonicalWaId: digits,
     };
   }
 
@@ -96,21 +112,35 @@ export class PhoneUtils {
 
     if (parsed.canonicalWaId) {
       variants.add(parsed.canonicalWaId);
+
+      if (/^55[1-9]{2}9\d{8}$/.test(parsed.canonicalWaId)) {
+        const without9 =
+          parsed.canonicalWaId.slice(0, 4) + parsed.canonicalWaId.slice(5);
+        variants.add(without9);
+        variants.add(parsed.canonicalWaId.slice(2));
+        variants.add(without9.slice(2));
+      }
     }
 
     const clean = rawInput.replace(/\D/g, "");
     if (clean) {
       variants.add(clean);
-      if (/^55\d{2}9\d{8}$/.test(clean)) {
-        variants.add(clean.replace(/^(55\d{2})9(\d{8})$/, "$1$2"));
-        variants.add(clean.slice(2));
-      }
-      if (/^55\d{10}$/.test(clean)) {
-        variants.add(clean.slice(0, 4) + "9" + clean.slice(4));
-        variants.add(clean.slice(2));
-      }
-      if (clean.length === 10 || clean.length === 11) {
-        variants.add(`55${clean}`);
+      const isBrazil = !parsed.country || parsed.country === "BR";
+      if (isBrazil) {
+        if (/^55\d{2}9\d{8}$/.test(clean)) {
+          variants.add(clean.replace(/^(55\d{2})9(\d{8})$/, "$1$2"));
+          variants.add(clean.slice(2));
+        }
+        if (/^55\d{10}$/.test(clean)) {
+          variants.add(clean.slice(0, 4) + "9" + clean.slice(4));
+          variants.add(clean.slice(2));
+        }
+        if (
+          (clean.length === 10 || clean.length === 11) &&
+          !clean.startsWith("55")
+        ) {
+          variants.add(`55${clean}`);
+        }
       }
     }
 
