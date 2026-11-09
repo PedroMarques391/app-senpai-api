@@ -169,9 +169,13 @@ export class OtpService {
       );
     }
 
-    const isValid = await this.verifyOtp(targetWaId, code, {
-      prefix: options?.prefix ?? "wa_otp",
-    });
+    let isValid = false;
+    for (const variant of variants) {
+      isValid = await this.verifyOtp(variant, code, {
+        prefix: options?.prefix ?? "wa_otp",
+      });
+      if (isValid) break;
+    }
 
     if (!isValid) {
       throw new AppError(
