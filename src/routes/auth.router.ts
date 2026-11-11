@@ -1,7 +1,3 @@
-import {
-  MAX_REGISTRATIONS_PER_IP_24H,
-  REGISTRATION_IP_WINDOW_SECONDS,
-} from "@/constants";
 import { createUserDtoSchema } from "@/dtos";
 import { ServiceFactory } from "@/factories";
 import { NetworkUtils } from "@/utils";
@@ -66,38 +62,8 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     "/register",
     { schema: { body: createUserDtoSchema } },
     async (request, reply) => {
-      const clientIp = NetworkUtils.getClientIp(
-        request.headers,
-        request.socket.remoteAddress,
-      );
-
-      const isRateLimitedIp =
-        clientIp !== "127.0.0.1" &&
-        clientIp !== "::1" &&
-        clientIp !== "Desconhecido";
-
-      if (isRateLimitedIp) {
-        const ipKey = `ratelimit:register:ip:${clientIp}`;
-        const count = await app.redis.get(ipKey);
-        if (count && Number(count) >= MAX_REGISTRATIONS_PER_IP_24H) {
-          return reply.status(429).send({
-            success: false,
-            code: "REGISTRATION_IP_LIMIT_EXCEEDED",
-            message: "Limite de cadastros diários atingido para esta rede.",
-          });
-        }
-      }
-
       const userData = request.body;
       const user = await authService.register(userData.wa_id, userData);
-
-      if (isRateLimitedIp) {
-        const ipKey = `ratelimit:register:ip:${clientIp}`;
-        const newCount = await app.redis.incr(ipKey);
-        if (newCount === 1) {
-          await app.redis.expire(ipKey, REGISTRATION_IP_WINDOW_SECONDS);
-        }
-      }
 
       return reply.status(201).send({
         success: true,
