@@ -85,7 +85,7 @@ export const userSchema = z.object({
   name: z.string(),
   userName: z.string().trim().toLowerCase(),
   password: z.string(),
-  bio: z.string().max(120).optional(),
+  bio: z.string().max(120).optional().nullable(),
   premium: z.boolean().default(false),
   role: userRoleEnum.default("user"),
   accountType: z
@@ -96,7 +96,7 @@ export const userSchema = z.object({
   deletedAt: z.coerce.date().optional(),
   last_login: z.coerce.date().default(() => new Date()),
   status: userStatusEnum.default("active"),
-  preferred_payment: z.string().optional(),
+  preferred_payment: z.string().optional().nullable(),
   avatar_url: z.url().optional().nullable(),
   banner_url: z.url().optional().nullable(),
   subscription: z
