@@ -929,18 +929,17 @@ _(Todas as rotas exigem Header `Authorization`)_
 
 #### `PUT /profile/`
 
-- **Descrição:** Atualiza dados cadastrais e preferências do perfil do próprio usuário autenticado (`UpdateUserDto`). A alteração de cosméticos equipados é realizada exclusivamente via `PATCH /profile/cosmetics`.
+- **Descrição:** Atualiza dados cadastrais e preferências do perfil do próprio usuário autenticado (`UpdateUserDto`). A alteração de cosméticos equipados é realizada exclusivamente via `PATCH /profile/cosmetics`, e a alteração de e-mail é realizada exclusivamente com confirmação via `POST /profile/email/code/verify`.
 - **Campos Aceitos (`UpdateUserDto` - Parciais e flexíveis):**
   | Campo | Tipo Zod | Tipo Dart | Constraints / Descrição |
   | :--- | :--- | :--- | :--- |
   | `name` | `z.string()` | `String?` | Nome do usuário. |
   | `userName` | `z.string()` | `String?` | Nome de usuário único (letras minúsculas/sem espaços). |
-  | `email` | `z.string().email()` | `String?` | E-mail do usuário (único no sistema). |
   | `bio` | `z.string()` | `String?` | Biografia do usuário (máximo 120 caracteres, aceita `null` para limpar). |
   | `avatar_url` | `z.string()` | `String?` | URL do avatar hospedado (aceita `null` para limpar). |
   | `banner_url` | `z.string()` | `String?` | URL do banner do perfil (aceita `null` para limpar). |
   | `preferred_payment` | `z.string()` | `String?` | Identificador de pagamento preferencial (aceita `null` para limpar). |
-- **Invalidação de Cache & Segurança:** Invalida automaticamente `profile:<userId>` e `profile:username:<userName>`. Caso o `email` seja alterado para um endereço diferente do atual, o sistema automaticamente redefine `isEmailVerified: false`, exigindo nova confirmação via OTP (`POST /profile/email/code/send`).
+- **Invalidação de Cache & Segurança:** Invalida automaticamente `profile:<userId>` e `profile:username:<userName>`.
 - **Respostas:**
   - `200 OK`: `{"success": true, "message": "Perfil atualizado com sucesso", "profile": { ...User }}`
 
