@@ -137,6 +137,14 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
+      if (request.body.email) {
+        return reply.status(400).send({
+          success: false,
+          message:
+            "Para deixar seu cantinho ainda mais seguro, essa função mudou 💗 Agora você pode alterar seu e-mail direto na tela de perfil!",
+        });
+      }
+
       const profile = await profileService.updateProfile(
         request.user._id,
         request.body,
@@ -256,25 +264,16 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
     {
       schema: {
         body: z.object({
-          wa_id: z.string().trim().min(8).optional(),
+          wa_id: z.string().trim().min(8, "Número de WhatsApp inválido."),
           code: z.string().length(6),
         }),
       },
     },
     async (request, reply) => {
-      const waId = request.body?.wa_id || request.user.wa_id;
-      const { code } = request.body;
-
-      if (!waId) {
-        return reply.status(400).send({
-          success: false,
-          message: "Número de WhatsApp não informado.",
-        });
-      }
-
+      const { code, wa_id } = request.body;
       const result = await profileService.verifyPhone(
         request.user._id,
-        waId,
+        wa_id,
         code,
       );
 

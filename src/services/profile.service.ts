@@ -230,25 +230,14 @@ export class ProfileService {
 
     if (updateData.userName) {
       updateData.userName = UserUtils.normalizeIdentifier(updateData.userName);
-    }
-    if (updateData.email) {
-      updateData.email = UserUtils.normalizeIdentifier(updateData.email);
-    }
-
-    await Promise.all([
-      this.ensureUsernameAvailable(
+      await this.ensureUsernameAvailable(
         id,
         updateData.userName,
         currentUser.userName,
-      ),
-      this.ensureEmailAvailable(id, updateData.email, currentUser.email),
-    ]);
+      );
+    }
 
     const payloadToUpdate: Partial<User> = { ...updateData };
-
-    if (updateData.email && updateData.email !== currentUser.email) {
-      payloadToUpdate.isEmailVerified = false;
-    }
 
     const updatedUser = await this.userRepository.update(
       { _id: userObjectId },
@@ -328,12 +317,8 @@ export class ProfileService {
       );
     }
 
-    if (!userEmail || userEmail !== user.email) {
-      return {
-        success: false,
-        userExists: true,
-        message: "E-mail não informado ou não pertence ao usuário",
-      };
+    if (!userEmail) {
+      throw new AppError("E-mail não informado.", 400, "INVALID_EMAIL");
     }
 
     const cleanEmail = UserUtils.normalizeIdentifier(userEmail);
@@ -488,7 +473,7 @@ export class ProfileService {
       existingUser._id.toString() !== userId
     ) {
       throw new AppError(
-        "Este número de WhatsApp já foi validado em outra conta da Senpai.",
+        "Este número de WhatsApp já está vinculado a outra conta da Senpai.",
         409,
         "PHONE_ALREADY_VERIFIED",
       );
