@@ -176,7 +176,7 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
     {
       schema: {
         body: z.object({
-          email: z.string().trim().toLowerCase().email(),
+          email: z.email({ message: "E-mail inválido" }).trim().toLowerCase(),
         }),
       },
     },
@@ -227,22 +227,15 @@ export const profileRoutes: FastifyPluginAsyncZod = async (app) => {
     {
       schema: {
         body: z.object({
-          wa_id: z.string().trim().min(8).optional(),
+          wa_id: z.string().trim().min(8, "Número de WhatsApp inválido."),
         }),
       },
     },
     async (request, reply) => {
-      const waId = request.body?.wa_id || request.user.wa_id;
-      if (!waId) {
-        return reply.status(400).send({
-          success: false,
-          message: "Número de WhatsApp não informado.",
-        });
-      }
-
+      const { wa_id } = request.body;
       const result = await profileService.sendPhoneVerification(
         request.user._id,
-        waId,
+        wa_id,
       );
 
       if (!result.success) {
