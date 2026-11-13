@@ -1,8 +1,8 @@
 import { MAX_STICKERS_PER_PACK, MIN_STICKERS_PER_PACK } from "@/constants";
 import type {
   CreatePackDto,
-  CreateStickerDto,
   PackRepositoryOptions,
+  StickerFit,
   UpdatePackDto,
 } from "@/dtos";
 import {
@@ -36,13 +36,14 @@ export class PackService {
     private readonly stickerRepository: StickerRepository,
     private readonly userRepository: UserRepository,
     private readonly uploadService: UploadService,
-    private readonly mediaQueue?: MediaQueue,
+    private readonly mediaQueue: MediaQueue,
   ) {}
 
   async createPack(
     userId: string,
     publisher: string,
     packData: CreatePackDto,
+    fit: StickerFit = "fill",
   ): Promise<StickerPack | null> {
     const userObjectId = MongoUtils.toObjectId(
       userId,
@@ -75,7 +76,7 @@ export class PackService {
       throw new PackRulesError("max");
     }
 
-    const firstType = stickers[0]?.type;
+    const firstType = stickers[0].type;
     if (stickers.some((s) => s.type !== firstType)) {
       throw new PackRulesError("type_mismatch");
     }
@@ -93,7 +94,7 @@ export class PackService {
       tags: sanitizedTags,
       user_id: userObjectId,
       publisher,
-      stickers_count: stickers?.length ?? 0,
+      stickers_count: stickers.length,
     });
     if (!pack) {
       throw new AppError(
@@ -104,76 +105,60 @@ export class PackService {
     }
 
     const isVipMaster = user?.subscription?.type === "MESTRE";
+    const staticCount = stickers.filter((s) => s.type === "static").length;
+    const animatedCount = stickers.filter((s) => s.type === "dynamic").length;
 
-    if (
-      stickers &&
-      stickers.length > 0 &&
-      this.stickerRepository &&
-      this.userRepository
-    ) {
-      const staticCount = stickers.filter(
-        (s: CreateStickerDto) => s.type === "static",
-      ).length;
-      const animatedCount = stickers.filter(
-        (s: CreateStickerDto) => s.type === "dynamic",
-      ).length;
+    const createdStickers = await Promise.all(
+      stickers.map((sticker) =>
+        this.stickerRepository.create({
+          ...sticker,
+          author:
+            isVipMaster && sticker.author ? sticker.author : publisher,
+          pack_id: pack._id,
+          user_id: userObjectId,
+        }),
+      ),
+    );
 
-      const createdStickers = await Promise.all(
-        stickers.map((stickerData: CreateStickerDto) =>
-          this.stickerRepository.create({
-            ...stickerData,
-            author:
-              isVipMaster && stickerData.author
-                ? stickerData.author
-                : publisher,
-            pack_id: pack._id,
-            user_id: userObjectId,
-          }),
-        ),
+    await Promise.allSettled(
+      createdStickers.flatMap((sticker, index) => {
+        if (!sticker?.file_key) return [];
+        return this.mediaQueue.addJob("process-media", {
+          type: sticker.type === "dynamic" ? "animated" : "static",
+          tempKey: sticker.file_key,
+          packId: pack._id.toString(),
+          stickerId: sticker._id.toString(),
+          userId: userObjectId.toString(),
+          isPackCover: index === targetCoverIndex,
+          fit,
+        });
+      }),
+    );
+
+    if (staticCount > 0) {
+      await this.userRepository.incrementStickersCount(
+        userObjectId,
+        "static",
+        staticCount,
       );
-
-      if (this.mediaQueue) {
-        await Promise.allSettled(
-          createdStickers
-            .filter((s): s is Sticker => Boolean(s && s.file_key))
-            .map((s, idx) =>
-              this.mediaQueue!.addJob("process-media", {
-                type: s.type === "dynamic" ? "animated" : "static",
-                tempKey: s.file_key,
-                packId: pack._id.toString(),
-                stickerId: s._id.toString(),
-                userId: userObjectId.toString(),
-                isPackCover: idx === targetCoverIndex,
-              }),
-            ),
-        );
-      }
-
-      if (staticCount > 0) {
-        await this.userRepository.incrementStickersCount(
-          userObjectId,
-          "static",
-          staticCount,
-        );
-      }
-      if (animatedCount > 0) {
-        await this.userRepository.incrementStickersCount(
-          userObjectId,
-          "dynamic",
-          animatedCount,
-        );
-      }
-
-      const totalBytes = stickers.reduce(
-        (sum: number, s: CreateStickerDto) => sum + (s.size_bytes ?? 0),
-        0,
+    }
+    if (animatedCount > 0) {
+      await this.userRepository.incrementStickersCount(
+        userObjectId,
+        "dynamic",
+        animatedCount,
       );
-      if (totalBytes > 0) {
-        await this.userRepository.incrementStorageUsedBytes(
-          userObjectId,
-          totalBytes,
-        );
-      }
+    }
+
+    const totalBytes = stickers.reduce(
+      (sum, s) => sum + (s.size_bytes ?? 0),
+      0,
+    );
+    if (totalBytes > 0) {
+      await this.userRepository.incrementStorageUsedBytes(
+        userObjectId,
+        totalBytes,
+      );
     }
 
     return pack;
@@ -317,9 +302,7 @@ export class PackService {
       "pacote",
     );
 
-    const packStickers = this.stickerRepository
-      ? await this.stickerRepository.findByPackId(packObjectId)
-      : [];
+    const packStickers = await this.stickerRepository.findByPackId(packObjectId);
 
     const result = await this.packRepository.delete(packObjectId, userObjectId);
     if (!result) {
@@ -394,7 +377,7 @@ export class PackService {
   }
 
   private resolveCoverSelection(
-    stickers: CreateStickerDto[],
+    stickers: NonNullable<CreatePackDto["stickers"]>,
     candidateUrl?: string,
     explicitCoverUrl?: string,
   ): { targetCoverIndex: number; initialCoverUrl?: string } {

@@ -3,6 +3,7 @@ import {
   listPackQuerySchema,
   reportPackBodySchema,
   reportPackQuerySchema,
+  stickerFitEnum,
   updatePackDtoSchema,
 } from "@/dtos";
 import { AppError } from "@/errors";
@@ -117,16 +118,23 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
         app.requireVerifiedEmail,
         app.requireVerifiedNumber,
       ],
-      schema: { body: createPackDtoSchema },
+      schema: {
+        body: createPackDtoSchema.extend({
+          fit: stickerFitEnum.default("fill"),
+        }),
+      },
     },
     async (request, reply) => {
+      const { fit, ...packData } = request.body;
+
       const pack = await packService.createPack(
         request.user._id,
         request.user.userName,
-        request.body,
+        packData,
+        fit,
       );
 
-      const stickerCount = request.body.stickers?.length ?? 0;
+      const stickerCount = packData.stickers?.length ?? 0;
       const profile = await profileService.getProfile(request.user._id);
 
       await creationQuotaService.recordUsage(
