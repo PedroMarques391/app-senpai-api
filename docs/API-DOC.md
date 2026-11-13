@@ -517,12 +517,13 @@ _(Requer Header `Authorization`)_
   6. **Registro de Cota:** Grava o consumo da cota em `creation_quotas` para usuários Free.
   7. **Invalidação Reativa de Cache:** Limpa as listagens cacheadas (`pack:list:*`), os pacotes do usuário (`pack:user:<userId>`) e o cache de perfil (`profile:<userId>`).
   8. **Restrição por Limite de Strikes (`MAX_STRIKES = 3`):** Se o usuário possuir 3 ou mais strikes (`user.strikes >= 3`) acumulados por infrações e tentar criar um pacote público (`is_public !== false`), a criação é bloqueada com HTTP `403 Forbidden` (`code: 'MAX_STRIKES_REACHED'`). Usuários com limite atingido só podem criar pacotes privados (`is_public: false`).
-- **Request Body (`CreatePackDto`):**
+- **Request Body (`CreatePackDto` + `fit` estendido na rota):**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Default / Constraints | Descrição |
   | :--- | :--- | :--- | :--- | :--- | :--- |
   | `pack_name` | `z.string()` | `String` | Sim | `min(3).max(30)` | Nome do pacote. |
   | `description` | `z.string()` | `String?` | Não | `"Sem descrição"` / `max(100)` | Descrição curta. |
   | `category` | `packCategoryEnum` | `String?` | Não | `"other"` | Categoria do pacote. |
+  | `fit` | `stickerFitEnum` | `String` | Sim (default `"fill"`) | `"fill"`, `"cover"`, `"contain"` (default `"fill"`) | Modo de ajuste das imagens das figurinhas para 512x512 enviado à fila de conversão (`MediaQueue`, não persistido no banco). |
   | `tags` | `z.array(z.string())` | `List<String>?` | Não | `[]` / Max 10 tags, cada 2 a 20 chars | Tags descritivas. |
   | `is_public` | `z.boolean()` | `bool?` | Não | `true` | Visibilidade pública. |
   | `icon_url` | `z.url()` | `String?` | Não | Nulo (ou derivado da 1ª figurinha) | URL do ícone do pacote. |
@@ -692,7 +693,7 @@ _(Requer Header `Authorization`)_
   7. **Contador do Usuário e Armazenamento:** Incrementa atômica e persistentemente o contador `stickers_count.static` ou `stickers_count.dynamic` do perfil do usuário e incrementa `storage_used_bytes` caso `size_bytes` seja informado.
   8. **Registro de Cota:** Registra o uso da cota para usuários Free em `creation_quotas`.
   9. **Invalidação Reativa de Cache:** Limpa os caches de figurinhas (`stickers:pack:<packId>`), do pacote (`pack:<packId>`), listagens (`pack:list:*`), pacotes do usuário (`pack:user:<userId>`) e do perfil do usuário (`profile:<userId>`), garantindo sincronização instantânea dos contadores na interface do app.
-- **Request Body (`CreateStickerDto`):**
+- **Request Body (`CreateStickerDto` + `fit` estendido na rota):**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Constraints | Descrição |
   | :--- | :--- | :--- | :--- | :--- | :--- |
   | `name` | `z.string()` | `String` | Sim | — | Nome da figurinha. |
@@ -702,6 +703,7 @@ _(Requer Header `Authorization`)_
   | `sticker_url` | `z.url()` | `String` | Sim | URL válida | URL da imagem/animação no R2. |
   | `emojis` | `z.array(z.string())` | `List<String>?` | Não | Max 3 emojis / default `[]` | Emojis associados. |
   | `type` | `z.enum(["dynamic", "static"])` | `String` | Sim | `"dynamic"` ou `"static"` | Tipo da figurinha. |
+  | `fit` | `stickerFitEnum` | `String` | Sim (default `"fill"`) | `"fill"`, `"cover"`, `"contain"` (default `"fill"`) | Modo de ajuste da imagem para 512x512 enviado à fila de conversão (`MediaQueue`, não persistido no banco; `cover`: preenche e corta; `fill`: estica/preenche toda a área; `contain`: ajusta mantendo proporção com fundo transparente). |
   | `size_bytes` | `z.number().nonnegative()` | `int?` | Não | `>= 0` / default `0` | Tamanho do arquivo em bytes. |
 - **Respostas:**
   - `201 Created`: `{"success": true, "message": "Figurinha criada com sucesso", "sticker": { ...Sticker }}`
