@@ -1,4 +1,8 @@
-import { createStickerDtoSchema, updateStickerDtoSchema } from "@/dtos";
+import {
+  createStickerDtoSchema,
+  stickerFitEnum,
+  updateStickerDtoSchema,
+} from "@/dtos";
 import { ServiceFactory } from "@/factories";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
@@ -58,15 +62,20 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
         app.requireVerifiedNumber,
       ],
       schema: {
-        body: createStickerDtoSchema,
+        body: createStickerDtoSchema.extend({
+          fit: stickerFitEnum.default("fill"),
+        }),
         params: z.object({ packId: z.string() }),
       },
     },
     async (request, reply) => {
+      const { fit, ...stickerData } = request.body;
+
       const sticker = await stickerService.createSticker(
         request.params.packId,
         request.user._id,
-        request.body,
+        stickerData,
+        fit,
       );
 
       const profile = await profileService.getProfile(request.user._id);

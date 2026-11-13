@@ -1,6 +1,11 @@
 import { MAX_STICKERS_PER_PACK, MIN_STICKERS_PER_PACK } from "@/constants";
-import type { CreateStickerDto, UpdateStickerDto } from "@/dtos";
-import { AppError, PackNotFoundError, PackRulesError } from "@/errors";
+import type { CreateStickerDto, StickerFit, UpdateStickerDto } from "@/dtos";
+import {
+  AppError,
+  PackNotFoundError,
+  PackRulesError,
+  UserNotFoundError,
+} from "@/errors";
 import type { Sticker } from "@/models";
 import type { MediaQueue } from "@/queues";
 import type {
@@ -9,6 +14,7 @@ import type {
   UserRepository,
 } from "@/repositories";
 import { MongoUtils, PermissionUtils, UserUtils } from "@/utils";
+import type { ObjectId } from "mongodb";
 import type { UploadService } from "./upload.service";
 
 export class StickerService {
@@ -17,14 +23,15 @@ export class StickerService {
     private readonly packRepository: PackRepository,
     private readonly userRepository: UserRepository,
     private readonly uploadService: UploadService,
-    private readonly mediaQueue?: MediaQueue,
+    private readonly mediaQueue: MediaQueue,
   ) {}
 
   async createSticker(
     packId: string,
     userId: string,
     stickerData: CreateStickerDto,
-  ): Promise<Sticker | null> {
+    fit: StickerFit = "fill",
+  ): Promise<Sticker> {
     const packObjectId = MongoUtils.toObjectId(packId, "ID do pacote inválido");
     const userObjectId = MongoUtils.toObjectId(
       userId,
@@ -38,43 +45,32 @@ export class StickerService {
 
     PermissionUtils.verifyOwnership(pack.user_id, userObjectId, "pacote");
 
-    const currentStickersCount =
-      await this.stickerRepository.countByPackId(packObjectId);
-    if (currentStickersCount >= MAX_STICKERS_PER_PACK) {
-      throw new PackRulesError(
-        "max",
+    const existingStickers =
+      await this.stickerRepository.findByPackId(packObjectId);
+    if (existingStickers.length >= MAX_STICKERS_PER_PACK) {
+      throw PackRulesError.max(
         `O pacote já atingiu o limite máximo permitido de ${MAX_STICKERS_PER_PACK} figurinhas.`,
       );
     }
 
-    const existingStickers =
-      await this.stickerRepository.findByPackId(packObjectId);
     if (
       existingStickers.length > 0 &&
       existingStickers[0].type !== stickerData.type
     ) {
-      throw new PackRulesError("type_mismatch");
+      throw PackRulesError.typeMismatch();
     }
 
-    const user = await this.userRepository.find({ _id: userObjectId });
-    const sanitizedUser = UserUtils.applyDefaults(user);
-    const isMaster = sanitizedUser?.subscription?.type === "MESTRE";
-    const defaultAuthor = sanitizedUser?.userName || "Desconhecido";
-
-    const resolvedAuthor = isMaster
-      ? stickerData.author || defaultAuthor
-      : defaultAuthor;
+    const author = await this.resolveAuthor(userObjectId, stickerData.author);
 
     const sticker = await this.stickerRepository.create({
       ...stickerData,
-      author: resolvedAuthor,
+      author,
       pack_id: packObjectId,
       user_id: userObjectId,
     });
     if (!sticker) {
-      throw new AppError(
+      throw AppError.internal(
         "Não foi possível criar a figurinha agora. Tente novamente em instantes.",
-        500,
         "STICKER_CREATION_FAILED",
       );
     }
@@ -87,15 +83,14 @@ export class StickerService {
 
     await this.packRepository.incrementStickersCount(packObjectId, 1);
 
-    const sizeBytes = stickerData.size_bytes ?? 0;
-    if (sizeBytes > 0) {
+    if (stickerData.size_bytes > 0) {
       await this.userRepository.incrementStorageUsedBytes(
         userObjectId,
-        sizeBytes,
+        stickerData.size_bytes,
       );
     }
 
-    if (sticker.file_key && this.mediaQueue) {
+    if (sticker.file_key) {
       await this.mediaQueue.addJob("process-media", {
         type: sticker.type === "dynamic" ? "animated" : "static",
         tempKey: sticker.file_key,
@@ -103,6 +98,7 @@ export class StickerService {
         stickerId: sticker._id.toString(),
         userId: userObjectId.toString(),
         isPackCover: !pack.icon_url,
+        fit,
       });
     }
 
@@ -110,8 +106,7 @@ export class StickerService {
   }
 
   async findManyStickers(): Promise<Sticker[]> {
-    const stickers = await this.stickerRepository.findAll();
-    return stickers;
+    return this.stickerRepository.findAll();
   }
 
   async findStickerById(id: string): Promise<Sticker | null> {
@@ -119,8 +114,7 @@ export class StickerService {
       id,
       "ID da figurinha inválido",
     );
-    const sticker = await this.stickerRepository.findById(stickerObjectId);
-    return sticker;
+    return this.stickerRepository.findById(stickerObjectId);
   }
 
   async listStickersByUserId(
@@ -131,39 +125,30 @@ export class StickerService {
       userId,
       "ID de usuário inválido",
     );
-    const currentUserIdObject = MongoUtils.toObjectId(
+    const currentUserObjectId = MongoUtils.toObjectId(
       currentUserId,
       "ID de usuário inválido",
     );
 
-    const stickers = await this.stickerRepository.findByUserId(userObjectId);
-    if (!stickers || stickers.length === 0) {
-      return [];
-    }
-
     PermissionUtils.verifyOwnership(
-      currentUserIdObject,
+      currentUserObjectId,
       userObjectId,
       "figurinhas do usuário",
     );
 
-    return stickers;
+    return this.stickerRepository.findByUserId(userObjectId);
   }
 
   async listStickersByPackId(packId: string): Promise<Sticker[]> {
     const packObjectId = MongoUtils.toObjectId(packId, "ID do pacote inválido");
-    const stickers = await this.stickerRepository.findByPackId(packObjectId);
-    if (!stickers) {
-      return [];
-    }
-    return stickers;
+    return this.stickerRepository.findByPackId(packObjectId);
   }
 
   async updateSticker(
     id: string,
     userId: string,
     updateData: UpdateStickerDto,
-  ): Promise<Sticker | null> {
+  ): Promise<Sticker> {
     const stickerObjectId = MongoUtils.toObjectId(
       id,
       "ID da figurinha inválido",
@@ -176,7 +161,7 @@ export class StickerService {
     const existingSticker =
       await this.stickerRepository.findById(stickerObjectId);
     if (!existingSticker) {
-      throw new Error("Figurinha não encontrada");
+      throw AppError.notFound("Figurinha não encontrada", "STICKER_NOT_FOUND");
     }
 
     PermissionUtils.verifyOwnership(
@@ -185,30 +170,24 @@ export class StickerService {
       "figurinha",
     );
 
-    const user = await this.userRepository.find({ _id: userObjectId });
-    const sanitizedUser = user ? UserUtils.applyDefaults(user) : null;
-    const isMaster = sanitizedUser?.subscription?.type === "MESTRE";
-    const defaultAuthor = sanitizedUser?.userName || existingSticker.author;
+    const author = await this.resolveAuthor(userObjectId, updateData.author);
 
-    const resolvedAuthor = isMaster
-      ? updateData.author || defaultAuthor
-      : defaultAuthor;
-
-    const sticker = await this.stickerRepository.update(
+    const updatedSticker = await this.stickerRepository.update(
       stickerObjectId,
       userObjectId,
       {
         ...updateData,
-        author: resolvedAuthor,
+        author,
       },
     );
-    if (!sticker) {
-      throw new Error(
+    if (!updatedSticker) {
+      throw AppError.internal(
         "Não foi possível atualizar a figurinha. Tente novamente em instantes.",
+        "STICKER_UPDATE_FAILED",
       );
     }
 
-    return sticker;
+    return updatedSticker;
   }
 
   async deleteSticker(id: string, userId: string): Promise<Sticker> {
@@ -224,7 +203,7 @@ export class StickerService {
     const existingSticker =
       await this.stickerRepository.findById(stickerObjectId);
     if (!existingSticker) {
-      throw new Error("Figurinha não encontrada");
+      throw AppError.notFound("Figurinha não encontrada", "STICKER_NOT_FOUND");
     }
 
     PermissionUtils.verifyOwnership(
@@ -233,20 +212,21 @@ export class StickerService {
       "figurinha",
     );
 
-    const currentPackCount = await this.stickerRepository.countByPackId(
+    const packStickersCount = await this.stickerRepository.countByPackId(
       existingSticker.pack_id,
     );
-    if (currentPackCount <= MIN_STICKERS_PER_PACK) {
-      throw new PackRulesError("min");
+    if (packStickersCount <= MIN_STICKERS_PER_PACK) {
+      throw PackRulesError.min();
     }
 
-    const result = await this.stickerRepository.delete(
+    const deleted = await this.stickerRepository.delete(
       stickerObjectId,
       userObjectId,
     );
-    if (!result) {
-      throw new Error(
+    if (!deleted) {
+      throw AppError.internal(
         "Não foi possível excluir a figurinha. Tente novamente em instantes.",
+        "STICKER_DELETE_FAILED",
       );
     }
 
@@ -261,11 +241,10 @@ export class StickerService {
       -1,
     );
 
-    const sizeBytes = existingSticker.size_bytes ?? 0;
-    if (sizeBytes > 0) {
+    if (existingSticker.size_bytes > 0) {
       await this.userRepository.incrementStorageUsedBytes(
         userObjectId,
-        -sizeBytes,
+        -existingSticker.size_bytes,
       );
     }
 
@@ -276,5 +255,21 @@ export class StickerService {
     }
 
     return existingSticker;
+  }
+
+  private async resolveAuthor(
+    userObjectId: ObjectId,
+    requestedAuthor: string,
+  ): Promise<string> {
+    const user = await this.userRepository.find({ _id: userObjectId });
+    if (!user) {
+      throw new UserNotFoundError();
+    }
+
+    const sanitizedUser = UserUtils.applyDefaults(user);
+    const isMaster = sanitizedUser.subscription.type === "MESTRE";
+    const customAuthor = requestedAuthor.trim();
+
+    return isMaster && customAuthor ? customAuthor : sanitizedUser.userName;
   }
 }
