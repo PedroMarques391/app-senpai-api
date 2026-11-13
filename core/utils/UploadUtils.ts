@@ -3,6 +3,8 @@ import crypto from "node:crypto";
 export type StandardUploadFolder = "avatars" | "banners" | "stickers";
 
 export class UploadUtils {
+  private static readonly TEMP_PREFIX = "temp";
+
   private static cleanIdentifier(value: string): string {
     return value.toLowerCase().replace(/[^a-z0-9_-]/g, "_");
   }
@@ -23,21 +25,23 @@ export class UploadUtils {
     folder: string = "stickers",
   ): { folderPath: string; filename: string } {
     const normalizedFolder = this.normalizeFolder(folder);
-    const folderPath = `${normalizedFolder}/${userId}`;
 
     if (normalizedFolder === "avatars") {
-      return { folderPath, filename: "avatar.webp" };
+      return { folderPath: `avatars/${userId}`, filename: "avatar.webp" };
     }
 
     if (normalizedFolder === "banners") {
-      return { folderPath, filename: "banner.webp" };
+      return { folderPath: `banners/${userId}`, filename: "banner.webp" };
     }
 
     const timestamp = Date.now();
     const uniqueId = crypto.randomUUID().slice(0, 8);
     const filename = `${userId}_${timestamp}_${uniqueId}`;
 
-    return { folderPath, filename };
+    return {
+      folderPath: `${this.TEMP_PREFIX}/${normalizedFolder}/${userId}`,
+      filename,
+    };
   }
 
   static verifyOwnership(
