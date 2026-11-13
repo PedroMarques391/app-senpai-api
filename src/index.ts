@@ -1,6 +1,6 @@
+import { FASTIFY_LOGGER_CONFIG } from "@/constants";
 import {
   BullMQInitializer,
-  LoggerInitializer,
   MailerInitializer,
   MongoInitializer,
 } from "@/init";
@@ -41,7 +41,7 @@ import fastifyRateLimit from "@fastify/rate-limit";
 import fastifyRawBody from "fastify-raw-body";
 import { resendWebhook, revenuecatWebhook } from "./webhook";
 const server = fastify({
-  logger: LoggerInitializer.getOptions(),
+  logger: FASTIFY_LOGGER_CONFIG,
 }).withTypeProvider<ZodTypeProvider>();
 
 server.register(fastifyCors, {
@@ -128,7 +128,6 @@ server.get("/", async (_request, reply) => {
 
 const bootstrap = async () => {
   try {
-    LoggerInitializer.init(server.log);
     BullMQInitializer.setLogger(server.log);
     await MongoInitializer.init(server.log);
     MailerInitializer.init(server.log);

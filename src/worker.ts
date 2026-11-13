@@ -1,29 +1,33 @@
+import { FASTIFY_LOGGER_CONFIG } from "@/constants";
 import { ServiceFactory } from "@/factories";
-import {
-  BullMQInitializer,
-  LoggerInitializer,
-  MongoInitializer,
-} from "@/init";
+import { BullMQInitializer, MongoInitializer } from "@/init";
 import { PackRepository, StickerRepository } from "@/repositories";
 import { MediaWorker } from "@/workers";
-import http from "node:http";
+import fastify from "fastify";
 import { createClient } from "redis";
 
+const server = fastify({
+  logger: FASTIFY_LOGGER_CONFIG,
+});
+
+const healthResponse = { status: "healthy", service: "media-worker" };
+
+server.get("/", { logLevel: "silent" }, async () => healthResponse);
+server.get("/health", { logLevel: "silent" }, async () => healthResponse);
+
 async function bootstrap() {
-  const logger = LoggerInitializer.init();
-
   try {
-    logger.info("⏳ Inicializando conexões do Worker...");
+    server.log.info("⏳ Inicializando conexões do Worker...");
 
-    BullMQInitializer.setLogger(logger);
-    await MongoInitializer.init(logger);
+    BullMQInitializer.setLogger(server.log);
+    await MongoInitializer.init(server.log);
 
     const redisClient = createClient({ url: process.env.REDIS_URL });
     redisClient.on("error", (err) => {
-      logger.error({ err }, "Erro no Redis do Worker");
+      server.log.error({ err }, "Erro no Redis do Worker");
     });
     await redisClient.connect();
-    logger.info("Redis conectado com sucesso no Worker");
+    server.log.info("Redis conectado com sucesso no Worker");
 
     const cacheService = ServiceFactory.getCacheService(redisClient as any);
     const storageProvider = ServiceFactory.getCloudFlareR2Provider();
@@ -37,30 +41,21 @@ async function bootstrap() {
       stickerRepository,
       packRepository,
       cacheService,
-      logger,
+      server.log,
     );
 
-    logger.info("Media Worker inicializado e pronto para processar filas!");
-
-    const port = Number(process.env.PORT);
-    const healthServer = http.createServer((_req, res) => {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "healthy", service: "media-worker" }));
+    const address = await server.listen({
+      port: Number(process.env.PORT) || 0,
+      host: "0.0.0.0",
     });
 
-    healthServer.listen(port, "0.0.0.0", () => {
-      const address = healthServer.address();
-      const listeningPort =
-        typeof address === "object" && address ? address.port : port;
-      logger.info(
-        { port: listeningPort },
-        `Healthcheck HTTP ativo na porta ${listeningPort}`,
-      );
-    });
+    server.log.info(
+      `Media Worker inicializado e pronto para processar filas (${address})`,
+    );
 
     const shutdown = async () => {
-      logger.info("Finalizando Media Worker...");
-      healthServer.close();
+      server.log.info("Finalizando Media Worker...");
+      await server.close();
       await mediaWorker.close();
       await redisClient.destroy();
       await BullMQInitializer.disconnect();
@@ -71,7 +66,7 @@ async function bootstrap() {
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
   } catch (err) {
-    logger.error({ err }, "Falha crítica ao inicializar Media Worker");
+    server.log.error({ err }, "Falha crítica ao inicializar Media Worker");
     process.exit(1);
   }
 }
