@@ -27,6 +27,47 @@ export class SharpService {
       .toBuffer();
   }
 
+  private async encodeAnimatedWebp(
+    buffer: Buffer,
+    params: {
+      size: number;
+      fit: "fill" | "cover";
+      position?: "center";
+      initialPages: number;
+      initialQuality: number;
+      maxBytes: number;
+    },
+  ): Promise<Buffer> {
+    const tiers: Array<[number, number]> = [
+      [params.initialPages, params.initialQuality],
+      [Math.max(1, Math.min(params.initialPages, 24)), 50],
+      [Math.max(1, Math.min(params.initialPages, 16)), 40],
+      [Math.max(1, Math.min(params.initialPages, 12)), 35],
+    ];
+
+    let result = Buffer.alloc(0);
+    for (const [pages, quality] of tiers) {
+      result = await sharp(buffer, { animated: true, pages })
+        .resize(params.size, params.size, {
+          fit: params.fit,
+          ...(params.position ? { position: params.position } : {}),
+        })
+        .webp({
+          quality,
+          loop: 0,
+          effort: 4,
+          minSize: false,
+        })
+        .toBuffer();
+
+      if (result.length <= params.maxBytes) {
+        return result;
+      }
+    }
+
+    return result;
+  }
+
   async convertToAnimated(
     buffer: Buffer,
     options?: StickerConvertOptions,
@@ -46,70 +87,13 @@ export class SharpService {
       Math.min(metadata.pages || 1, framesInMaxSeconds, maxFramesCap),
     );
 
-    let result = await sharp(buffer, { animated: true, pages })
-      .resize(this.STICKER_SIZE, this.STICKER_SIZE, {
-        fit: "fill",
-      })
-      .webp({
-        quality: options?.quality ?? 60,
-        loop: 0,
-        effort: 4,
-        minSize: true,
-      })
-      .toBuffer();
-
-    if (result.length > this.WHATSAPP_STICKER_MAX_BYTES) {
-      result = await sharp(buffer, {
-        animated: true,
-        pages: Math.max(1, Math.min(pages, 24)),
-      })
-        .resize(this.STICKER_SIZE, this.STICKER_SIZE, {
-          fit: "fill",
-        })
-        .webp({
-          quality: 50,
-          loop: 0,
-          effort: 4,
-          minSize: true,
-        })
-        .toBuffer();
-    }
-
-    if (result.length > this.WHATSAPP_STICKER_MAX_BYTES) {
-      result = await sharp(buffer, {
-        animated: true,
-        pages: Math.max(1, Math.min(pages, 16)),
-      })
-        .resize(this.STICKER_SIZE, this.STICKER_SIZE, {
-          fit: "fill",
-        })
-        .webp({
-          quality: 40,
-          loop: 0,
-          effort: 4,
-          minSize: true,
-        })
-        .toBuffer();
-    }
-
-    if (result.length > this.WHATSAPP_STICKER_MAX_BYTES) {
-      result = await sharp(buffer, {
-        animated: true,
-        pages: Math.max(1, Math.min(pages, 12)),
-      })
-        .resize(this.STICKER_SIZE, this.STICKER_SIZE, {
-          fit: "fill",
-        })
-        .webp({
-          quality: 35,
-          loop: 0,
-          effort: 4,
-          minSize: true,
-        })
-        .toBuffer();
-    }
-
-    return result;
+    return this.encodeAnimatedWebp(buffer, {
+      size: this.STICKER_SIZE,
+      fit: "fill",
+      initialPages: pages,
+      initialQuality: options?.quality ?? 60,
+      maxBytes: this.WHATSAPP_STICKER_MAX_BYTES,
+    });
   }
 
   async convertToStickerPackIcon(
@@ -137,18 +121,14 @@ export class SharpService {
       );
 
       const [cover, icon] = await Promise.all([
-        sharp(buffer, { animated: true, pages })
-          .resize(this.STICKER_SIZE, this.STICKER_SIZE, {
-            fit: "cover",
-            position: "center",
-          })
-          .webp({
-            quality: options?.quality ?? 75,
-            loop: 0,
-            effort: 4,
-            minSize: true,
-          })
-          .toBuffer(),
+        this.encodeAnimatedWebp(buffer, {
+          size: this.STICKER_SIZE,
+          fit: "cover",
+          position: "center",
+          initialPages: pages,
+          initialQuality: options?.quality ?? 75,
+          maxBytes: this.WHATSAPP_STICKER_MAX_BYTES,
+        }),
         sharp(buffer, { animated: true, pages })
           .resize(this.TRAY_ICON_SIZE, this.TRAY_ICON_SIZE, {
             fit: "cover",
@@ -158,7 +138,7 @@ export class SharpService {
             quality: options?.quality ?? 75,
             loop: 0,
             effort: 4,
-            minSize: true,
+            minSize: false,
           })
           .toBuffer(),
       ]);
