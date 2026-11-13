@@ -1,19 +1,29 @@
 import { ServiceFactory } from "@/factories";
-import { BullMQInitializer, MongoInitializer } from "@/init";
+import {
+  BullMQInitializer,
+  LoggerInitializer,
+  MongoInitializer,
+} from "@/init";
 import { PackRepository, StickerRepository } from "@/repositories";
 import { MediaWorker } from "@/workers";
 import http from "node:http";
 import { createClient } from "redis";
 
 async function bootstrap() {
-  try {
-    console.log("⏳ Inicializando conexões do Worker...");
+  const logger = LoggerInitializer.init();
 
-    await MongoInitializer.init();
+  try {
+    logger.info("⏳ Inicializando conexões do Worker...");
+
+    BullMQInitializer.setLogger(logger);
+    await MongoInitializer.init(logger);
 
     const redisClient = createClient({ url: process.env.REDIS_URL });
+    redisClient.on("error", (err) => {
+      logger.error({ err }, "Erro no Redis do Worker");
+    });
     await redisClient.connect();
-    console.log("Redis conectado com sucesso no Worker");
+    logger.info("Redis conectado com sucesso no Worker");
 
     const cacheService = ServiceFactory.getCacheService(redisClient as any);
     const storageProvider = ServiceFactory.getCloudFlareR2Provider();
@@ -27,9 +37,10 @@ async function bootstrap() {
       stickerRepository,
       packRepository,
       cacheService,
+      logger,
     );
 
-    console.log("Media Worker inicializado e pronto para processar filas!");
+    logger.info("Media Worker inicializado e pronto para processar filas!");
 
     const port = Number(process.env.PORT);
     const healthServer = http.createServer((_req, res) => {
@@ -38,11 +49,17 @@ async function bootstrap() {
     });
 
     healthServer.listen(port, "0.0.0.0", () => {
-      console.log(`Healthcheck HTTP ativo na porta ${port}`);
+      const address = healthServer.address();
+      const listeningPort =
+        typeof address === "object" && address ? address.port : port;
+      logger.info(
+        { port: listeningPort },
+        `Healthcheck HTTP ativo na porta ${listeningPort}`,
+      );
     });
 
     const shutdown = async () => {
-      console.log("Finalizando Media Worker...");
+      logger.info("Finalizando Media Worker...");
       healthServer.close();
       await mediaWorker.close();
       await redisClient.destroy();
@@ -54,7 +71,7 @@ async function bootstrap() {
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
   } catch (err) {
-    console.error("Falha crítica ao inicializar Media Worker:", err);
+    logger.error({ err }, "Falha crítica ao inicializar Media Worker");
     process.exit(1);
   }
 }

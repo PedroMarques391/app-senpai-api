@@ -205,16 +205,31 @@ export class MediaWorker {
 
     this.worker.on("completed", (job) => {
       this.logger?.info(
-        { jobId: job.id },
+        {
+          jobId: job.id,
+          type: job.data.type,
+          stickerId: job.data.stickerId,
+          packId: job.data.packId,
+        },
         `[MediaWorker] Job ${job.id} concluído com sucesso`,
       );
     });
 
     this.worker.on("failed", (job, err) => {
       this.logger?.error(
-        { jobId: job?.id, err: err.message },
+        {
+          jobId: job?.id,
+          type: job?.data?.type,
+          stickerId: job?.data?.stickerId,
+          packId: job?.data?.packId,
+          err: err.message,
+        },
         `[MediaWorker] Job ${job?.id} falhou: ${err.message}`,
       );
+    });
+
+    this.worker.on("error", (err) => {
+      this.logger?.error({ err: err.message }, "[MediaWorker] Erro no worker");
     });
   }
 
