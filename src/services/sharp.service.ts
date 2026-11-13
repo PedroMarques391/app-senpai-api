@@ -1,10 +1,12 @@
-import sharp from "sharp";
+import type { StickerFit } from "@/dtos";
+import sharp, { type ResizeOptions } from "sharp";
 
 export interface StickerConvertOptions {
   quality?: number;
   maxSeconds?: number;
   maxFrames?: number;
   isAnimated?: boolean;
+  fit?: StickerFit;
 }
 
 export class SharpService {
@@ -12,14 +14,31 @@ export class SharpService {
   private readonly TRAY_ICON_SIZE = 96;
   private readonly WHATSAPP_STICKER_MAX_BYTES = 500 * 1024;
 
+  private buildResizeOptions(
+    fit: StickerFit = "fill",
+    position?: "center",
+  ): ResizeOptions {
+    return {
+      fit,
+      ...(fit === "cover" || fit === "contain" || position
+        ? { position: position ?? "center" }
+        : {}),
+      ...(fit === "contain"
+        ? { background: { r: 0, g: 0, b: 0, alpha: 0 } }
+        : {}),
+    };
+  }
+
   async convertToStatic(
     buffer: Buffer,
     options?: StickerConvertOptions,
   ): Promise<Buffer> {
     return sharp(buffer)
-      .resize(this.STICKER_SIZE, this.STICKER_SIZE, {
-        fit: "fill",
-      })
+      .resize(
+        this.STICKER_SIZE,
+        this.STICKER_SIZE,
+        this.buildResizeOptions(options?.fit ?? "fill"),
+      )
       .webp({
         quality: options?.quality ?? 80,
         effort: 6,
@@ -31,7 +50,7 @@ export class SharpService {
     buffer: Buffer,
     params: {
       size: number;
-      fit: "fill" | "cover";
+      fit: StickerFit;
       position?: "center";
       initialPages: number;
       initialQuality: number;
@@ -44,14 +63,12 @@ export class SharpService {
       [Math.max(1, Math.min(params.initialPages, 16)), 40],
       [Math.max(1, Math.min(params.initialPages, 12)), 35],
     ];
+    const resizeOptions = this.buildResizeOptions(params.fit, params.position);
 
     let result = Buffer.alloc(0);
     for (const [pages, quality] of tiers) {
       result = await sharp(buffer, { animated: true, pages })
-        .resize(params.size, params.size, {
-          fit: params.fit,
-          ...(params.position ? { position: params.position } : {}),
-        })
+        .resize(params.size, params.size, resizeOptions)
         .webp({
           quality,
           loop: 0,
@@ -89,7 +106,7 @@ export class SharpService {
 
     return this.encodeAnimatedWebp(buffer, {
       size: this.STICKER_SIZE,
-      fit: "fill",
+      fit: options?.fit ?? "fill",
       initialPages: pages,
       initialQuality: options?.quality ?? 60,
       maxBytes: this.WHATSAPP_STICKER_MAX_BYTES,

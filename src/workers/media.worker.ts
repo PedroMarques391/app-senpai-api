@@ -1,6 +1,7 @@
 import { AppError } from "@/errors";
 import { BullMQInitializer } from "@/init";
 import { PackRepository, StickerRepository } from "@/repositories";
+import type { StickerFit } from "@/dtos";
 import type { CacheService, SharpService } from "@/services";
 import type {
   MediaConversionType,
@@ -50,16 +51,20 @@ export class MediaWorker {
     return Buffer.from(await (response.Body as any).transformToByteArray());
   }
 
-  private convert(type: MediaConversionType, buffer: Buffer): Promise<Buffer> {
+  private convert(
+    type: MediaConversionType,
+    buffer: Buffer,
+    fit?: StickerFit,
+  ): Promise<Buffer> {
     switch (type) {
       case "animated":
-        return this.sharpService.convertToAnimated(buffer);
+        return this.sharpService.convertToAnimated(buffer, { fit });
       case "avatar":
         return this.sharpService.convertToAvatar(buffer);
       case "banner":
         return this.sharpService.convertToBanner(buffer);
       default:
-        return this.sharpService.convertToStatic(buffer);
+        return this.sharpService.convertToStatic(buffer, { fit });
     }
   }
 
@@ -106,9 +111,10 @@ export class MediaWorker {
       destinationPath,
       tempKey,
       isPackCover,
+      fit,
     } = job.data;
     this.logger?.info(
-      { jobId: job.id, type, stickerId, packId },
+      { jobId: job.id, type, stickerId, packId, fit },
       "[MediaWorker] Processando conversão",
     );
 
@@ -116,7 +122,7 @@ export class MediaWorker {
     const userObjectId = userId ? MongoUtils.toObjectId(userId) : undefined;
     const packObjectId = packId ? MongoUtils.toObjectId(packId) : undefined;
 
-    const finalBuffer = await this.convert(type, inputBuffer);
+    const finalBuffer = await this.convert(type, inputBuffer, fit);
 
     let finalKey = destinationPath;
     if (!finalKey) {
