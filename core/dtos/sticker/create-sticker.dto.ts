@@ -1,5 +1,11 @@
 import { stickerSchema } from "@/schemas";
-import type { z } from "zod";
+import { z } from "zod";
+
+export const STICKER_FIT_MODES = ["cover", "fill", "contain"] as const;
+export const stickerFitEnum = z.enum(STICKER_FIT_MODES, {
+  message: "Modo de ajuste de imagem inválido.",
+});
+export type StickerFit = z.infer<typeof stickerFitEnum>;
 
 export const createStickerDtoSchema = stickerSchema
   .pick({

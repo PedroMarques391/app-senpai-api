@@ -1,3 +1,5 @@
+import type { StickerFit } from "@/dtos";
+
 export interface EmailJobData {
   to: string;
   subject: string;
@@ -41,6 +43,7 @@ export interface MediaJobData {
   destinationPath?: string;
   quality?: number;
   isPackCover?: boolean;
+  fit?: StickerFit;
 }
 
 export interface MediaJobResponse {
