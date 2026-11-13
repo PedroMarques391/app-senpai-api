@@ -1,3 +1,4 @@
 export * from "./bullmq";
 export * from "./database";
+export * from "./logger";
 export * from "./mailer";

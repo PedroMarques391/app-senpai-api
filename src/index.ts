@@ -1,4 +1,9 @@
-import { BullMQInitializer, MailerInitializer, MongoInitializer } from "@/init";
+import {
+  BullMQInitializer,
+  LoggerInitializer,
+  MailerInitializer,
+  MongoInitializer,
+} from "@/init";
 import {
   authPlugin,
   errorPlugin,
@@ -36,19 +41,7 @@ import fastifyRateLimit from "@fastify/rate-limit";
 import fastifyRawBody from "fastify-raw-body";
 import { resendWebhook, revenuecatWebhook } from "./webhook";
 const server = fastify({
-  logger:
-    process.env.NODE_ENV === "production"
-      ? true
-      : {
-          transport: {
-            target: "pino-pretty",
-            options: {
-              colorize: true,
-              translateTime: "HH:MM:ss Z",
-              ignore: "pid,hostname",
-            },
-          },
-        },
+  logger: LoggerInitializer.getOptions(),
 }).withTypeProvider<ZodTypeProvider>();
 
 server.register(fastifyCors, {
@@ -135,6 +128,7 @@ server.get("/", async (_request, reply) => {
 
 const bootstrap = async () => {
   try {
+    LoggerInitializer.init(server.log);
     BullMQInitializer.setLogger(server.log);
     await MongoInitializer.init(server.log);
     MailerInitializer.init(server.log);
