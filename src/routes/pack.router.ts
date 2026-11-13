@@ -5,6 +5,7 @@ import {
   reportPackQuerySchema,
   updatePackDtoSchema,
 } from "@/dtos";
+import { AppError } from "@/errors";
 import { ServiceFactory } from "@/factories";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
@@ -40,14 +41,11 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
 
       if (user) {
         if (!request.user) {
-          try {
-            await request.jwtVerify();
-          } catch {
-            return reply.status(401).send({
-              message: "Você precisa estar conectado para acessar seus pacotes.",
-              success: false,
-            });
-          }
+          throw new AppError(
+            "Você precisa estar logado para acessar seus pacotes.",
+            401,
+            "Unauthorized",
+          );
         }
 
         const cacheKey = `pack:user:${user}`;
@@ -64,10 +62,10 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
 
       const hasFilters = Boolean(
         search ||
-          category ||
-          (tags && tags.length > 0) ||
-          min_stickers !== undefined ||
-          max_stickers !== undefined,
+        category ||
+        (tags && tags.length > 0) ||
+        min_stickers !== undefined ||
+        max_stickers !== undefined,
       );
       const cacheKey = !hasFilters
         ? `pack:list:${page || 1}:${limit || 20}:${sort || "recent"}:${order || "desc"}`
@@ -222,7 +220,6 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
         cacheService.delPattern("stickers:pack:*"),
         profileService.invalidateProfile(request.user._id),
       ]);
-
 
       return reply.status(200).send({
         success: true,

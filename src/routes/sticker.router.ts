@@ -171,7 +171,6 @@ export const stickerRoutes: FastifyPluginAsyncZod = async (app) => {
         profileService.invalidateProfile(request.user._id),
       ]);
 
-
       return reply.status(200).send({
         success: true,
         message: "Figurinha deletada com sucesso",
