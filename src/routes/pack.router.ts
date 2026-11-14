@@ -24,6 +24,11 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
       schema: {
         querystring: listPackQuerySchema,
       },
+      preHandler: async (request, reply) => {
+        if (request.query.user) {
+          return app.authenticate(request, reply);
+        }
+      },
     },
     async (request, reply) => {
       const {
@@ -40,18 +45,6 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
       } = request.query;
 
       if (user) {
-        if (!request.user) {
-          try {
-            await request.jwtVerify();
-          } catch {
-            return reply.status(401).send({
-              message:
-                "Você precisa estar conectado para acessar seus pacotes.",
-              success: false,
-            });
-          }
-        }
-
         const cacheKey = `pack:user:${user}`;
         const cached = await cacheService.get(cacheKey);
 
