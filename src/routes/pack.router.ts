@@ -6,7 +6,6 @@ import {
   stickerFitEnum,
   updatePackDtoSchema,
 } from "@/dtos";
-import { AppError } from "@/errors";
 import { ServiceFactory } from "@/factories";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
@@ -42,11 +41,15 @@ export const packRoutes: FastifyPluginAsyncZod = async (app) => {
 
       if (user) {
         if (!request.user) {
-          throw new AppError(
-            "Você precisa estar logado para acessar seus pacotes.",
-            401,
-            "Unauthorized",
-          );
+          try {
+            await request.jwtVerify();
+          } catch {
+            return reply.status(401).send({
+              message:
+                "Você precisa estar conectado para acessar seus pacotes.",
+              success: false,
+            });
+          }
         }
 
         const cacheKey = `pack:user:${user}`;
