@@ -64,7 +64,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
 - **MongoDB ObjectId (`_id`, `user_id`, `pack_id`):** Retornados como `String` (hex de 24 chars). No Dart, mapear como `String`.
 - **Datas (`createdAt`, `cycle_start`, `created_at`):** Serializadas como strings ISO 8601 UTC. No Dart, fazer o parse via `DateTime.parse(json['createdAt']).toLocal()` para exibição correta no fuso local.
 - **Campos Opcionais e Nullable:** Tratar campos que podem vir ausentes ou como `null` usando tipos anuláveis (`String?`, `int?`).
-- **Normalização e Variantes de WhatsApp (`wa_id`):** O backend garante a presença do prefixo de país `55` e oferece compatibilidade transparente com números brasileiros cadastrados com ou sem o 9º dígito (12 e 13 dígitos, ex: `551188887777` ou `5511988887777`). As consultas internas utilizam `AuthUtils.getWaIdVariants`, permitindo login, envio de OTP e busca independentemente da variante utilizada.
+- **Normalização e Variantes de WhatsApp (`wa_id`):** O backend garante a presença do prefixo de país `55` e oferece compatibilidade transparente com números brasileiros cadastrados com ou sem o 9º dígito (12 e 13 dígitos, ex: `551188887777` ou `5511988887777`). As consultas internas utilizam `AuthHelper.getWaIdVariants`, permitindo login, envio de OTP e busca independentemente da variante utilizada.
 
 ---
 
@@ -92,7 +92,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
 #### `POST /auth/login/otp`
 
 - **Descrição e Regra de Negócio:** Envia código OTP de 6 dígitos via WhatsApp.
-  1. **Normalização e Busca por Variantes:** O backend normaliza o número via `AuthUtils.normalizeWaId` (adicionando prefixo `55` apenas para números nacionais brasileiros válidos com DDD nacional e 9º dígito em celulares, preservando números internacionais como Espanha `+34...`, EUA `+1...`, etc.) e localiza a conta utilizando variantes (`AuthUtils.getWaIdVariants`), garantindo que tanto números de 12 quanto de 13 dígitos no Brasil e números internacionais encontrem o cadastro correto. O OTP é registrado sob o `wa_id` canônico normalizado.
+  1. **Normalização e Busca por Variantes:** O backend normaliza o número via `AuthHelper.normalizeWaId` (adicionando prefixo `55` apenas para números nacionais brasileiros válidos com DDD nacional e 9º dígito em celulares, preservando números internacionais como Espanha `+34...`, EUA `+1...`, etc.) e localiza a conta utilizando variantes (`AuthHelper.getWaIdVariants`), garantindo que tanto números de 12 quanto de 13 dígitos no Brasil e números internacionais encontrem o cadastro correto. O OTP é registrado sob o `wa_id` canônico normalizado.
   2. **Proteção de Usuário Inativo:** Se a conta estiver com `status: "inactive"`, a API retorna mensagem genérica com `userExists: true` para evitar enumeração de status por terceiros.
   3. **Verificação Premium:** Valida se o usuário é `premium`. Usuários não-premium recebem aviso específico.
   4. **Rate Limit:** Aplica intervalo mínimo de 60 segundos entre envios. Se chamado antes do tempo, retorna `403` com `retryAfter` indicando os segundos restantes.
@@ -201,7 +201,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
 #### `POST /auth/password/recovery`
 
 - **Descrição e Regra de Negócio:** Dispara o fluxo de recuperação de senha por e-mail para usuários cadastrados.
-  1. **Normalização e Validação do E-mail:** O payload recebe `email`, que passa por validação com Zod (`z.string().trim().toLowerCase().email()`) e sanitização via `UserUtils.normalizeIdentifier`.
+  1. **Normalização e Validação do E-mail:** O payload recebe `email`, que passa por validação com Zod (`z.string().trim().toLowerCase().email()`) e sanitização via `UserHelper.normalizeIdentifier`.
   2. **Verificação de Existência e Status:** O backend localiza o usuário no MongoDB. Se o usuário não existir, estiver com `status: "inactive"` ou não possuir e-mail cadastrado, retorna erro genérico amigável (`"Erro ao tentar redefinir a senha. Tente novamente."`) para evitar enumeração de contas por terceiros.
   3. **Token Criptográfico & TTL:** Gera um token seguro de 40 caracteres hexadecimais (`crypto.randomBytes(20).toString("hex")`) e grava no Redis sob a chave `reset:<token>` associado ao e-mail com tempo de expiração de **10 minutos** (600 segundos).
   4. **Envio Assíncrono via BullMQ & Resend:** Enfileira o e-mail na fila `email`. O `EmailWorker` consome a fila e dispara o template HTML responsivo contendo o link de recuperação: `${PRODUCTION_URL}/pt/reset-password?token=${token}`.
@@ -239,7 +239,7 @@ A API possui tratamento centralizado (`error.plugin.ts` e decorators de plugins)
 - **Descrição e Regra de Negócio:** Redefine a senha da conta utilizando o token criptográfico recebido por e-mail e dispara alerta de segurança.
   1. **Validação do Token no Redis:** Consulta a chave `reset:<token>`. Se o token for inexistente ou estiver expirado (após 10 minutos), rejeita a requisição com erro `"Token inválido ou expirado."`.
   2. **Verificação da Conta:** Localiza a conta vinculada ao e-mail retornado pelo token no Redis e valida se a conta não possui status `inactive`.
-  3. **Hash Criptográfico:** Gera novo hash seguro via Bcrypt (`AuthUtils.hashPassword`) com salt rounds adequados antes de salvar no banco de dados.
+  3. **Hash Criptográfico:** Gera novo hash seguro via Bcrypt (`AuthHelper.hashPassword`) com salt rounds adequados antes de salvar no banco de dados.
   4. **Atualização Atômica no MongoDB:** Atualiza o campo `password` do documento do usuário de forma atômica no banco de dados.
   5. **Invalidação Completa de Cache:** Remove a chave temporária `reset:<token>` do Redis e limpa o cache de perfil do usuário (`profile:<userId>` e `profile:username:<userName>`), garantindo que consultas subsequentes não retornem dados desatualizados.
   6. **E-mail de Notificação de Segurança com Auditoria:** Dispara assincronamente um e-mail de alerta (`success-email-template`) confirmando a alteração da senha, contendo detalhes de auditoria: data e horário formatados no Horário de Brasília, endereço IP de origem (com resolução de proxies/CDN), localização geográfica aproximada e dispositivo/navegador identificado pelo `User-Agent`.
@@ -297,7 +297,7 @@ O sistema de cotas diárias controla a criação de pacotes e figurinhas para us
 #### Regras de Negócio do Ciclo de Cotas:
 
 1. **Fuso Horário de Reset:** O ciclo diário é baseado no horário de Brasília (UTC-3) e **reinicia todos os dias às 06:00 BRT** (09:00 UTC).
-2. **Limite Diário Grátis:** Usuários Free podem criar até **1 pacote** e até **3 figurinhas por dia** (`QuotaUtils.FREE_DAILY_STICKER_LIMIT = 3`).
+2. **Limite Diário Grátis:** Usuários Free podem criar até **1 pacote** e até **3 figurinhas por dia** (`QuotaHelper.FREE_DAILY_STICKER_LIMIT = 3`).
 3. **Bloqueio de Pacote Ativo:** Ao criar ou reservar o primeiro pacote do dia, todas as criações subsequentes daquele dia devem pertencer ao mesmo pacote até que a cota de 3 figurinhas se esgote.
 4. **Usuários VIP (`premium: true`):** Possuem cota ilimitada (`isUnlimited: true`), sem restrição de pacote ou limite diário.
 
@@ -1145,7 +1145,7 @@ _(Requer Header `Authorization`)_
 
 #### `DELETE /upload/?key=...` ou `?public_id=...`
 
-- **Descrição:** Exclui um arquivo do Cloudflare R2. Valida com rigor se a `key` contém o `userName` do usuário autenticado (`UploadUtils.verifyOwnership`) para prevenir deleção de arquivos de outros usuários. Suporta tanto o parâmetro `key` quanto `public_id` (retrocompatibilidade). Retorna erro amigável formatado por `errorPlugin` via `AppError`.
+- **Descrição:** Exclui um arquivo do Cloudflare R2. Valida com rigor se a `key` contém o `userName` do usuário autenticado (`UploadHelper.verifyOwnership`) para prevenir deleção de arquivos de outros usuários. Suporta tanto o parâmetro `key` quanto `public_id` (retrocompatibilidade). Retorna erro amigável formatado por `errorPlugin` via `AppError`.
 
 ---
 
@@ -1204,13 +1204,13 @@ O módulo de gamificação do Senpai estimula a retenção e o engajamento diár
 
 #### Regras de Negócio e Mecânicas de Gamificação:
 
-1. **Ciclo Diário Sincronizado:** O ciclo diário de missões é rigorosamente alinhado ao fuso de Brasília (`QuotaUtils.getCycleInfo()`), com virada todos os dias às **06:00 BRT** (09:00 UTC), gerando a chave de ciclo `YYYY-MM-DD` (ex: `"2026-09-18"`).
+1. **Ciclo Diário Sincronizado:** O ciclo diário de missões é rigorosamente alinhado ao fuso de Brasília (`QuotaHelper.getCycleInfo()`), com virada todos os dias às **06:00 BRT** (09:00 UTC), gerando a chave de ciclo `YYYY-MM-DD` (ex: `"2026-09-18"`).
 2. **Ciclo Semanal ISO & Dias Ativos:** Acompanha os dias em que o usuário esteve ativo na semana corrente (`DateUtils.getIsoWeekIdentifier`, ex: `"2026-W38"`). Ao virar a semana ISO, o array `weekly_active_days` é reiniciado com o novo dia.
 3. **Ofensiva Diária (Streak):**
    - Se o usuário acessar o app no mesmo ciclo diário: o streak é mantido.
    - Se o último ciclo ativo foi o dia anterior (`yesterday`): o streak é incrementado em `+1`.
    - Se houver quebra de 1 ou mais dias: a ofensiva é resetada para `1`.
-4. **Sistema Progressivo de Níveis & XP (`LevelUtils`):**
+4. **Sistema Progressivo de Níveis & XP (`LevelHelper`):**
    - **Nível Máximo:** `100`.
    - **Fórmula de XP Necessário:** `xpForLevel(level) = 1000 + (level - 1) * 80`.
      - _Nível 1:_ 1.000 XP
@@ -1510,7 +1510,7 @@ O módulo é composto exclusivamente por rotas protegidas por JWT (`onRequest: a
   | Parâmetro | Tipo | Descrição |
   | :--- | :--- | :--- |
   | `id` | `String` (ObjectId hex de 24 caracteres) | Identificador único do registro de grupo. |
-- **Regra de Propriedade (Ownership):** O grupo deve obrigatoriamente pertencer ao usuário autenticado (`PermissionUtils.verifyOwnership`). Caso pertença a outro usuário, retorna `403 Forbidden`.
+- **Regra de Propriedade (Ownership):** O grupo deve obrigatoriamente pertencer ao usuário autenticado (`PermissionHelper.verifyOwnership`). Caso pertença a outro usuário, retorna `403 Forbidden`.
 - **Respostas:**
   - `200 OK`:
     ```json
@@ -1603,7 +1603,7 @@ O módulo é composto exclusivamente por rotas protegidas por JWT (`onRequest: a
 - **Descrição:** Atualiza os dados ou links de grupos do registro do usuário autenticado por completo.
 - **Headers:** `Authorization: Bearer <token>` (Obrigatório).
 - **Parâmetros de Rota:** `id` (ObjectId do registro de grupo).
-- **Regra de Propriedade (Ownership):** O grupo precisa pertencer ao usuário autenticado (`PermissionUtils.verifyOwnership`).
+- **Regra de Propriedade (Ownership):** O grupo precisa pertencer ao usuário autenticado (`PermissionHelper.verifyOwnership`).
 - **Request Body (`updateGroupDtoSchema`):**
   | Campo | Tipo Zod | Tipo Dart | Obrigatório? | Descrição |
   | :--- | :--- | :--- | :--- | :--- |

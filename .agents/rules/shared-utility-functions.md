@@ -8,9 +8,10 @@ To maintain consistency and avoid duplicated helper logic across the project, fo
 
 ## General Rules
 
-- Any reusable helper function **must** be placed in `core/utils`.
-- Do **not** create utility functions inside controllers, services, repositories, modules, or feature folders unless they are private implementation details.
-- Before creating a new utility, always verify whether an equivalent already exists in `core/utils`.
+- Pure, domain-agnostic utility functions **must** be placed in `core/utils`.
+- Helper functions with domain/business rules, external I/O (Redis, HTTP), framework coupling (JWT, bcrypt), or application errors **must** be placed in `src/helpers` following the `<domain>.helper.ts` / `<Domain>Helper` convention and exported via `src/helpers/index.ts` (`@/helpers`).
+- Do **not** create utility or helper functions inside controllers, services, repositories, modules, or feature folders unless they are private implementation details.
+- Before creating a new utility or helper, always verify whether an equivalent already exists in `core/utils` or `src/helpers`.
 
 ## Static Utility Classes
 
@@ -93,7 +94,7 @@ new StringUtils(); // Never
 ## Always
 
 - Keep all methods `static`.
-- Keep utility classes stateless.
-- Group related methods into the same utility class.
-- Store every shared utility inside `core/utils`.
-- Prefer extending an existing utility class over creating a new one when the functionality belongs to the same domain.
+- Keep utility and helper classes stateless.
+- Group related methods into the same utility or helper class.
+- Store every pure shared utility inside `core/utils` (`<Domain>Utils.ts`) and every domain/application helper inside `src/helpers` (`<domain>.helper.ts`).
+- Prefer extending an existing utility or helper class over creating a new one when the functionality belongs to the same domain.
