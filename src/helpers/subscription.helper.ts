@@ -1,6 +1,6 @@
 import type { UserSubscription } from "@/schemas";
 
-export class SubscriptionUtils {
+export class SubscriptionHelper {
   static isSubscriptionActive(
     subscription?: UserSubscription | null,
   ): boolean {

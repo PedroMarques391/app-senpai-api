@@ -8,7 +8,7 @@ const TARGET_STATUS: Partial<
   BAN: "banned",
 };
 
-export class PackModerationUtils {
+export class PackModerationHelper {
   static isLockedByModeration(status: PackModerationStatus): boolean {
     return status !== "approved";
   }

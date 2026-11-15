@@ -1,7 +1,8 @@
 import type { LevelInfo } from "@/models";
 
-export class LevelUtils {
+export class LevelHelper {
   static readonly MAX_LEVEL = 100;
+
   static xpForLevel(level: number): number {
     return 1000 + (level - 1) * 80;
   }

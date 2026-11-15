@@ -27,7 +27,8 @@ import {
   type ModerationGroupEmailItem,
 } from "@/templates/email";
 import type { PaginatedResult, PaginationOptions } from "@/types";
-import { MongoUtils, PermissionUtils } from "@/utils";
+import { PermissionHelper } from "@/helpers";
+import { MongoUtils } from "@/utils";
 import type { MailService } from "./mail.service";
 
 export class GroupService {
@@ -41,7 +42,7 @@ export class GroupService {
     userId: string,
     subscriptionType?: string,
   ): Promise<Group | null> {
-    PermissionUtils.verifyMasterSubscription(subscriptionType);
+    PermissionHelper.verifyMasterSubscription(subscriptionType);
     const userObjectId = MongoUtils.toObjectId(
       userId,
       "ID do usuário inválido",
@@ -58,7 +59,7 @@ export class GroupService {
     id: string,
     subscriptionType?: string,
   ): Promise<Group> {
-    PermissionUtils.verifyMasterSubscription(subscriptionType);
+    PermissionHelper.verifyMasterSubscription(subscriptionType);
     const userObjectId = MongoUtils.toObjectId(
       userId,
       "ID do usuário inválido",
@@ -68,7 +69,7 @@ export class GroupService {
     if (!group) {
       throw new GroupNotFoundError();
     }
-    PermissionUtils.verifyOwnership(group.user_id, userObjectId, "grupo");
+    PermissionHelper.verifyOwnership(group.user_id, userObjectId, "grupo");
     return group;
   }
 
@@ -161,7 +162,7 @@ export class GroupService {
     data: CreateGroupDto,
     subscriptionType?: string,
   ): Promise<Group> {
-    PermissionUtils.verifyMasterSubscription(subscriptionType);
+    PermissionHelper.verifyMasterSubscription(subscriptionType);
     const userObjectId = MongoUtils.toObjectId(
       userId,
       "ID do usuário inválido",
@@ -216,7 +217,7 @@ export class GroupService {
     data: UpdateGroupDto,
     subscriptionType?: string,
   ): Promise<Group> {
-    PermissionUtils.verifyMasterSubscription(subscriptionType);
+    PermissionHelper.verifyMasterSubscription(subscriptionType);
     const userObjectId = MongoUtils.toObjectId(
       userId,
       "ID do usuário inválido",
@@ -228,7 +229,7 @@ export class GroupService {
       throw new GroupNotFoundError();
     }
 
-    PermissionUtils.verifyOwnership(existing.user_id, userObjectId, "grupo");
+    PermissionHelper.verifyOwnership(existing.user_id, userObjectId, "grupo");
 
     const updated = await this.groupRepository.update(groupObjectId, data);
     if (!updated) {
@@ -245,7 +246,7 @@ export class GroupService {
     data: UpdateGroupItemDto,
     subscriptionType?: string,
   ): Promise<Group> {
-    PermissionUtils.verifyMasterSubscription(subscriptionType);
+    PermissionHelper.verifyMasterSubscription(subscriptionType);
     const userObjectId = MongoUtils.toObjectId(
       userId,
       "ID do usuário inválido",
@@ -286,7 +287,7 @@ export class GroupService {
     itemId: string,
     subscriptionType?: string,
   ): Promise<Group> {
-    PermissionUtils.verifyMasterSubscription(subscriptionType);
+    PermissionHelper.verifyMasterSubscription(subscriptionType);
     const userObjectId = MongoUtils.toObjectId(
       userId,
       "ID do usuário inválido",
@@ -322,7 +323,7 @@ export class GroupService {
     id: string,
     subscriptionType?: string,
   ): Promise<boolean> {
-    PermissionUtils.verifyMasterSubscription(subscriptionType);
+    PermissionHelper.verifyMasterSubscription(subscriptionType);
     const userObjectId = MongoUtils.toObjectId(
       userId,
       "ID do usuário inválido",
@@ -334,7 +335,7 @@ export class GroupService {
       throw new GroupNotFoundError();
     }
 
-    PermissionUtils.verifyOwnership(existing.user_id, userObjectId, "grupo");
+    PermissionHelper.verifyOwnership(existing.user_id, userObjectId, "grupo");
 
     const deleted = await this.groupRepository.delete(groupObjectId);
     if (!deleted) {

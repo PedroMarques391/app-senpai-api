@@ -22,11 +22,11 @@ import type {
 } from "@/repositories";
 import type { PaginatedResult, PaginationOptions } from "@/types";
 import {
-  MongoUtils,
-  PackModerationUtils,
-  PermissionUtils,
-  UserUtils,
-} from "@/utils";
+  PackModerationHelper,
+  PermissionHelper,
+  UserHelper,
+} from "@/helpers";
+import { MongoUtils } from "@/utils";
 import type { ObjectId } from "mongodb";
 import type { UploadService } from "./upload.service";
 
@@ -59,7 +59,7 @@ export class PackService {
     }
 
     const user = await this.userRepository.find({ _id: userObjectId });
-    const isRestricted = UserUtils.isRestricted(user);
+    const isRestricted = UserHelper.isRestricted(user);
 
     if (packData.is_public !== false && isRestricted) {
       throw new MaxStrikesReachedError();
@@ -222,7 +222,7 @@ export class PackService {
       return [];
     }
 
-    PermissionUtils.verifyOwnership(
+    PermissionHelper.verifyOwnership(
       currentUserIdObject,
       userObjectId,
       "pacotes do usuário",
@@ -247,7 +247,7 @@ export class PackService {
       throw new PackNotFoundError();
     }
 
-    PermissionUtils.verifyOwnership(
+    PermissionHelper.verifyOwnership(
       existingPack.user_id,
       userObjectId,
       "pacote",
@@ -255,7 +255,7 @@ export class PackService {
 
     if (updateData.is_public === true) {
       if (
-        !PackModerationUtils.canBeMadePublic(existingPack.moderation_status)
+        !PackModerationHelper.canBeMadePublic(existingPack.moderation_status)
       ) {
         throw existingPack.moderation_status === "restricted"
           ? new PackRestrictedCannotBePublicError()
@@ -263,7 +263,7 @@ export class PackService {
       }
 
       const user = await this.userRepository.find({ _id: userObjectId });
-      const isRestricted = UserUtils.isRestricted(user);
+      const isRestricted = UserHelper.isRestricted(user);
 
       if (isRestricted) {
         throw new MaxStrikesReachedError();
@@ -296,7 +296,7 @@ export class PackService {
       throw new PackNotFoundError();
     }
 
-    PermissionUtils.verifyOwnership(
+    PermissionHelper.verifyOwnership(
       existingPack.user_id,
       userObjectId,
       "pacote",

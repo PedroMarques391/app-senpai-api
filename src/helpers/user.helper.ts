@@ -1,10 +1,9 @@
 import { MAX_STRIKES } from "@/constants";
 import type { User } from "@/models";
 import { userSchema } from "@/schemas";
+import { SubscriptionHelper } from "./subscription.helper";
 
-import { SubscriptionUtils } from "./SubscriptionUtils";
-
-export class UserUtils {
+export class UserHelper {
   static isDifferentUser(
     existing: User | null | undefined,
     current: User | null | undefined,
@@ -29,7 +28,7 @@ export class UserUtils {
     const partialSchema = userSchema.partial();
     const parsed = partialSchema.parse(user) as User;
 
-    const sanitized = SubscriptionUtils.sanitizeSubscription(
+    const sanitized = SubscriptionHelper.sanitizeSubscription(
       parsed.subscription,
       parsed.premium,
     );
@@ -44,4 +43,3 @@ export class UserUtils {
     return identifier.trim().toLowerCase();
   }
 }
-

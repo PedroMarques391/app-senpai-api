@@ -2,7 +2,7 @@ import { createUserDtoSchema, type CreateUserDto } from "@/dtos";
 import { AppError } from "@/errors";
 import type { User, UserRepository } from "@/models";
 import type { AuthResult, SendOtpResult, ServiceResponse } from "@/types";
-import { AuthUtils, UserUtils } from "@/utils";
+import { AuthHelper, UserHelper } from "@/helpers";
 import type { JWT as FastifyJWT } from "@fastify/jwt";
 import type { OtpService } from "./otp.service";
 
@@ -17,7 +17,7 @@ export class AuthService {
   ) {}
 
   async sendOTP(phone: string): Promise<ServiceResponse<SendOtpResult>> {
-    const variants = AuthUtils.getWaIdVariants(phone);
+    const variants = AuthHelper.getWaIdVariants(phone);
     const user = await this.userRepository.find({ wa_id: { $in: variants } });
 
     if (user?.status === "inactive") {
@@ -46,7 +46,7 @@ export class AuthService {
     phone: string,
     otpCode: string,
   ): Promise<AuthResult> {
-    const variants = AuthUtils.getWaIdVariants(phone);
+    const variants = AuthHelper.getWaIdVariants(phone);
     const user = await this.userRepository.find({ wa_id: { $in: variants } });
     if (!user) {
       throw new AppError(
@@ -62,7 +62,7 @@ export class AuthService {
 
     await this.otpService.verifyWhatsappOtp(user.wa_id, otpCode);
 
-    const fullUser = UserUtils.applyDefaults({
+    const fullUser = UserHelper.applyDefaults({
       ...user,
       wa_id: user.wa_id,
       isNumberVerified: true,
@@ -82,7 +82,7 @@ export class AuthService {
       accountType: fullUser.accountType,
     };
 
-    const token = AuthUtils.generateJWT(this.jwtInstance, payload);
+    const token = AuthHelper.generateJWT(this.jwtInstance, payload);
 
     return { user: fullUser, token };
   }
@@ -91,7 +91,7 @@ export class AuthService {
     identifier: string,
     passwordString: string,
   ): Promise<AuthResult> {
-    const cleanIdentifier = UserUtils.normalizeIdentifier(identifier);
+    const cleanIdentifier = UserHelper.normalizeIdentifier(identifier);
     let user = await this.userRepository.find({ email: cleanIdentifier });
     if (!user) {
       user = await this.userRepository.find({ userName: cleanIdentifier });
@@ -116,7 +116,7 @@ export class AuthService {
       );
     }
 
-    const isMatch = await AuthUtils.comparePassword(
+    const isMatch = await AuthHelper.comparePassword(
       passwordString,
       user.password,
     );
@@ -128,7 +128,7 @@ export class AuthService {
       );
     }
 
-    const fullUser = UserUtils.applyDefaults({
+    const fullUser = UserHelper.applyDefaults({
       ...user,
       last_login: new Date(),
     });
@@ -146,7 +146,7 @@ export class AuthService {
       role: fullUser.role,
       accountType: fullUser.accountType,
     };
-    const token = AuthUtils.generateJWT(this.jwtInstance, payload);
+    const token = AuthHelper.generateJWT(this.jwtInstance, payload);
 
     return { user: fullUser, token };
   }
@@ -155,7 +155,7 @@ export class AuthService {
     phone: string,
     userData: CreateUserDto,
   ): Promise<User | null> {
-    const variants = AuthUtils.getWaIdVariants(phone || userData.wa_id);
+    const variants = AuthHelper.getWaIdVariants(phone || userData.wa_id);
 
     const data = createUserDtoSchema.parse({
       ...userData,
@@ -168,7 +168,7 @@ export class AuthService {
       this.userRepository.find({ userName: data.userName }),
     ]);
 
-    if (UserUtils.isFullyRegistered(waUser)) {
+    if (UserHelper.isFullyRegistered(waUser)) {
       throw new AppError(
         "Este número de WhatsApp já possui uma conta cadastrada. Tente fazer login.",
         409,
@@ -176,8 +176,8 @@ export class AuthService {
       );
     }
 
-    const isEmailInUse = UserUtils.isDifferentUser(emailUser, waUser);
-    const isUsernameInUse = UserUtils.isDifferentUser(usernameUser, waUser);
+    const isEmailInUse = UserHelper.isDifferentUser(emailUser, waUser);
+    const isUsernameInUse = UserHelper.isDifferentUser(usernameUser, waUser);
 
     if (isEmailInUse && isUsernameInUse) {
       throw new AppError(
@@ -211,7 +211,7 @@ export class AuthService {
       );
     }
 
-    const hashedPassword = await AuthUtils.hashPassword(data.password);
+    const hashedPassword = await AuthHelper.hashPassword(data.password);
     const payload = { ...data, password: hashedPassword };
 
     if (waUser) {

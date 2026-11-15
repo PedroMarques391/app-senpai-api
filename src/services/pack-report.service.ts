@@ -47,7 +47,8 @@ import {
   type ModerationOutcomeTemplateProps,
 } from "@/templates";
 import type { PaginatedResult, PaginationOptions } from "@/types";
-import { MongoUtils, PackModerationUtils } from "@/utils";
+import { PackModerationHelper } from "@/helpers";
+import { MongoUtils } from "@/utils";
 import type { CacheService } from "./cache.service";
 import type { MailService } from "./mail.service";
 import type { PackService } from "./pack.service";
@@ -275,7 +276,7 @@ export class PackReportService {
     const packObjectId = MongoUtils.toObjectId(packId, "ID do pacote inválido");
     const action = data.action;
 
-    if (PackModerationUtils.isDeleteAction(action)) {
+    if (PackModerationHelper.isDeleteAction(action)) {
       if (actorUser && actorUser.role !== "admin") {
         throw new ModerationActionForbiddenError(
           "Apenas administradores podem excluir pacotes.",
@@ -293,7 +294,7 @@ export class PackReportService {
     const existingReports =
       await this.packReportRepository.findManyByPackId(packObjectId);
 
-    const shouldStrike = PackModerationUtils.shouldApplyStrike(
+    const shouldStrike = PackModerationHelper.shouldApplyStrike(
       currentStatus,
       action,
     );
@@ -310,7 +311,7 @@ export class PackReportService {
       owner = await this.userRepository.find({ _id: currentPack.user_id });
     }
 
-    const isDelete = PackModerationUtils.isDeleteAction(action);
+    const isDelete = PackModerationHelper.isDeleteAction(action);
 
     if (isDelete) {
       const stickers = this.stickerRepository
@@ -390,7 +391,7 @@ export class PackReportService {
       return { pack: null, action, deleted: true };
     }
 
-    const targetStatus = PackModerationUtils.resolveTargetStatus(action)!;
+    const targetStatus = PackModerationHelper.resolveTargetStatus(action)!;
     const isPublic = targetStatus === "approved";
     const resetReports = data.reset_reports ?? true;
 

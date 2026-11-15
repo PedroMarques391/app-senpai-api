@@ -13,7 +13,7 @@ import type {
   ServiceResponse,
   VerifyOtpOptions,
 } from "@/types";
-import { AuthUtils, OtpUtils, UserUtils } from "@/utils";
+import { AuthHelper, OtpHelper, UserHelper } from "@/helpers";
 import type { CacheService } from "./cache.service";
 import type { MailService } from "./mail.service";
 
@@ -45,7 +45,7 @@ export class OtpService {
     const cachedOtp = await this.cacheService.get<OtpSecret>(cacheKey);
 
     if (cachedOtp) {
-      const remainingSeconds = OtpUtils.getRemainingCooldown(
+      const remainingSeconds = OtpHelper.getRemainingCooldown(
         cachedOtp.createdAt,
         cooldownSeconds,
       );
@@ -59,7 +59,7 @@ export class OtpService {
       }
     }
 
-    const code = cachedOtp?.code ?? OtpUtils.generate();
+    const code = cachedOtp?.code ?? OtpHelper.generate();
 
     await this.cacheService.set(
       cacheKey,
@@ -107,7 +107,7 @@ export class OtpService {
     phone: string,
     options?: GenerateOtpOptions,
   ): Promise<ServiceResponse<SendOtpResult>> {
-    const variants = AuthUtils.getWaIdVariants(phone);
+    const variants = AuthHelper.getWaIdVariants(phone);
     const digits = phone?.replace(/\D/g, "");
     const targetWaId =
       digits && variants.includes(digits) ? digits : variants[0];
@@ -160,7 +160,7 @@ export class OtpService {
     code: string,
     options?: VerifyOtpOptions,
   ): Promise<boolean> {
-    const variants = AuthUtils.getWaIdVariants(phone);
+    const variants = AuthHelper.getWaIdVariants(phone);
     const digits = phone?.replace(/\D/g, "");
     const targetWaId =
       digits && variants.includes(digits) ? digits : variants[0];
@@ -197,7 +197,7 @@ export class OtpService {
     userName?: string,
     options?: GenerateOtpOptions,
   ): Promise<ServiceResponse<SendOtpResult>> {
-    const normalizedEmail = UserUtils.normalizeIdentifier(email);
+    const normalizedEmail = UserHelper.normalizeIdentifier(email);
 
     if (!normalizedEmail || !normalizedEmail.includes("@")) {
       return {
@@ -248,7 +248,7 @@ export class OtpService {
     code: string,
     options?: VerifyOtpOptions,
   ): Promise<boolean> {
-    const normalizedEmail = UserUtils.normalizeIdentifier(email);
+    const normalizedEmail = UserHelper.normalizeIdentifier(email);
 
     if (!normalizedEmail || !code) {
       throw new AppError(
@@ -279,7 +279,7 @@ export class OtpService {
   }
 
   async sendEmailVerificationSuccess(email: string): Promise<void> {
-    const normalizedEmail = UserUtils.normalizeIdentifier(email);
+    const normalizedEmail = UserHelper.normalizeIdentifier(email);
     const html = renderSuccessEmailTemplate({
       title: "E-mail verificado com sucesso!",
       message:

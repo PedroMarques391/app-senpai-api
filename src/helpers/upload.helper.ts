@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 
 export type StandardUploadFolder = "avatars" | "banners" | "stickers";
 
-export class UploadUtils {
+export class UploadHelper {
   private static readonly TEMP_PREFIX = "temp";
 
   private static cleanIdentifier(value: string): string {

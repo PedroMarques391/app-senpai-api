@@ -8,7 +8,8 @@ import { AppError } from "@/errors";
 import type { User } from "@/models";
 import type { UserRepository } from "@/repositories";
 import type { ICacheService, SendOtpResult, ServiceResponse } from "@/types";
-import { AuthUtils, MongoUtils, PermissionUtils, UserUtils } from "@/utils";
+import { AuthHelper, PermissionHelper, UserHelper } from "@/helpers";
+import { MongoUtils } from "@/utils";
 import type { OtpService } from "./otp.service";
 
 export class ProfileService {
@@ -36,7 +37,7 @@ export class ProfileService {
     if (username) {
       deletions.push(
         this.cacheService.del(
-          `profile:username:${UserUtils.normalizeIdentifier(username)}`,
+          `profile:username:${UserHelper.normalizeIdentifier(username)}`,
         ),
       );
     }
@@ -54,9 +55,9 @@ export class ProfileService {
       if (!user || user.status === "inactive") {
         throw new Error("Perfil de usuário não encontrado");
       }
-      PermissionUtils.verifyOwnership(user._id, userObjectId, "Perfil Privado");
+      PermissionHelper.verifyOwnership(user._id, userObjectId, "Perfil Privado");
 
-      const sanitized = UserUtils.applyDefaults(user);
+      const sanitized = UserHelper.applyDefaults(user);
 
       if (user.premium && !sanitized.premium) {
         await this.userRepository.update(
@@ -91,7 +92,7 @@ export class ProfileService {
     username: string,
     options?: { skipCache?: boolean },
   ): Promise<PublicProfileDto | null> {
-    const cleanUsername = UserUtils.normalizeIdentifier(username);
+    const cleanUsername = UserHelper.normalizeIdentifier(username);
 
     const fetchPublicProfile = async (): Promise<PublicProfileDto> => {
       const user = await this.userRepository.find({ userName: cleanUsername });
@@ -99,7 +100,7 @@ export class ProfileService {
         throw new Error("Perfil de usuário não encontrado");
       }
 
-      const sanitizedUser = UserUtils.applyDefaults(user);
+      const sanitizedUser = UserHelper.applyDefaults(user);
 
       return {
         name: sanitizedUser.name,
@@ -165,15 +166,15 @@ export class ProfileService {
       throw new Error("Perfil de usuário não encontrado");
     }
 
-    const cleanUsername = UserUtils.normalizeIdentifier(data.userName);
-    const cleanEmail = UserUtils.normalizeIdentifier(data.email);
+    const cleanUsername = UserHelper.normalizeIdentifier(data.userName);
+    const cleanEmail = UserHelper.normalizeIdentifier(data.email);
 
     await Promise.all([
       this.ensureUsernameAvailable(id, cleanUsername, user.userName),
       this.ensureEmailAvailable(id, cleanEmail, user.email),
     ]);
 
-    const hashedPassword = await AuthUtils.hashPassword(data.password);
+    const hashedPassword = await AuthHelper.hashPassword(data.password);
 
     const updatedUser = await this.userRepository.update(
       { _id: userObjectId },
@@ -229,7 +230,7 @@ export class ProfileService {
     }
 
     if (updateData.userName) {
-      updateData.userName = UserUtils.normalizeIdentifier(updateData.userName);
+      updateData.userName = UserHelper.normalizeIdentifier(updateData.userName);
       await this.ensureUsernameAvailable(
         id,
         updateData.userName,
@@ -253,7 +254,7 @@ export class ProfileService {
       await this.invalidateProfile(id, updateData.userName);
     }
 
-    return UserUtils.applyDefaults(updatedUser);
+    return UserHelper.applyDefaults(updatedUser);
   }
 
   async updateEquippedCosmetics(
@@ -292,7 +293,7 @@ export class ProfileService {
 
     await this.invalidateProfile(id, currentUser.userName);
 
-    return UserUtils.applyDefaults(updatedUser);
+    return UserHelper.applyDefaults(updatedUser);
   }
 
   async sendEmailVerification(
@@ -321,7 +322,7 @@ export class ProfileService {
       throw new AppError("E-mail não informado.", 400, "INVALID_EMAIL");
     }
 
-    const cleanEmail = UserUtils.normalizeIdentifier(userEmail);
+    const cleanEmail = UserHelper.normalizeIdentifier(userEmail);
 
     return this.otpService.sendEmailOtp(cleanEmail, user.name);
   }
@@ -349,7 +350,7 @@ export class ProfileService {
       );
     }
 
-    const cleanEmail = UserUtils.normalizeIdentifier(email);
+    const cleanEmail = UserHelper.normalizeIdentifier(email);
 
     await this.otpService.verifyEmailOtp(cleanEmail, code, { success: true });
 
@@ -402,7 +403,7 @@ export class ProfileService {
       };
     }
 
-    const variants = AuthUtils.getWaIdVariants(phone);
+    const variants = AuthHelper.getWaIdVariants(phone);
     const targetWaId = variants[0];
 
     if (!targetWaId || targetWaId.length < 8) {
@@ -456,7 +457,7 @@ export class ProfileService {
       );
     }
 
-    const variants = AuthUtils.getWaIdVariants(phone);
+    const variants = AuthHelper.getWaIdVariants(phone);
     const targetWaId = variants[0];
 
     if (!targetWaId || targetWaId.length < 8) {

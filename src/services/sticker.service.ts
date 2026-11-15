@@ -13,7 +13,8 @@ import type {
   StickerRepository,
   UserRepository,
 } from "@/repositories";
-import { MongoUtils, PermissionUtils, UserUtils } from "@/utils";
+import { PermissionHelper, UserHelper } from "@/helpers";
+import { MongoUtils } from "@/utils";
 import type { ObjectId } from "mongodb";
 import type { UploadService } from "./upload.service";
 
@@ -43,7 +44,7 @@ export class StickerService {
       throw new PackNotFoundError();
     }
 
-    PermissionUtils.verifyOwnership(pack.user_id, userObjectId, "pacote");
+    PermissionHelper.verifyOwnership(pack.user_id, userObjectId, "pacote");
 
     const existingStickers =
       await this.stickerRepository.findByPackId(packObjectId);
@@ -130,7 +131,7 @@ export class StickerService {
       "ID de usuário inválido",
     );
 
-    PermissionUtils.verifyOwnership(
+    PermissionHelper.verifyOwnership(
       currentUserObjectId,
       userObjectId,
       "figurinhas do usuário",
@@ -164,7 +165,7 @@ export class StickerService {
       throw AppError.notFound("Figurinha não encontrada", "STICKER_NOT_FOUND");
     }
 
-    PermissionUtils.verifyOwnership(
+    PermissionHelper.verifyOwnership(
       existingSticker.user_id,
       userObjectId,
       "figurinha",
@@ -206,7 +207,7 @@ export class StickerService {
       throw AppError.notFound("Figurinha não encontrada", "STICKER_NOT_FOUND");
     }
 
-    PermissionUtils.verifyOwnership(
+    PermissionHelper.verifyOwnership(
       existingSticker.user_id,
       userObjectId,
       "figurinha",
@@ -266,7 +267,7 @@ export class StickerService {
       throw new UserNotFoundError();
     }
 
-    const sanitizedUser = UserUtils.applyDefaults(user);
+    const sanitizedUser = UserHelper.applyDefaults(user);
     const isMaster = sanitizedUser.subscription.type === "MESTRE";
     const customAuthor = requestedAuthor.trim();
 

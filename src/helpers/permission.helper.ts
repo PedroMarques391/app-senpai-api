@@ -1,7 +1,7 @@
-import type { ObjectId } from "mongodb";
 import { MasterOnlyFeatureError, VerifyOwnershipError } from "@/errors";
+import type { ObjectId } from "mongodb";
 
-export class PermissionUtils {
+export class PermissionHelper {
   static verifyOwnership(
     resourceUserId: ObjectId,
     currentUserId: ObjectId,

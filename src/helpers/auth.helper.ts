@@ -1,9 +1,9 @@
 import type { JwtPayload } from "@/types";
+import { PhoneUtils } from "@/utils";
 import type { JWT as FastifyJWT } from "@fastify/jwt";
 import bcrypt from "bcrypt";
-import { PhoneUtils } from "./PhoneUtils";
 
-export class AuthUtils {
+export class AuthHelper {
   private static readonly SALT_ROUNDS = 10;
 
   static async hashPassword(password: string): Promise<string> {
@@ -33,4 +33,3 @@ export class AuthUtils {
     return PhoneUtils.getSearchVariants(phone);
   }
 }
-

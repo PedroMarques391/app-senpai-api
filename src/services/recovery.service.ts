@@ -4,13 +4,8 @@ import {
   renderResetPasswordEmailTemplate,
   renderSuccessEmailTemplate,
 } from "@/templates";
-import {
-  AuthUtils,
-  DateUtils,
-  GeoUtils,
-  NetworkUtils,
-  UserUtils,
-} from "@/utils";
+import { AuthHelper, GeoHelper, UserHelper } from "@/helpers";
+import { DateUtils, NetworkUtils } from "@/utils";
 import type { ResetPasswordClientInfo } from "@/types";
 import crypto from "crypto";
 import type { CacheService } from "./cache.service";
@@ -24,7 +19,7 @@ export class RecoveryService {
   ) {}
 
   async forgotPassword(email: string) {
-    const cleanEmail = UserUtils.normalizeIdentifier(email);
+    const cleanEmail = UserHelper.normalizeIdentifier(email);
 
     const url = process.env.PRODUCTION_URL;
 
@@ -67,14 +62,14 @@ export class RecoveryService {
       throw new Error("Token inválido ou expirado.");
     }
 
-    const cleanEmail = UserUtils.normalizeIdentifier(userEmail);
+    const cleanEmail = UserHelper.normalizeIdentifier(userEmail);
     const user = await this.userRepository.find({ email: cleanEmail });
 
     if (!user || user.status === "inactive") {
       throw new Error("Conta não encontrada ou inativa.");
     }
 
-    const hashPassword = await AuthUtils.hashPassword(newPassword);
+    const hashPassword = await AuthHelper.hashPassword(newPassword);
 
     await this.userRepository.update(
       { _id: user._id },
@@ -101,7 +96,7 @@ export class RecoveryService {
     email: string,
     clientInfo?: ResetPasswordClientInfo,
   ) {
-    const cleanEmail = UserUtils.normalizeIdentifier(email);
+    const cleanEmail = UserHelper.normalizeIdentifier(email);
 
     const user = await this.userRepository.find({ email: cleanEmail });
 
@@ -111,7 +106,7 @@ export class RecoveryService {
 
     const ip = clientInfo?.ip || "Desconhecido";
     const dateTime = DateUtils.formatDateTime(new Date());
-    const location = await GeoUtils.lookupLocation(ip, clientInfo?.headers);
+    const location = await GeoHelper.lookupLocation(ip, clientInfo?.headers);
     const device = NetworkUtils.parseDevice(clientInfo?.userAgent);
 
     const details = [

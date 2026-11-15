@@ -14,7 +14,7 @@ export interface RateLimitCheckResult {
   currentCount: number;
 }
 
-export class RateLimitUtils {
+export class RateLimitHelper {
   static readonly REGISTRATION_LIMIT_EXCEEDED_RESPONSE = {
     success: false,
     code: "REGISTRATION_IP_LIMIT_EXCEEDED",
@@ -71,4 +71,3 @@ export class RateLimitUtils {
     return newCount;
   }
 }
-

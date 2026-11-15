@@ -1,7 +1,7 @@
 import { uploadPresignedQuerySchema } from "@/dtos";
 import { AppError, VerifyOwnershipError } from "@/errors";
 import { ServiceFactory } from "@/factories";
-import { UploadUtils } from "@/utils";
+import { UploadHelper } from "@/helpers";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
 
@@ -30,7 +30,7 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
         );
       }
 
-      const { folderPath, filename } = UploadUtils.generateMetadata(
+      const { folderPath, filename } = UploadHelper.generateMetadata(
         _id,
         request.query.folder,
       );
@@ -83,7 +83,7 @@ export const uploadRoutes: FastifyPluginAsyncZod = async (app) => {
       }
 
       if (
-        !UploadUtils.verifyOwnership(
+        !UploadHelper.verifyOwnership(
           fileKey,
           request.user._id,
           request.user.userName,

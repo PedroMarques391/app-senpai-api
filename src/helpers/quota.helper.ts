@@ -1,6 +1,6 @@
-import { DateUtils } from "./DateUtils";
+import { DateUtils } from "@/utils";
 
-export class QuotaUtils {
+export class QuotaHelper {
   static readonly FREE_DAILY_STICKER_LIMIT = 3;
 
   static getCycleInfo(referenceDate: Date = new Date()): {

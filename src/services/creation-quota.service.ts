@@ -1,4 +1,5 @@
-import { MongoUtils, QuotaUtils } from "@/utils";
+import { QuotaHelper } from "@/helpers";
+import { MongoUtils } from "@/utils";
 import type { CreationQuotaRepository, QuotaSnapshotDto } from "@/models";
 
 export class CreationQuotaService {
@@ -17,7 +18,7 @@ export class CreationQuotaService {
       packName,
       createdStickerCount: isVip ? 0 : createdStickerCount,
       isUnlimited: isVip,
-      dailyLimit: QuotaUtils.FREE_DAILY_STICKER_LIMIT,
+      dailyLimit: QuotaHelper.FREE_DAILY_STICKER_LIMIT,
     };
   }
 
@@ -32,7 +33,7 @@ export class CreationQuotaService {
     if (activePackName.toLowerCase() !== requestedPackName.toLowerCase()) {
       return {
         allowed: false,
-        reason: `Sua criação grátis de hoje já está vinculada ao pack "${activePackName}". Você pode continuar nele até completar ${QuotaUtils.FREE_DAILY_STICKER_LIMIT} figurinhas.`,
+        reason: `Sua criação grátis de hoje já está vinculada ao pack "${activePackName}". Você pode continuar nele até completar ${QuotaHelper.FREE_DAILY_STICKER_LIMIT} figurinhas.`,
       };
     }
 
@@ -40,7 +41,7 @@ export class CreationQuotaService {
   }
 
   async getQuota(userId: string, isVip: boolean): Promise<QuotaSnapshotDto> {
-    const { cycleDate, cycleStart } = QuotaUtils.getCycleInfo();
+    const { cycleDate, cycleStart } = QuotaHelper.getCycleInfo();
 
     if (isVip) {
       return this.buildSnapshot(cycleStart, true);
@@ -66,7 +67,7 @@ export class CreationQuotaService {
     isVip: boolean,
   ): Promise<QuotaSnapshotDto> {
     const cleanPackName = packName.trim();
-    const { cycleDate, cycleStart } = QuotaUtils.getCycleInfo();
+    const { cycleDate, cycleStart } = QuotaHelper.getCycleInfo();
 
     if (isVip) {
       return this.buildSnapshot(cycleStart, true, cleanPackName);
@@ -109,7 +110,7 @@ export class CreationQuotaService {
     }
 
     const cleanPackName = packName.trim();
-    const { cycleDate } = QuotaUtils.getCycleInfo();
+    const { cycleDate } = QuotaHelper.getCycleInfo();
     const userObjectId = MongoUtils.toObjectId(userId, "ID de usuário inválido");
 
     const record = await this.creationQuotaRepository.findByUserAndDate(
@@ -124,10 +125,10 @@ export class CreationQuotaService {
 
     const currentCount = record?.stickers_count ?? 0;
     const count = stickerCount <= 0 ? 1 : stickerCount;
-    if (currentCount + count > QuotaUtils.FREE_DAILY_STICKER_LIMIT) {
+    if (currentCount + count > QuotaHelper.FREE_DAILY_STICKER_LIMIT) {
       const remaining = Math.max(
         0,
-        QuotaUtils.FREE_DAILY_STICKER_LIMIT - currentCount,
+        QuotaHelper.FREE_DAILY_STICKER_LIMIT - currentCount,
       );
       return {
         allowed: false,
@@ -148,7 +149,7 @@ export class CreationQuotaService {
     isVip: boolean,
   ): Promise<QuotaSnapshotDto> {
     const cleanPackName = packName.trim();
-    const { cycleDate, cycleStart } = QuotaUtils.getCycleInfo();
+    const { cycleDate, cycleStart } = QuotaHelper.getCycleInfo();
 
     if (isVip) {
       return this.buildSnapshot(cycleStart, true, cleanPackName);
@@ -187,7 +188,7 @@ export class CreationQuotaService {
     }
 
     const cleanPackName = packName.trim();
-    const { cycleDate, cycleStart } = QuotaUtils.getCycleInfo();
+    const { cycleDate, cycleStart } = QuotaHelper.getCycleInfo();
     const userObjectId = MongoUtils.toObjectId(userId, "ID de usuário inválido");
 
     await this.creationQuotaRepository.incrementStickers(

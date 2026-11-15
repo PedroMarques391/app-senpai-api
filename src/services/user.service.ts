@@ -19,7 +19,8 @@ import {
   renderModerationOutcomeText,
 } from "@/templates";
 import type { PaginatedResult } from "@/types";
-import { AuthUtils, MongoUtils, UserUtils } from "@/utils";
+import { AuthHelper, UserHelper } from "@/helpers";
+import { MongoUtils } from "@/utils";
 import type { MailService } from "./mail.service";
 
 export class UserService {
@@ -29,16 +30,16 @@ export class UserService {
   ) {}
 
   async findUserByWAId(phone: string): Promise<User | null> {
-    const variants = AuthUtils.getWaIdVariants(phone);
+    const variants = AuthHelper.getWaIdVariants(phone);
     const user = await this.userRepository.find({ wa_id: { $in: variants } });
     if (!user) {
       throw new UserNotFoundError();
     }
-    return UserUtils.applyDefaults(user);
+    return UserHelper.applyDefaults(user);
   }
 
   async createUser(userData: CreateUserDto): Promise<User | null> {
-    const variants = AuthUtils.getWaIdVariants(userData.wa_id);
+    const variants = AuthHelper.getWaIdVariants(userData.wa_id);
     const user = await this.userRepository.find({ wa_id: { $in: variants } });
     if (user) {
       throw new AppError("Já existe uma conta cadastrada com este número.", 409, "USER_ALREADY_EXISTS");
@@ -149,7 +150,7 @@ export class UserService {
     if (!user) {
       throw new UserNotFoundError();
     }
-    return UserUtils.applyDefaults(user);
+    return UserHelper.applyDefaults(user);
   }
 
   async updateRole(

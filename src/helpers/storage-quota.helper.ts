@@ -1,15 +1,15 @@
 import type { VipType } from "@/schemas";
 import type { PlanTier } from "@/types";
 
-export class StorageQuotaUtils {
+export class StorageQuotaHelper {
   static readonly FREE_LIMIT_BYTES = 536_870_912;
   static readonly VIP_PRO_LIMIT_BYTES = 3 * 1024 * 1024 * 1024;
   static readonly VIP_MASTER_LIMIT_BYTES = 6 * 1024 * 1024 * 1024;
 
   private static readonly LIMITS: Record<VipType, number> = {
-    FREE: StorageQuotaUtils.FREE_LIMIT_BYTES,
-    PRO: StorageQuotaUtils.VIP_PRO_LIMIT_BYTES,
-    MESTRE: StorageQuotaUtils.VIP_MASTER_LIMIT_BYTES,
+    FREE: StorageQuotaHelper.FREE_LIMIT_BYTES,
+    PRO: StorageQuotaHelper.VIP_PRO_LIMIT_BYTES,
+    MESTRE: StorageQuotaHelper.VIP_MASTER_LIMIT_BYTES,
   };
 
   private static readonly PLAN_TIERS: Record<VipType, PlanTier> = {

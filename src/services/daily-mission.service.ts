@@ -17,7 +17,8 @@ import {
   VIP_PRO_DAILY_PETALS,
 } from "@/constants";
 import { userSubscriptionSchema, type VipType } from "@/schemas";
-import { DateUtils, LevelUtils, QuotaUtils } from "@/utils";
+import { LevelHelper, QuotaHelper } from "@/helpers";
+import { DateUtils } from "@/utils";
 import { MissionService } from "./mission.service";
 import { ObjectId } from "mongodb";
 
@@ -31,7 +32,7 @@ export class DailyMissionService {
 
   async getDailyOverview(userId: string): Promise<DailyMissionOverview> {
     const userObjectId = new ObjectId(userId);
-    const { cycleDate, cycleStart } = QuotaUtils.getCycleInfo();
+    const { cycleDate, cycleStart } = QuotaHelper.getCycleInfo();
     const user = await this.userRepository.find({ _id: userObjectId });
     if (!user) throw new Error("Usuário não encontrado.");
 
@@ -51,7 +52,7 @@ export class DailyMissionService {
 
     const lastActive = activity.last_active_date;
 
-    const yesterday = QuotaUtils.getCycleInfo(
+    const yesterday = QuotaHelper.getCycleInfo(
       new Date(Date.now() - 24 * 60 * 60 * 1000),
     ).cycleDate;
 
@@ -140,7 +141,7 @@ export class DailyMissionService {
     }
 
     const totalXp = freshUser?.total_xp ?? 0;
-    const levelInfo = LevelUtils.getLevelFromXp(totalXp);
+    const levelInfo = LevelHelper.getLevelFromXp(totalXp);
 
     return {
       cycle_date: cycleDate,
@@ -159,7 +160,7 @@ export class DailyMissionService {
     missionId: string,
   ): Promise<ClaimMissionResult> {
     const userObjectId = new ObjectId(userId);
-    const { cycleDate, cycleStart } = QuotaUtils.getCycleInfo();
+    const { cycleDate, cycleStart } = QuotaHelper.getCycleInfo();
 
     await this.userRepository.ensureDailyCycle(userObjectId, cycleDate);
 
@@ -194,7 +195,7 @@ export class DailyMissionService {
         throw new Error("Recompensa já foi resgatada ou ciclo expirou.");
       }
 
-      const levelInfo = LevelUtils.getLevelFromXp(updatedUser.total_xp ?? 0);
+      const levelInfo = LevelHelper.getLevelFromXp(updatedUser.total_xp ?? 0);
 
       return {
         petals_balance: updatedUser.petals_balance,
@@ -241,7 +242,7 @@ export class DailyMissionService {
       throw new Error("Recompensa já foi resgatada ou ciclo expirou.");
     }
 
-    const levelInfo = LevelUtils.getLevelFromXp(updatedUser.total_xp ?? 0);
+    const levelInfo = LevelHelper.getLevelFromXp(updatedUser.total_xp ?? 0);
 
     return {
       petals_balance: updatedUser.petals_balance,

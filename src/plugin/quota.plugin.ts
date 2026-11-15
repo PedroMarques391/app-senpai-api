@@ -1,7 +1,7 @@
 import type { CreatePackDto } from "@/dtos";
 import { ServiceFactory } from "@/factories";
 import type { VipType } from "@/schemas";
-import { StorageQuotaUtils } from "@/utils";
+import { StorageQuotaHelper } from "@/helpers";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 
@@ -114,13 +114,13 @@ async function quotaPlugin(fastify: FastifyInstance) {
       request.profile = profile;
 
       const subscriptionType: VipType = profile.subscription?.type ?? "FREE";
-      const limitBytes = StorageQuotaUtils.getLimit(subscriptionType);
-      const planTier = StorageQuotaUtils.toPlanTier(subscriptionType);
+      const limitBytes = StorageQuotaHelper.getLimit(subscriptionType);
+      const planTier = StorageQuotaHelper.toPlanTier(subscriptionType);
 
       const usedBytes = profile.storage_used_bytes ?? 0;
       const contentLength = Number(request.headers["content-length"] ?? 0);
 
-      const hasAvailableStorage = StorageQuotaUtils.hasAvailableStorage(
+      const hasAvailableStorage = StorageQuotaHelper.hasAvailableStorage(
         usedBytes,
         contentLength,
         subscriptionType,
@@ -130,14 +130,14 @@ async function quotaPlugin(fastify: FastifyInstance) {
         let message: string;
         switch (subscriptionType) {
           case "MESTRE":
-            message = `Limite de armazenamento atingido (${StorageQuotaUtils.formatBytes(limitBytes)} para plano VIP Mestre). Libere espaço excluindo figurinhas ou mídias antigas.`;
+            message = `Limite de armazenamento atingido (${StorageQuotaHelper.formatBytes(limitBytes)} para plano VIP Mestre). Libere espaço excluindo figurinhas ou mídias antigas.`;
             break;
           case "PRO":
-            message = `Limite de armazenamento atingido (${StorageQuotaUtils.formatBytes(limitBytes)} para plano VIP Pro). Faça upgrade para VIP Mestre e desbloqueie ${StorageQuotaUtils.formatBytes(StorageQuotaUtils.VIP_MASTER_LIMIT_BYTES)}!`;
+            message = `Limite de armazenamento atingido (${StorageQuotaHelper.formatBytes(limitBytes)} para plano VIP Pro). Faça upgrade para VIP Mestre e desbloqueie ${StorageQuotaHelper.formatBytes(StorageQuotaHelper.VIP_MASTER_LIMIT_BYTES)}!`;
             break;
           case "FREE":
           default:
-            message = `Limite de armazenamento atingido (${StorageQuotaUtils.formatBytes(limitBytes)} para plano Free). Faça upgrade para VIP e desbloqueie até ${StorageQuotaUtils.formatBytes(StorageQuotaUtils.VIP_MASTER_LIMIT_BYTES)}!`;
+            message = `Limite de armazenamento atingido (${StorageQuotaHelper.formatBytes(limitBytes)} para plano Free). Faça upgrade para VIP e desbloqueie até ${StorageQuotaHelper.formatBytes(StorageQuotaHelper.VIP_MASTER_LIMIT_BYTES)}!`;
             break;
         }
 
